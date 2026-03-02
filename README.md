@@ -11,3 +11,7 @@ Contribuição: Programar a parte visual do site/aplicativo, de forma interativa
 ## Nome: Balder Schnitsler
 Função: Back-End | Banco de Dados
 Contribuição inicial: começo do github e organização de pastas do projeto
+
+## Nome: Cassio Alexandrino
+Função: Back-End | Scrum Master
+Contribução Inicial: Começo do Jira com as devidas organizações

@@ -1,0 +1,10 @@
+Testes do projeto.
+
+testes unitários
+testes de integração
+testes de componentes
+mocks e fixtures
+Exemplo:
+tests/App.test.js
+tests/components/Header.spec.js
+tests/services/api.test.js

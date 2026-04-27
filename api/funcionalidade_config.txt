@@ -1,0 +1,10 @@
+Configurações gerais e variáveis de ambiente.
+
+parâmetros de build
+endpoints de API
+configurações de tema ou rotas
+arquivos de configuração específicos
+Exemplo:
+config/app.config.js
+config/routes.js
+config/api.js

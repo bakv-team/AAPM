@@ -1,0 +1,17 @@
+funcionalidade_utils.txt
+funcionalidade_tests.py
+funcionalidade_styles.py
+funcionalidade_views.py
+funcionalidade_src.py
+funcionalidade_services.py
+funcionalidade_docs.py
+funcionalidade_config.py
+funcionalidade_assets.txt
+funcionalidade_components.py
+
+database/app.db 
+
+.venv
+.env
+requirements.txt
+__pycache__/

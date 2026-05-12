@@ -13,4 +13,3 @@ class Usuario(Base):
     role = Column(String(20), default="funcionario")
 
     ativo = Column(Boolean, default=True)
-    criado_em = Column(DateTime, server_default=func.now())

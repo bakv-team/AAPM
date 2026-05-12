@@ -1,0 +1,9 @@
+Telões ou páginas de aplicação.
+
+componentes que representam páginas completas
+agrupamento por rota ou tela
+layouts de páginas
+Exemplo:
+views/HomeView.jsx
+views/LoginView.jsx
+views/DashboardView.jsx

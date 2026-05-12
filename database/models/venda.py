@@ -10,3 +10,4 @@ class Venda(Base):
     desconto = Column(Float, default=0)
     valor_total = Column(Float, nullable=False)
     valor_final = Column(Float, nullable=False)
+    data = Column(DateTime, server_default=func.now())

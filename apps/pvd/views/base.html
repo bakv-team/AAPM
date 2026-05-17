@@ -1,66 +1,62 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Venda</title>
+    <title>Painel de Vendas AAPM</title>
     <link rel="stylesheet" href="/apps/pvd/styles/base.css">
-    <link rel="stylesheet" href="https://googleapis.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-    <div class="topbar">
-        <header>
-            <div class="logo">AAPM</div>
-            <nav>
-                <ul>
-                    <li><a href="base.html">Produtos</a></li>
-                    <li><a href="#">Contato</a></li>
-                    <li><a href="#">Carrinho</a></li>
-                </ul>
-            </nav>
+    <!-- Header -->
+    <header class="topbar">
+        <div class="logo">
+            <img src="/apps/pvd/assets/icones/logotransparente.png" alt="logo">
+        </div>
+        <nav>
+            <ul>
+                <li><a href="#">Produtos</a></li>
+                <li><a href="#">Contato</a></li>
+                <li><a href="#">Carrinho</a></li>
+            </ul>
+        </nav>
 
-            <div class="topbar-icons">
-                <div class="topbar-icon">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">2</span>
-                </div>
-                <div class="topbar-icon">
-                    <i class="fa-solid fa-gear"></i>
-                </div>
-                <div class="topbar-profile">
-                    <div class="avatar"></div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
+        <div class="topbar-icons">
+            <div class="topbar-icon">
+                <i class="fa-regular fa-bell"></i>
+                <span class="badge">2</span>
             </div>
-        </header>
-    </div>
+            <div class="topbar-icon">
+                <i class="fa-solid fa-gear"></i>
+            </div>
+            <div class="topbar-profile">
+                <div class="avatar"></div>
+                <i class="fa-solid fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
 
-
+    <!-- Layout Principal -->
     <div class="layout">
-
+        <!-- Sidebar Esquerda -->
         <aside class="sidebar">
-            <div class="ribbons">
-
-            </div>
-
             <div class="categoria">
                 <div class="categoria-content">
                     <h2 class="categoria-title">Categorias:</h2>
 
-                    <button class="cat-active">
+                    <button class="cat-btn cat-active" data-category="materiais-escolares">
                         <i class="fa-solid fa-box-open"></i>
                         <span>Materiais Escolares <em>(84)</em></span>
                     </button>
-                    <button>
+                    <button class="cat-btn" data-category="uniformes">
                         <i class="fa-solid fa-shirt"></i>
                         <span>Uniformes <em>(23)</em></span>
                     </button>
-                    <button>
+                    <button class="cat-btn" data-category="materiais-texteis">
                         <i class="fa-solid fa-layer-group"></i>
-                        <span>Materiais Téxteis <em>(42)</em></span>
+                        <span>Materiais Têxteis <em>(42)</em></span>
                     </button>
-                    <button>
+                    <button class="cat-btn" data-category="ferramentas">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                         <span>Ferramentas <em>(19)</em></span>
                     </button>
@@ -73,9 +69,8 @@
             </button>
         </aside>
 
-
+        <!-- Conteúdo Central -->
         <main class="content">
-
             <div class="breadcrumb">
                 <a href="#">Página Inicial</a>
                 <i class="fa-solid fa-chevron-right"></i>
@@ -84,162 +79,49 @@
 
             <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass search-left"></i>
-                <input type="text" placeholder="Pesquisar produtos...">
+                <input type="text" id="searchInput" placeholder="Pesquisar produtos...">
                 <i class="fa-solid fa-magnifying-glass search-right"></i>
             </div>
 
-            <h1 class="section-title">Materiais Escolares <span>(84)</span></h1>
+            <h1 class="section-title">
+                <span id="categoryName">Materiais Escolares</span> 
+                <span class="product-count">(6)</span>
+            </h1>
 
-            <section>
-                <!-- Card 1 -->
-                <div class="card">
-                    <div class="card-image img-1"></div>
-                    <div class="card-content">
-                        <h2 class="card-title">Título do Produto 1</h2>
-                        <p class="card-description">Descrição.</p>
-                        <div class="stars">
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                        </div>
-                        <div class="price">R$ 2,90</div>
-                        <button class="card-button">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            Adicionar carrinho
-                        </button>
-                        <input type="file" name="foto_produto" accept="image/png, image/jpg, image/webp">
-                    </div>
-                </div>
-
-                <!-- Card 2 -->
-                <div class="card">
-                    <div class="card-image img-2"></div>
-                    <div class="card-content">
-                        <h2 class="card-title">Título do Produto 2</h2>
-                        <p class="card-description">Descrição.</p>
-                        <div class="stars">
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                        </div>
-                        <div class="price">R$ 5,45</div>
-                        <button class="card-button">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            Adicionar carrinho
-                        </button>
-                        <input type="file" name="foto_produto" accept="image/png, image/jpg, image/webp">
-                    </div>
-                </div>
-
-                <!-- Card 3 -->
-                <div class="card">
-                    <div class="card-image img-3"></div>
-                    <div class="card-content">
-                        <h2 class="card-title">Título do Produto 3</h2>
-                        <p class="card-description">Descrição.</p>
-                        <div class="stars">
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                        </div>
-                        <div class="price">R$ 5,90</div>
-                        <button class="card-button">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            Adicionar carrinho
-                        </button>
-                        <input type="file" name="foto_produto" accept="image/png, image/jpg, image/webp">
-                    </div>
-                </div>
-
-                <!-- Card 4 -->
-                <div class="card">
-                    <span class="badge-popular">Popular</span>
-                    <div class="card-image img-4"></div>
-                    <div class="card-content">
-                        <h2 class="card-title">Título do Produto 4</h2>
-                        <p class="card-description">Descrição.</p>
-                        <div class="stars">
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                        </div>
-                        <div class="price">R$ 24,90</div>
-                        <button class="card-button">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            Adicionar carrinho
-                        </button>
-                        <input type="file" name="foto_produto" accept="image/png, image/jpg, image/webp">
-                    </div>
-                </div>
-
-                <!-- Card 5 -->
-                <div class="card">
-                    <div class="card-image img-5"></div>
-                    <div class="card-content">
-                        <h2 class="card-title">Título do Produto 5</h2>
-                        <p class="card-description">Descrição.</p>
-                        <div class="stars">
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                        </div>
-                        <div class="price">R$ 3,50</div>
-                        <button class="card-button">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            Adicionar carrinho
-                        </button>
-                        <input type="file" name="foto_produto" accept="image/png, image/jpg, image/webp">
-                    </div>
-                </div>
+            <!-- Grid de Produtos -->
+            <section id="productsGrid" class="products-grid">
+                <!-- Produtos serão inseridos aqui via JavaScript -->
             </section>
 
+            <!-- Paginação -->
             <div class="pagination">
-                <span class="result-count">1-6 de 84 resultados</span>
+                <span class="result-count" id="resultCount">1-6 de 6 resultados</span>
                 <div class="pages">
-                    <button class="page-nav"><i class="fa-solid fa-chevron-left"></i></button>
-                    <button class="page-num active">1</button>
-                    <button class="page-num">2</button>
-                    <button class="page-nav"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button class="page-nav" id="prevPage" disabled>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div id="pageNumbers"></div>
+                    <button class="page-nav" id="nextPage" disabled>
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
         </main>
-        <!-- Carrinho de compras -->
+
+        <!-- Carrinho de Compras -->
         <aside class="cart">
             <h2 class="cart-title">
                 Carrinho de Compras
                 <i class="fa-solid fa-cart-shopping cart-icon"></i>
             </h2>
 
-            <div class="cart-item">
-                <div class="cart-item-img img-1"></div>
-                <div class="cart-item-info">
-                    <span class="cart-item-name">Borracha</span>
-                    <span class="cart-item-qty">39</span>
-                </div>
-                <span class="cart-item-price">R$ 2,90</span>
-            </div>
-
-            <div class="cart-item">
-                <div class="cart-item-img img-2"></div>
-                <div class="cart-item-info">
-                    <span class="cart-item-name">Apontador Duplo</span>
-                </div>
-                <span class="cart-item-price">R$ 5,45</span>
+            <div id="cartItems" class="cart-items">
+                <!-- Itens do carrinho serão inseridos aqui -->
             </div>
 
             <div class="cart-total">
-                <span class="total-label">Total <strong>R$ 7,93</strong></span>
-                <span class="total-discount">R$ 0,42</span>
+                <span class="total-label">Total <strong id="cartTotal">R$ 0,00</strong></span>
+                <span class="total-discount" id="cartDiscount">-R$ 0,00</span>
             </div>
 
             <div class="cart-associate">
@@ -252,6 +134,7 @@
             <button class="btn-view-cart">Ver Carrinho</button>
         </aside>
     </div>
-</body>
 
+    <script src="/apps/pvd/scripts/base.js"></script>
+</body>
 </html>

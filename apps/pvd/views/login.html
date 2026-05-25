@@ -27,3 +27,155 @@
         }
     </style>
 </head>
+
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <div class="background-image"></div>
+
+    <div class="blur blue"></div>
+    <div class="blur orange"></div>
+
+    <main class="container">
+
+        <!-- LEFT -->
+        <section class="left-side">
+
+            <div class="brand">
+
+                <div class="logo-box">
+                    <img src="assets/icones/logosemtexto.png" alt="Logo">
+                </div>
+
+                <div>
+                    <h1>AAPM</h1>
+                    <span></span>
+                    <span>SENAI FRANCISCO MATARAZZO - SP</span>
+                </div>
+
+            </div>
+
+            <div class="content">
+
+                <p class="tag">
+                    SISTEMA INSTITUCIONAL ADMINISTRATIVO
+                </p>
+
+                <h2>
+                    Plataforma Administrativa
+                    de Gestão Comercial
+                </h2>
+
+                <p class="text">
+                    Centralize estoque, pedidos
+                    e operações administrativas
+                    em um ambiente seguro.
+                </p>
+
+                <div class="mini-cards">
+
+                    <div class="mini-card">
+                        <i data-lucide="shopping-cart"></i>
+                        <span>Pedidos</span>
+                    </div>
+
+                    <div class="mini-card">
+                        <i data-lucide="package"></i>
+                        <span>Estoque</span>
+                    </div>
+
+                    <div class="mini-card">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>Relatórios</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- RIGHT -->
+        <section class="right-side">
+
+            <div class="login-card">
+
+                <div class="line"></div>
+
+                <div class="header">
+
+                    <h3>Entrar</h3>
+
+                    <p>
+                        Acesse o sistema administrativo.
+                    </p>
+
+                </div>
+
+                <form id="loginForm">
+
+                    <div class="input-box">
+
+                        <i data-lucide="user"></i>
+
+                        <input type="text" placeholder="Usuário" required>
+
+                    </div>
+
+                    <div class="input-box">
+
+                        <i data-lucide="lock"></i>
+
+                        <input type="password" placeholder="Senha" required>
+
+                    </div>
+
+                    <div class="options">
+
+                        <label>
+                            <input type="checkbox">
+                            Lembrar login
+                        </label>
+
+                        <a href="#">
+                            Esqueci a senha
+                        </a>
+
+                    </div>
+
+                    <button class="login-btn">
+
+                        <span>Entrar</span>
+
+                        <i data-lucide="arrow-right"></i>
+
+                    </button>
+
+                </form>
+
+                <div class="security">
+
+                    <div class="dot"></div>
+
+                    <span>
+                        Ambiente seguro - © 2026 SENAI. Todos os direitos reservados.
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="login.js"></script>
+
+    <script>
+        lucide.createIcons();
+    </script>
+
+</body>
+
+</html>

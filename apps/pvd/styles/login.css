@@ -1285,3 +1285,244 @@ canvas{
 .security{
   animation:fadeIn .5s ease .96s both;
 }
+
+/* TABLETS */
+
+@media(max-width:980px){
+
+  body{
+    height:auto;
+    min-height:100vh;
+    overflow-x:hidden;
+    overflow-y:auto;
+  }
+
+  .container{
+    flex-direction:column;
+    gap:40px;
+
+    padding:40px 25px;
+  }
+
+  .left-side{
+    width:100%;
+    max-width:600px;
+
+    text-align:center;
+  }
+
+  .right-side{
+    width:100%;
+    max-width:600px;
+
+    flex-grow:1;
+    flex-shrink:1;
+  }
+
+  .brand{
+    justify-content:center;
+  }
+
+  .text{
+    margin:auto auto 35px auto;
+  }
+
+  .mini-cards{
+    justify-content:center;
+  }
+
+}
+
+/* CELULARES GRANDES */
+
+@media(max-width:750px) and (min-width:601px){
+
+  .container{
+    padding:32px 22px;
+    gap:34px;
+  }
+
+  .login-card{
+    padding:32px 28px;
+  }
+
+  .mini-card{
+    flex:1 1 calc(50% - 7px);
+    justify-content:center;
+  }
+
+}
+
+/* CELULARES */
+
+@media(max-width:600px){
+
+  html{
+    font-size:15px;
+  }
+
+  .container{
+    padding:20px 16px;
+    gap:30px;
+  }
+
+  .brand{
+    flex-direction:column;
+    text-align:center;
+
+    margin-bottom:35px;
+  }
+
+  .content h2{
+    font-size:2rem;
+  }
+
+  .login-card{
+    width:100%;
+
+    padding:28px 20px;
+
+    border-radius:24px;
+  }
+
+  .mini-card{
+    width:100%;
+    justify-content:center;
+  }
+
+  .options{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .security{
+    justify-content:center;
+    text-align:center;
+  }
+
+}
+
+/* CELULARES PEQUENOS */
+
+@media(max-width:400px){
+
+  html{
+    font-size:14px;
+  }
+
+  .container{
+    padding:16px;
+  }
+
+  .content h2{
+    font-size:1.7rem;
+  }
+
+  .login-card{
+    padding:22px 16px;
+
+    border-radius:20px;
+  }
+
+  .input-box{
+    min-height:56px;
+  }
+
+  .login-btn{
+    min-height:54px;
+  }
+
+  .brand{
+    gap:10px;
+  }
+
+  .mini-card{
+    border-radius:14px;
+  }
+
+}
+
+/* MUITO PEQUENOS */
+
+@media(max-width:360px){
+
+  html{
+    font-size:13px;
+  }
+
+  .container{
+    padding:14px 12px;
+  }
+
+  .login-card{
+    padding:20px 14px;
+  }
+
+  .input-box{
+    padding:0 14px;
+  }
+
+  .input-box input{
+    padding-left:10px;
+  }
+
+  .options{
+    gap:10px;
+  }
+
+}
+
+/* LANDSCAPE MOBILE */
+
+@media(max-height:500px) and (orientation:landscape){
+
+  .container{
+    min-height:auto;
+    padding:20px 16px;
+    gap:24px;
+  }
+
+  .brand{
+    margin-bottom:20px;
+  }
+
+  .login-card{
+    padding:20px 24px;
+  }
+
+  .header p{
+    margin-bottom:18px;
+  }
+
+  .input-box{
+    min-height:48px;
+    margin-bottom:12px;
+  }
+
+  .login-btn{
+    min-height:48px;
+  }
+
+  .security{
+    margin-top:16px;
+  }
+
+}
+
+/* TELAS GRANDES */
+
+@media(min-width:1400px){
+
+  .left-side{
+    max-width:480px;
+  }
+
+  .right-side{
+    max-width:460px;
+  }
+
+  .login-card{
+    max-width:460px;
+  }
+
+}

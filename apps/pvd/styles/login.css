@@ -1112,3 +1112,46 @@ canvas{
 .login-btn:hover::before{
   left:120%;
 }
+
+/* SECURITY */
+
+.security{
+  margin-top:24px;
+
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  color:var(--gray);
+
+  font-size:clamp(.82rem,.9vw,.92rem);
+}
+
+.dot{
+  width:10px;
+  height:10px;
+
+  border-radius:50%;
+
+  background:#27d768;
+
+  animation:pulse 1.8s infinite;
+
+  flex-shrink:0;
+}
+
+@keyframes pulse{
+
+  0%{
+    box-shadow:0 0 0 0 rgba(39,215,104,.4);
+  }
+
+  70%{
+    box-shadow:0 0 0 10px rgba(39,215,104,0);
+  }
+
+  100%{
+    box-shadow:0 0 0 0 rgba(39,215,104,0);
+  }
+
+}

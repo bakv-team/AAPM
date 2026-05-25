@@ -42,7 +42,7 @@ canvas{
   position:fixed;
   inset:0;
 
-  background-image:url("assets/icones/fundo.png");
+  background-image:url("../assets/fundos/fundo1.png");
 
   background-size:cover;
 

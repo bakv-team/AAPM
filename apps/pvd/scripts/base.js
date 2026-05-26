@@ -360,3 +360,4 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Função "Ver Carrinho" será implementada em breve!');
     });
 });
+

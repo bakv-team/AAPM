@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey
 from sqlalchemy.sql import func 
+from sqlalchemy.orm import relationship
 from database.database import Base
 
 class Produto(Base):
@@ -11,3 +12,16 @@ class Produto(Base):
     preco = Column(Float, nullable=False)
     estoque = Column(Integer, nullable=False)
     categoria = Column(String(100))
+
+    image_path = Column(String(255), nullable=True)
+
+    categoria_id = Column(Integer, ForeignKey("categorias.id", ondelete="SET NULL"), nullable=True)
+
+    categoria = relationship("categoria", back_populates="produtos")
+
+    @property
+    def imagem_url(self):
+        if self.imagem_path:
+            return f"/static/{self.imagem_path}"
+        else:
+            return "/static/img/produtos-placeholder.png"

@@ -534,16 +534,17 @@ nav ul li a:hover {
 
 .page-nav:hover:not(:disabled),
 .page-num:hover:not(.cat-active) {
-    border-color: var(--blue) !important; 
+    border-color: var(--blue) !important;
     color: var(--blue) !important;
-    background-color: var(--bg-soft) !important; 
-    transform: translateY(-2px); 
-    box-shadow: 0 4px 10px rgba(56, 88, 214, 0.15) !important; 
+    background-color: var(--bg-soft) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(56, 88, 214, 0.15) !important;
 }
 
 .page-nav:hover:not(:disabled) i {
     color: var(--blue) !important;
 }
+
 
 .page-nav:disabled {
     opacity: 0.4 !important;
@@ -656,8 +657,7 @@ nav ul li a:hover {
     border-bottom: 2px solid var(--border);
 }
 
-.btn-close-order,
-.btn-view-cart {
+.btn-close-order {
     width: 100%;
     padding: 16px;
     border-radius: 14px;
@@ -666,32 +666,43 @@ nav ul li a:hover {
     font-size: 15px;
     cursor: pointer;
     transition: all 0.3s ease;
+    background: linear-gradient(135deg,
+            var(--blue-hover),
+            #3858d64d);
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-close-order {
-    background-color: var(--orange);
-    color: #fff;
-    box-shadow: 0 8px 20px rgba(241, 124, 32, 0.3);
-}
-
-.btn-view-cart {
     background-color: var(--blue);
     color: #fff;
-    box-shadow: 0 8px 20px rgba(56, 88, 214, 0.3);
+    box-shadow: 0 8px 20px #3858d64d;
 }
 
-.cart::-webkit-scrollbar {
-    width: 8px;
+.btn-close-order::before {
+    content: '';
+
+    position: absolute;
+    top: 0;
+    left: -120%;
+
+    width: 100%;
+    height: 100%;
+
+    background: linear-gradient(120deg,
+            transparent,
+            rgba(255, 255, 255, .35),
+            transparent);
+
+    transition: .8s;
 }
 
-.cart::-webkit-scrollbar-track {
-    background: var(--bg-soft);
-    border-radius: 10px;
+.btn-close-order :hover {
+    transform: translateY(-3px);
 }
 
-.cart::-webkit-scrollbar-thumb {
-    background: var(--blue);
-    border-radius: 10px;
+.btn-close-order:hover::before {
+    left: 120%;
 }
 
 @media (max-width: 1400px) {

@@ -69,7 +69,7 @@ header.topbar {
 }
 
 .logo img {
-    max-height: 65px;           /* Altura ideal para não estourar os 90px do header */
+    max-height: 65px;
     width: auto;
     display: block;
     image-rendering: -webkit-optimize-contrast;
@@ -77,49 +77,43 @@ header.topbar {
 }
 
 nav {
-    flex: 2;                    /* Dá mais espaço para o menu centralizado */
+    flex: 2;                    /* Ocupa o espaço central */
     display: flex;
-    justify-content: center;
+    justify-content: center;    /* Centraliza a lista horizontalmente */
     align-items: center;
 }
 
 nav ul {
     list-style: none;
     display: flex;
-    gap: 20px;                  /* Aumentado o espaço entre links */
     align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
 }
 
-nav ul li a {
-    text-decoration: none;
-    color: #102783;
-    font-weight: 600;
-    font-size: 16px;
-    padding: 10px 20px;
-    border-radius: 12px;
-    transition: all 0.25s ease;
-    display: inline-block;
+/* Div invisível com o mesmo peso da logo para empurrar o menu para o centro real */
+.topbar-space-balance {
+    flex: 1;
 }
 
-nav ul li a:hover {
-    background-color: var(--bg-soft);
-    color: var(--orange);
-    transform: translateY(-2px);
-}
-
+/* Modificado para manter o texto em uma linha sem quebras estranhas */
 li {
-    font-size: 35px;
-    font-size: 42px;
+    display: flex;            
+    justify-content: center;  
+    align-items: center;      
+    text-align: center;        
+    font-size: 42px;          
     font-weight: 800;
     color: #f29822;
     margin-bottom: 0px;
     letter-spacing: -0.5px;
+    white-space: nowrap;       /* Impede o título de quebrar linha se a tela encolher um pouco */
 }
-li span{
 
+li span {
     color: #102783;
 }
-
 .topbar-icons {
     flex: 1;
     display: flex;

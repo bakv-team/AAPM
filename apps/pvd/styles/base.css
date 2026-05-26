@@ -110,7 +110,6 @@ nav ul li a:hover {
     position: absolute;
     top: -8px;
     right: -10px;
-    background-color: var(--orange);
     color: #fff;
     font-size: 11px;
     font-weight: 700;
@@ -136,20 +135,6 @@ nav ul li a:hover {
     transform: translateY(-2px);
 }
 
-.avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    border: 2px solid var(--blue);
-    box-shadow: 0 2px 8px rgba(56, 88, 214, 0.2);
-    object-fit: cover;
-    background-color: var(--bg-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
 
 .topbar-profile:hover .avatar {
     border-color: var(--orange);

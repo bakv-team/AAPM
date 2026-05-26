@@ -11,7 +11,7 @@ from database.auth import hash_senha, verificar_senha, criar_token
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 #Configura para renderizar os templates
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory="database/templates")
 
 
 # Rota para tela de cadastro
@@ -90,32 +90,34 @@ def login(
         verificar_senha(senha, usuario.senha_hash)
     )
 
+# 1. Se a senha estiver errada:
     if not senha_correta:
         return templates.TemplateResponse(
             request,
-            "auth/login.html",
+            "auth/login",
             {
                 "request": request,
-                "erro": "E-mail ou senha incorretos."
-            },
-            status_code=401
+                "erro": "E-mail ou senha incorretos." # Padronizado para 'erro'
+            }
+            # Removido o status_code=401 para o navegador não travar
         )
 
+    # 2. Se o usuário estiver inativo (e corrigindo a falta do nome do template que vimos antes):
     if not usuario.ativo:
         return templates.TemplateResponse(
             request,
+            "auth/login.html", # Adicionado o caminho do template que faltava
             {
                 "request": request,
                 "erro": "Usuário inativo. Contate o administrador."
-            },
-            status_code=403
+            }
+            # Removido o status_code=403
         )
 
     # Dados que ficarão no payload do JWT
     # "sub" (subject) é a convenção JWT para identificar o usuário
     token_data = {
         "sub": usuario.email,
-        "nome": usuario.nome,
         "role": usuario.role,
         "id": usuario.id
     }

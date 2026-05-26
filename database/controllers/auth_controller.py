@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from database.database import get_db
 from database.models.usuario import Usuario
-from database.auth import hash_senha, verificar_senha, criar_token
+from database.auth import  verificar_senha, criar_token 
 
 # APIROUTER agrupa as rotas desse arquivo com o prefixo /auth
 router = APIRouter(prefix="/auth", tags=["Autenticação"])

@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from database.controllers import auth_controller
+from database.controllers import auth_controller, admin_controller
 
 
 
@@ -15,6 +15,7 @@ app = FastAPI(title="AAPM")
 templates = Jinja2Templates(directory="database/templates")
 
 app.include_router(auth_controller.router)
+app.include_router(admin_controller.router)
 
 
 

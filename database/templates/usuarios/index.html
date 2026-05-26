@@ -26,7 +26,6 @@
     <table border="1" cellpadding="8">
         <thead>
             <tr>
-                <th>Nome</th>
                 <th>E-mail</th>
                 <th>Perfil</th>
                 <th>Status</th>
@@ -36,7 +35,6 @@
         <tbody>
             {% for u in usuarios %}
             <tr>
-                <td>{{ u.nome }}</td>
                 <td>{{ u.email }}</td>
                 <td>{{ u.role }}</td>
                 <td>{{ "Ativo" if u.ativo else "Inativo" }}</td>

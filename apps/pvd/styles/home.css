@@ -27,20 +27,19 @@ body {
     padding: 20px;
 }
 
-/* AJUSTE CRUCIAL: Garante que o canvas de partículas fique fixo no fundo, 
-   atrás de tudo e sem empurrar o card para os lados.
-*/
+
+
 #particles, canvas {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: -1; /* Fica acima da imagem de fundo (-2) e abaixo do card (1) */
+    z-index: -1; 
     pointer-events: none;
 }
 
-/* Formas decorativas de fundo estilo SENAI */
+
 body::before {
     content: '';
     position: absolute;

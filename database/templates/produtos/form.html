@@ -28,6 +28,14 @@
         </label>
         <br>
 
+        <label>Descrição:
+            <input type="text"
+                   name="descricao"
+                   value="{{ editando.descricao if editando else (valores.descricao if valores else '') }}"
+                   required>
+        </label>
+        <br>
+
         <label>Preço (R$):
             <input type="number"
                    name="preco"

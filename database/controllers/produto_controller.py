@@ -86,6 +86,7 @@ def form_novo_produto(
 async def criar_produto(
     request: Request,
     nome: str          = Form(...),
+    descricao: str     = Form(...),
     preco: float       = Form(...),
     estoque_atual: int = Form(...),
     categoria_id: int  = Form(0),   # 0 = sem categoria
@@ -107,7 +108,7 @@ async def criar_produto(
                 "editando":   None,
                 "categorias": categorias,
                 "erro":       "Já existe um produto com este nome.",
-                "valores":    {"nome": nome, "preco": preco,
+                "valores":    {"nome": nome, "descricao": descricao, "preco": preco,
                                "estoque_atual": estoque_atual,
                                "categoria_id": categoria_id}
             },
@@ -119,6 +120,7 @@ async def criar_produto(
 
     produto = Produto(
         nome          = nome,
+        descricao     = descricao,
         preco         = preco,
         estoque_atual = estoque_atual,
         categoria_id  = categoria_id or None,  # 0 vira NULL no banco
@@ -186,6 +188,7 @@ async def editar_produto(
     produto_id: int,
     request: Request,
     nome: str          = Form(...),
+    descricao: str     = Form(...),
     preco: float       = Form(...),
     estoque_atual: int = Form(...),
     categoria_id: int  = Form(0),
@@ -227,6 +230,7 @@ async def editar_produto(
         editando.imagem_path = nova_imagem_path
 
     editando.nome          = nome
+    editando.descricao     = descricao
     editando.preco         = preco
     editando.estoque_atual = estoque_atual
     editando.categoria_id  = categoria_id or None
@@ -297,7 +301,7 @@ def _remover_imagem(imagem_path: str | None) -> None:
     if not imagem_path:
         return
 
-    caminho = os.path.join("app/static", imagem_path)
+    caminho = os.path.join("database/static", imagem_path)
 
     if os.path.exists(caminho):
         os.remove(caminho)

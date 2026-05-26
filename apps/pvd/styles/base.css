@@ -48,106 +48,105 @@ header.topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 32px;
+    padding: 0 40px;            /* Espaçamento interno horizontal fixo */
+    height: 90px;               /* Altura fixa para garantir alinhamento vertical perfeito */
     border-bottom: 1px solid var(--border);
     width: 100%;
     position: fixed;
     top: 0;
     left: 0;
     z-index: 1000;
-    background: #ebebeb;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: #ffffff;        /* Contraste máximo para a logo */
+    box-shadow: 0 4px 20px rgba(56, 50, 120, 0.06);
+}
+
+/* Divisão proporcional das 3 áreas do header */
+.logo {
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
 }
 
 .logo img {
-    max-height: 60px;
+    max-height: 65px;           /* Altura ideal para não estourar os 90px do header */
     width: auto;
     display: block;
+    image-rendering: -webkit-optimize-contrast;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.05));
+}
+
+nav {
+    flex: 2;                    /* Dá mais espaço para o menu centralizado */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 nav ul {
     list-style: none;
     display: flex;
-    gap: 15px;
+    gap: 20px;                  /* Aumentado o espaço entre links */
+    align-items: center;
 }
 
 nav ul li a {
     text-decoration: none;
     color: #102783;
-    font-weight: bold;
+    font-weight: 600;
     font-size: 16px;
-    padding: 12px 20px;
+    padding: 10px 20px;
     border-radius: 12px;
     transition: all 0.25s ease;
     display: inline-block;
 }
 
 nav ul li a:hover {
-    background-color: rgb(255, 255, 255);
-    color: #ff5f03;
+    background-color: var(--bg-soft);
+    color: var(--orange);
     transform: translateY(-2px);
 }
 
+li {
+    font-size: 35px;
+    font-size: 42px;
+    font-weight: 800;
+    color: #f29822;
+    margin-bottom: 0px;
+    letter-spacing: -0.5px;
+}
+li span{
+
+    color: #102783;
+}
+
 .topbar-icons {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 20px;
+    justify-content: flex-end; 
+    gap: 24px;
 }
 
-.topbar-icon {
-    position: relative;
-    font-size: 22px;
-    color: #2d2d52;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-}
-
-.topbar-icon:hover {
-    transform: translateY(-3px);
-}
-
-.badge {
-    position: absolute;
-    top: -8px;
-    right: -10px;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-}
 
 .topbar-profile {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     cursor: pointer;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--text);
     transition: transform 0.2s ease;
 }
 
-.topbar-profile:hover {
-    transform: translateY(-2px);
-}
-
-
-.topbar-profile:hover .avatar {
-    border-color: var(--orange);
-    box-shadow: 0 4px 12px rgba(241, 124, 32, 0.3);
-}
-
-.avatar i,
-.avatar span {
+.avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;            
     color: var(--blue);
-    font-size: 18px;
-    font-weight: 600;
 }
-
 .menu-toggle {
     display: none;
     font-size: 24px;
@@ -166,7 +165,6 @@ nav ul li a:hover {
     background-repeat: no-repeat;
     opacity: 0.7;
     z-index: -2;
-    /* Colocado em -2 para ficar atrás também das partículas */
     pointer-events: none;
 }
 

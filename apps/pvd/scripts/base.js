@@ -370,6 +370,12 @@ function nextPage() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    updateSidebarCounts(); 
+    
+    renderProducts();
+    renderCart();
+    renderPagination();
+
     renderProducts();
     renderCart();
     renderPagination();
@@ -395,3 +401,28 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Função "Ver Carrinho" será implementada em breve!');
     });
 });
+
+function updateSidebarCounts() {
+    // 1. Cria um objeto para armazenar a contagem de cada categoria
+    const counts = {
+        "materiais-escolares": 0,
+        "uniformes": 0,
+        "materiais-texteis": 0,
+        "ferramentas": 0
+    };
+
+    // 2. Contabiliza os itens existentes no seu PRODUCTS_DATA
+    PRODUCTS_DATA.forEach(product => {
+        if (counts[product.category] !== undefined) {
+            counts[product.category]++;
+        }
+    });
+
+    // 3. Atualiza o HTML de cada contador na barra lateral
+    document.querySelectorAll('.cat-count').forEach(em => {
+        const cat = em.dataset.category;
+        if (counts[cat] !== undefined) {
+            em.textContent = `(${counts[cat]})`;
+        }
+    });
+}

@@ -61,6 +61,7 @@ def form_novo_usuario(
 @router.post("/novo")
 def criar_usuario(
     request: Request,
+    nome: str = Form(...),
     email: str = Form(...),
     senha: str = Form(...),
     role: str = Form(...),
@@ -85,7 +86,7 @@ def criar_usuario(
                 "editando": None,
                 "erro": "Este e-mail já está cadastrado.",
                 # devolve os valores para não limpar o formulário
-                "valores": {"email": email, "role": role}
+                "valores": {"nome": nome, "email": email, "role": role}
             },
             status_code=400
         )
@@ -107,6 +108,7 @@ def criar_usuario(
         )
 
     novo = Usuario(
+        nome=nome,
         email=email,
         senha_hash=hash_senha(senha),
         role=role,
@@ -149,6 +151,7 @@ def form_editar_usuario(
 def editar_usuario(
     usuario_id: int,
     request: Request,
+    nome: str = Form(...),
     email: str = Form(...),
     role: str = Form(...),
     senha: str = Form(""),   # opcional na edição — vazio = não altera
@@ -195,6 +198,7 @@ def editar_usuario(
         )
 
     # Atualiza os campos
+    editando.nome = nome
     editando.ativo = ativo
     editando.email = email
     editando.role = role

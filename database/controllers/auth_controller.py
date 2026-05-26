@@ -80,6 +80,7 @@ def login(
     # "sub" (subject) é a convenção JWT para identificar o usuário
     token_data = {
         "sub": usuario.email,
+        "nome": usuario.nome,
         "role": usuario.role,
         "id": usuario.id
     }

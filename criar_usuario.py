@@ -6,6 +6,7 @@ from database.auth import hash_senha
 
 USUARIOS = [
     {
+        "nome": "Admin Legal",
         "email": "admin@teste.com",
         "senha_hash": "admin123",
         "role": "admin",
@@ -22,6 +23,7 @@ def criar_usuario():
                 print(f"Esse e-mail {user["email"]} já está cadastrado no db")
                 continue
             novo_usuario = Usuario(
+                nome=user["nome"],
                 email=user["email"],
                 senha_hash=hash_senha(user["senha_hash"]),
                 role=user["role"],

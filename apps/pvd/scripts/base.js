@@ -117,6 +117,7 @@ const PRODUCTS_DATA = [
         rating: 5, 
         popular: true 
     },
+    
     { 
         id: 7, 
         name: "Camiseta Branca Senai", 
@@ -180,10 +181,10 @@ const PRODUCTS_DATA = [
 ];
 
 const CATEGORIES = {
-    "materiais-escolares": { name: "Materiais Escolares", count: 84 },
-    "uniformes": { name: "Uniformes", count: 23 },
-    "materiais-texteis": { name: "Materiais Têxteis", count: 42 },
-    "ferramentas": { name: "Ferramentas", count: 19 }
+    "materiais-escolares": { name: "Materiais Escolares" },
+    "uniformes": { name: "Uniformes" },
+    "materiais-texteis": { name: "Materiais Têxteis"},
+    "ferramentas": { name: "Ferramentas" }
 };
 
 let state = {
@@ -278,7 +279,7 @@ function renderPagination() {
     
     pageNumbers.innerHTML = [...Array(totalPages)].map((_, i) => {
         const pageNum = i + 1;
-        return `<button class="page-num ${state.currentPage === pageNum ? 'active' : ''}" 
+        return `<button class="page-num ${state.currentPage === pageNum ? 'cat-active' : ''}" 
                         onclick="goToPage(${pageNum})">${pageNum}</button>`;
     }).join('');
     

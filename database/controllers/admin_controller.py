@@ -65,7 +65,6 @@ def criar_usuario(
     email: str = Form(...),
     senha: str = Form(...),
     role: str = Form(...),
-    ativo: bool = Form(...),
     db: Session = Depends(get_db),
     admin = Depends(get_admin)
 ):
@@ -112,7 +111,6 @@ def criar_usuario(
         email=email,
         senha_hash=hash_senha(senha),
         role=role,
-        ativo=ativo
     )
 
     db.add(novo)
@@ -155,7 +153,6 @@ def editar_usuario(
     email: str = Form(...),
     role: str = Form(...),
     senha: str = Form(""),   # opcional na edição — vazio = não altera
-    ativo: bool = Form(""),
     db: Session = Depends(get_db),
     admin = Depends(get_admin)
 ):
@@ -199,7 +196,6 @@ def editar_usuario(
 
     # Atualiza os campos
     editando.nome = nome
-    editando.ativo = ativo
     editando.email = email
     editando.role = role
 

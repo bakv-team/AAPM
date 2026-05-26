@@ -1,4 +1,61 @@
-"// Dados dos produto//"
+particlesJS("particles-js", {
+  "particles": {
+    "number": {
+      "value": 60, 
+      "density": {
+        "enable": true,
+        "value_area": 800
+      }
+    },
+    "color": {
+      "value": "#3858d6" 
+    },
+    "shape": {
+      "type": "circle"
+    },
+    "opacity": {
+      "value": 0.4, 
+      "random": true
+    },
+    "size": {
+      "value": 4,
+      "random": true
+    },
+    "line_linked": {
+      "enable": true,
+      "distance": 150,
+      "color": "#3858d6",
+      "opacity": 0.2,
+      "width": 1
+    },
+    "move": {
+      "enable": true,
+      "speed": 2,
+      "direction": "none",
+      "random": false,
+      "straight": false,
+      "out_mode": "out",
+      "bounce": false
+    }
+  },
+  "interactivity": {
+    "detect_on": "canvas",
+    "events": {
+      "onhover": {
+        "enable": true,
+        "mode": "grab" 
+      },
+      "onclick": {
+        "enable": true,
+        "mode": "push" 
+      },
+      "resize": true
+    }
+  },
+  "retina_detect": true
+});
+
+
 const PRODUCTS_DATA = [
     { 
         id: 1, 
@@ -62,21 +119,21 @@ const PRODUCTS_DATA = [
     },
     { 
         id: 7, 
-        name: "Camiseta Uniforme Azul", 
+        name: "Camiseta Branca Senai", 
         description: "Camiseta de malha 100% algodão", 
         price: 35.00, 
         category: "uniformes", 
-        image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400", 
+        image: "/apps/pvd/assets/uniformes/uniforme_senai.png", 
         rating: 4, 
         popular: false 
     },
     { 
         id: 8, 
-        name: "Calça Uniforme", 
+        name: "Calça Senai", 
         description: "Calça social preta", 
         price: 55.00, 
         category: "uniformes", 
-        image: "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400", 
+        image: "/apps/pvd/assets/uniformes/calca_senai.png", 
         rating: 4, 
         popular: false 
     },
@@ -86,7 +143,7 @@ const PRODUCTS_DATA = [
         description: "Rolo com 50 metros", 
         price: 78.00, 
         category: "materiais-texteis", 
-        image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400", 
+        image: "/apps/pvd/assets/materiais_texteis/tecido_tnt.png", 
         rating: 5, 
         popular: false 
     },
@@ -96,7 +153,7 @@ const PRODUCTS_DATA = [
         description: "Carretel 500m", 
         price: 8.50, 
         category: "materiais-texteis", 
-        image: "https://images.unsplash.com/photo-1485230405346-71acb9518d9c?w=400", 
+        image: "/apps/pvd/assets/materiais_texteis/linha_costura.png", 
         rating: 5, 
         popular: false 
     },
@@ -106,7 +163,7 @@ const PRODUCTS_DATA = [
         description: "Alicate profissional 8 polegadas", 
         price: 32.90, 
         category: "ferramentas", 
-        image: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=400", 
+        image: "/apps/pvd/assets/ferramentas/alicate_universal.png", 
         rating: 5, 
         popular: false 
     },
@@ -116,7 +173,7 @@ const PRODUCTS_DATA = [
         description: "Kit com 6 chaves", 
         price: 28.50, 
         category: "ferramentas", 
-        image: "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=400", 
+        image: "/apps/pvd/assets/ferramentas/chave_fenda.png", 
         rating: 4, 
         popular: false 
     }
@@ -129,7 +186,6 @@ const CATEGORIES = {
     "ferramentas": { name: "Ferramentas", count: 19 }
 };
 
-// Estado da aplicação
 let state = {
     selectedCategory: "materiais-escolares",
     searchQuery: "",
@@ -138,7 +194,6 @@ let state = {
     cart: []
 };
 
-// Funções auxiliares
 function formatPrice(price) {
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 }
@@ -164,7 +219,6 @@ function calculateCartTotal() {
     return { total, discount, final: total - discount };
 }
 
-// Renderizar produtos
 function renderProducts() {
     const grid = document.getElementById('productsGrid');
     const products = getPaginatedProducts();
@@ -193,7 +247,6 @@ function renderProducts() {
     `).join('');
 }
 
-// Renderizar carrinho
 function renderCart() {
     const cartItems = document.getElementById('cartItems');
     const { total, discount, final } = calculateCartTotal();
@@ -218,7 +271,6 @@ function renderCart() {
     document.getElementById('cartDiscount').textContent = `-${formatPrice(discount)}`;
 }
 
-// Renderizar paginação
 function renderPagination() {
     const filtered = getFilteredProducts();
     const totalPages = Math.ceil(filtered.length / state.itemsPerPage);
@@ -230,20 +282,16 @@ function renderPagination() {
                         onclick="goToPage(${pageNum})">${pageNum}</button>`;
     }).join('');
     
-    // Atualizar contador de resultados
     const startIndex = (state.currentPage - 1) * state.itemsPerPage + 1;
     const endIndex = Math.min(state.currentPage * state.itemsPerPage, filtered.length);
     document.getElementById('resultCount').textContent = `${startIndex}-${endIndex} de ${filtered.length} resultados`;
     
-    // Habilitar/desabilitar botões anterior/próximo
     document.getElementById('prevPage').disabled = state.currentPage === 1;
     document.getElementById('nextPage').disabled = state.currentPage === totalPages || totalPages === 0;
     
-    // Atualizar contagem de produtos na categoria
     document.querySelector('.product-count').textContent = `(${filtered.length})`;
 }
 
-// Adicionar ao carrinho
 function addToCart(productId) {
     const product = PRODUCTS_DATA.find(p => p.id === productId);
     if (!product) return;
@@ -264,7 +312,6 @@ function addToCart(productId) {
     
     renderCart();
     
-    // Feedback visual
     const button = event.target.closest('.card-button');
     const originalText = button.innerHTML;
     button.innerHTML = '<i class="fa-solid fa-check"></i> Adicionado!';
@@ -276,30 +323,25 @@ function addToCart(productId) {
     }, 1500);
 }
 
-// Remover do carrinho
 function removeFromCart(productId) {
     state.cart = state.cart.filter(item => item.id !== productId);
     renderCart();
 }
 
-// Trocar categoria
 function changeCategory(category) {
     state.selectedCategory = category;
     state.currentPage = 1;
     
-    // Atualizar UI das categorias
     document.querySelectorAll('.cat-btn').forEach(btn => {
         btn.classList.toggle('cat-active', btn.dataset.category === category);
     });
     
-    // Atualizar nome da categoria
     document.getElementById('categoryName').textContent = CATEGORIES[category].name;
     
     renderProducts();
     renderPagination();
 }
 
-// Buscar produtos
 function searchProducts(query) {
     state.searchQuery = query;
     state.currentPage = 1;
@@ -307,7 +349,6 @@ function searchProducts(query) {
     renderPagination();
 }
 
-// Navegar páginas
 function goToPage(page) {
     state.currentPage = page;
     renderProducts();
@@ -328,30 +369,24 @@ function nextPage() {
     }
 }
 
-// Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar
     renderProducts();
     renderCart();
     renderPagination();
     
-    // Busca
     document.getElementById('searchInput').addEventListener('input', (e) => {
         searchProducts(e.target.value);
     });
     
-    // Botões de categoria
     document.querySelectorAll('.cat-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             changeCategory(btn.dataset.category);
         });
     });
     
-    // Paginação
     document.getElementById('prevPage').addEventListener('click', previousPage);
     document.getElementById('nextPage').addEventListener('click', nextPage);
     
-    // Botões do carrinho (apenas alertas por enquanto)
     document.querySelector('.btn-close-order').addEventListener('click', () => {
         alert('Função "Fechar Pedido" será implementada em breve!');
     });
@@ -360,4 +395,3 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Função "Ver Carrinho" será implementada em breve!');
     });
 });
-

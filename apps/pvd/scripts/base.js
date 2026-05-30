@@ -1,429 +1,320 @@
-particlesJS("particles-js", {
-  "particles": {
-    "number": {
-      "value": 60, 
-      "density": {
-        "enable": true,
-        "value_area": 800
-      }
-    },
-    "color": {
-      "value": "#3858d6" 
-    },
-    "shape": {
-      "type": "circle"
-    },
-    "opacity": {
-      "value": 0.4, 
-      "random": true
-    },
-    "size": {
-      "value": 4,
-      "random": true
-    },
-    "line_linked": {
-      "enable": true,
-      "distance": 150,
-      "color": "#3858d6",
-      "opacity": 0.2,
-      "width": 1
-    },
-    "move": {
-      "enable": true,
-      "speed": 2,
-      "direction": "none",
-      "random": false,
-      "straight": false,
-      "out_mode": "out",
-      "bounce": false
-    }
-  },
-  "interactivity": {
-    "detect_on": "canvas",
-    "events": {
-      "onhover": {
-        "enable": true,
-        "mode": "grab" 
-      },
-      "onclick": {
-        "enable": true,
-        "mode": "push" 
-      },
-      "resize": true
-    }
-  },
-  "retina_detect": true
-});
+// ==========================================
+// 1. MAPEAMENTO DE ELEMENTOS DO DOM
+// ==========================================
+const modal = document.getElementById('modalCadastro');
+const btnAbrirModal = document.getElementById('btnAbrirModal');
+const btnFecharModal = document.getElementById('btnFecharModal');
+const formCadastro = document.getElementById('formCadastro');
+const productsGrid = document.getElementById('productsGrid');
+const cartItemsContainer = document.getElementById('cartItems');
+const cartTotalElement = document.getElementById('cartTotal');
+const cartDiscountElement = document.getElementById('cartDiscount'); 
+const searchInput = document.getElementById('searchInput');
 
+// Seleção dos botões do Carrinho
+const btnToggleAssociado = document.getElementById('btnToggleAssociado');
+const btnFecharPedido = document.getElementById('btnFecharPedido');
 
-const PRODUCTS_DATA = [
-    { 
-        id: 1, 
-        name: "Borracha Escolar", 
-        description: "Borracha macia de alta qualidade", 
-        price: 2.90, 
-        category: "materiais-escolares", 
-        image: "/apps/pvd/assets/materiais/Borracha Pequena.png", 
-        rating: 5, 
-        popular: false 
-    },
-    { 
-        id: 2, 
-        name: "Apontador Duplo", 
-        description: "Apontador com dois tamanhos", 
-        price: 5.45, 
-        category: "materiais-escolares", 
-        image:"/apps/pvd/assets/materiais/Apontador De Lápis.png", 
-        rating: 5, 
-        popular: false 
-    },
-    { 
-        id: 3, 
-        name: "Lápis de Cor 12 Cores", 
-        description: "Caixa com 12 cores vibrantes", 
-        price: 5.90, 
-        category: "materiais-escolares", 
-        image:"/apps/pvd/assets/materiais/Lápis de cor Faber-Castell.png",
-        rating: 5, 
-        popular: false 
-    },
-    { 
-        id: 4, 
-        name: "Caderno Universitário 200 Folhas", 
-        description: "Caderno espiral com 10 matérias", 
-        price: 24.90, 
-        category: "materiais-escolares", 
-        image:"/apps/pvd/assets/materiais/cadernoazul.png",
-        rating: 5, 
-        popular: true 
-    },
-    { 
-        id: 5, 
-        name: "Caneta Esferográfica Azul", 
-        description: "Pacote com 5 canetas", 
-        price: 3.50, 
-        category: "materiais-escolares", 
-        image:"/apps/pvd/assets/materiais/caneta azul.png",
-        rating: 5, 
-        popular: false 
-    },
-    { 
-        id: 6, 
-        name: "Régua de 30cm", 
-        description: "Kit de réguas", 
-        price: 10.90, 
-        category: "materiais-escolares", 
-        image:"/apps/pvd/assets/materiais/Réguas.png",
-        rating: 5, 
-        popular: true 
-    },
-    
-    { 
-        id: 7, 
-        name: "Camiseta Branca Senai", 
-        description: "Camiseta de malha 100% algodão", 
-        price: 35.00, 
-        category: "uniformes", 
-        image: "/apps/pvd/assets/uniformes/uniforme_senai.png", 
-        rating: 4, 
-        popular: false 
-    },
-    { 
-        id: 8, 
-        name: "Calça Senai", 
-        description: "Calça social preta", 
-        price: 55.00, 
-        category: "uniformes", 
-        image: "/apps/pvd/assets/uniformes/calca_senai.png", 
-        rating: 4, 
-        popular: false 
-    },
-    { 
-        id: 9, 
-        name: "Tecido TNT Branco", 
-        description: "Rolo com 50 metros", 
-        price: 78.00, 
-        category: "materiais-texteis", 
-        image: "/apps/pvd/assets/materiais_texteis/tecido_tnt.png", 
-        rating: 5, 
-        popular: false 
-    },
-    { 
-        id: 10, 
-        name: "Linha de Costura", 
-        description: "Carretel 500m", 
-        price: 8.50, 
-        category: "materiais-texteis", 
-        image: "/apps/pvd/assets/materiais_texteis/linha_costura.png", 
-        rating: 5, 
-        popular: false 
-    },
-    { 
-        id: 11, 
-        name: "Alicate Universal", 
-        description: "Alicate profissional 8 polegadas", 
-        price: 32.90, 
-        category: "ferramentas", 
-        image: "/apps/pvd/assets/ferramentas/alicate_universal.png", 
-        rating: 5, 
-        popular: false 
-    },
-    { 
-        id: 12, 
-        name: "Chave de Fenda Kit", 
-        description: "Kit com 6 chaves", 
-        price: 28.50, 
-        category: "ferramentas", 
-        image: "/apps/pvd/assets/ferramentas/chave_fenda.png", 
-        rating: 4, 
-        popular: false 
-    }
-];
+// ==========================================
+// 2. ESTADO DA APLICAÇÃO (DADOS)
+// ==========================================
+let produtos = JSON.parse(localStorage.getItem('produtos_aapm')) || [];
+let carrinho = JSON.parse(localStorage.getItem('carrinho_aapm')) || [];
+let ehAssociado = false; // Começa sempre desligado (cliente comum)
+const TAXA_DESCONTO = 0.10; // 10% de desconto global
+let categoriaAtual = 'todos';
 
-const CATEGORIES = {
-    "materiais-escolares": { name: "Materiais Escolares" },
-    "uniformes": { name: "Uniformes" },
-    "materiais-texteis": { name: "Materiais Têxteis"},
-    "ferramentas": { name: "Ferramentas" }
-};
+// ==========================================
+// 3. CONTROLE DO MODAL DE CADASTRO
+// ==========================================
+if (btnAbrirModal) btnAbrirModal.addEventListener('click', () => modal.style.display = 'flex');
+if (btnFecharModal) btnFecharModal.addEventListener('click', () => modal.style.display = 'none');
 
-let state = {
-    selectedCategory: "materiais-escolares",
-    searchQuery: "",
-    currentPage: 1,
-    itemsPerPage: 6,
-    cart: []
-};
+// ==========================================
+// 4. CADASTRO DE NOVOS PRODUTOS
+// ==========================================
+if (formCadastro) {
+    formCadastro.addEventListener('submit', (e) => {
+        e.preventDefault();
 
-function formatPrice(price) {
-    return `R$ ${price.toFixed(2).replace('.', ',')}`;
-}
+        const novoProduto = {
+            id: Date.now().toString(), 
+            nome: document.getElementById('prodNome').value,
+            preco: parseFloat(document.getElementById('prodPreco').value),
+            categoria: document.getElementById('prodCategoria').value,
+            imagem: document.getElementById('prodImagem').value || 'https://via.placeholder.com/150'
+        };
 
-function getFilteredProducts() {
-    return PRODUCTS_DATA.filter(product => {
-        const matchesCategory = product.category === state.selectedCategory;
-        const matchesSearch = product.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-                            product.description.toLowerCase().includes(state.searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
+        produtos.push(novoProduto);
+        localStorage.setItem('produtos_aapm', JSON.stringify(produtos));
+
+        formCadastro.reset();
+        modal.style.display = 'none';
+        
+        filtrarEVisualizarVitrine();
+        atualizarContadoresCategorias();
     });
 }
 
-function getPaginatedProducts() {
-    const filtered = getFilteredProducts();
-    const startIndex = (state.currentPage - 1) * state.itemsPerPage;
-    return filtered.slice(startIndex, startIndex + state.itemsPerPage);
-}
+// ==========================================
+// 5. RENDERIZAR PRODUTOS NA VITRINE
+// ==========================================
+function exibirProdutosNaVitrine(listaDeProdutos) {
+    if (!productsGrid) return;
+    productsGrid.innerHTML = '';
 
-function calculateCartTotal() {
-    const total = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discount = total * 0.05;
-    return { total, discount, final: total - discount };
-}
+    if (listaDeProdutos.length === 0) {
+        productsGrid.innerHTML = '<p style="color:#666; grid-column: 1/-1; text-align:center; padding: 40px 0;">Nenhum produto encontrado.</p>';
+        const countVisual = document.querySelector('.product-count');
+        if (countVisual) countVisual.innerText = '(0)';
+        return;
+    }
 
-function renderProducts() {
-    const grid = document.getElementById('productsGrid');
-    const products = getPaginatedProducts();
-    
-    grid.innerHTML = products.map(product => `
-        <div class="card" data-product-id="${product.id}">
-            ${product.popular ? '<span class="badge-popular">Popular</span>' : ''}
+    listaDeProdutos.forEach(produto => {
+        const card = document.createElement('div');
+        card.classList.add('card'); 
+
+        card.innerHTML = `
             <div class="card-image">
-                <img src="${product.image}" alt="${product.name}" loading="lazy">
+                <img src="${produto.imagem}" alt="${produto.nome}">
             </div>
             <div class="card-content">
-                <h2 class="card-title">${product.name}</h2>
-                <p class="card-description">${product.description}</p>
-                <div class="stars">
-                    ${[...Array(5)].map((_, i) => 
-                        `<i class="fa-solid fa-star${i < product.rating ? '' : ' text-gray-300'}"></i>`
-                    ).join('')}
-                </div>
-                <div class="price">${formatPrice(product.price)}</div>
-                <button class="card-button" onclick="addToCart(${product.id})">
-                    <i class="fa-solid fa-cart-shopping"></i>
-                    Adicionar ao Carrinho
+                <h3 class="card-title">${produto.nome}</h3>
+                <p class="price">R$ ${produto.preco.toFixed(2).replace('.', ',')}</p>
+                <button class="card-button" onclick="adicionarAoCarrinho('${produto.id}')">
+                    <i class="fa-solid fa-cart-plus"></i> Adicionar
                 </button>
             </div>
-        </div>
-    `).join('');
+        `;
+        productsGrid.appendChild(card);
+    });
+
+    const countVisual = document.querySelector('.product-count');
+    if (countVisual) countVisual.innerText = `(${listaDeProdutos.length})`;
 }
 
-function renderCart() {
-    const cartItems = document.getElementById('cartItems');
-    const { total, discount, final } = calculateCartTotal();
+function filtrarEVisualizarVitrine() {
+    const termoBusca = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    let resultado = produtos;
     
-    cartItems.innerHTML = state.cart.map(item => `
-        <div class="cart-item">
-            <div class="cart-item-img">
-                <img src="${item.image}" alt="${item.name}">
-            </div>
-            <div class="cart-item-info">
-                <span class="cart-item-name">${item.name}</span>
-                <span class="cart-item-qty">Qtd: ${item.quantity}</span>
-            </div>
-            <span class="cart-item-price">${formatPrice(item.price)}</span>
-            <button class="cart-item-remove" onclick="removeFromCart(${item.id})">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-    `).join('');
-    
-    document.getElementById('cartTotal').textContent = formatPrice(final);
-    document.getElementById('cartDiscount').textContent = `-${formatPrice(discount)}`;
+    if (categoriaAtual !== 'todos') {
+        resultado = resultado.filter(p => p.categoria === categoriaAtual);
+    }
+    if (termoBusca !== '') {
+        resultado = resultado.filter(p => p.nome.toLowerCase().includes(termoBusca));
+    }
+    exibirProdutosNaVitrine(resultado);
 }
 
-function renderPagination() {
-    const filtered = getFilteredProducts();
-    const totalPages = Math.ceil(filtered.length / state.itemsPerPage);
-    const pageNumbers = document.getElementById('pageNumbers');
-    
-    pageNumbers.innerHTML = [...Array(totalPages)].map((_, i) => {
-        const pageNum = i + 1;
-        return `<button class="page-num ${state.currentPage === pageNum ? 'cat-active' : ''}" 
-                        onclick="goToPage(${pageNum})">${pageNum}</button>`;
-    }).join('');
-    
-    const startIndex = (state.currentPage - 1) * state.itemsPerPage + 1;
-    const endIndex = Math.min(state.currentPage * state.itemsPerPage, filtered.length);
-    document.getElementById('resultCount').textContent = `${startIndex}-${endIndex} de ${filtered.length} resultados`;
-    
-    document.getElementById('prevPage').disabled = state.currentPage === 1;
-    document.getElementById('nextPage').disabled = state.currentPage === totalPages || totalPages === 0;
-    
-    document.querySelector('.product-count').textContent = `(${filtered.length})`;
+if (searchInput) {
+    searchInput.addEventListener('input', filtrarEVisualizarVitrine);
 }
 
-function addToCart(productId) {
-    const product = PRODUCTS_DATA.find(p => p.id === productId);
-    if (!product) return;
-    
-    const existingItem = state.cart.find(item => item.id === productId);
-    
-    if (existingItem) {
-        existingItem.quantity++;
+// ==========================================
+// 6. LÓGICA INTERNA DO CARRINHO DE COMPRAS
+// ==========================================
+window.adicionarAoCarrinho = function(idProduto) {
+    const produto = produtos.find(p => p.id === idProduto);
+    if (!produto) return;
+
+    const itemNoCarrinho = carrinho.find(item => item.id === idProduto);
+
+    if (itemNoCarrinho) {
+        itemNoCarrinho.quantidade += 1; 
     } else {
-        state.cart.push({
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            quantity: 1,
-            image: product.image
-        });
+        carrinho.push({ ...produto, quantidade: 1 });
     }
-    
-    renderCart();
-    
-    const button = event.target.closest('.card-button');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fa-solid fa-check"></i> Adicionado!';
-    button.style.backgroundColor = '#22c55e';
-    
-    setTimeout(() => {
-        button.innerHTML = originalText;
-        button.style.backgroundColor = '';
-    }, 1500);
+
+    salvarEAtualizarCarrinho();
+};
+
+window.alterarQuantidade = function(idProduto, mudanca) {
+    const item = carrinho.find(item => item.id === idProduto);
+    if (!item) return;
+
+    item.quantidade += mudanca;
+
+    if (item.quantidade <= 0) {
+        carrinho = carrinho.filter(item => item.id !== idProduto);
+    }
+
+    salvarEAtualizarCarrinho();
+};
+
+window.removerDoCarrinho = function(idProduto) {
+    carrinho = carrinho.filter(item => item.id !== idProduto);
+    salvarEAtualizarCarrinho();
+};
+
+function salvarEAtualizarCarrinho() {
+    localStorage.setItem('carrinho_aapm', JSON.stringify(carrinho));
+    renderizarCarrinho();
 }
 
-function removeFromCart(productId) {
-    state.cart = state.cart.filter(item => item.id !== productId);
-    renderCart();
-}
+function renderizarCarrinho() {
+    if (!cartItemsContainer) return;
+    cartItemsContainer.innerHTML = '';
 
-function changeCategory(category) {
-    state.selectedCategory = category;
-    state.currentPage = 1;
-    
-    document.querySelectorAll('.cat-btn').forEach(btn => {
-        btn.classList.toggle('cat-active', btn.dataset.category === category);
+    let totalBrutoGeral = 0;
+
+    carrinho.forEach(item => {
+        const subtotalItemBruto = item.preco * item.quantidade;
+        totalBrutoGeral += subtotalItemBruto;
+
+        const cartItemHtml = document.createElement('div');
+        cartItemHtml.classList.add('cart-item'); 
+        
+        cartItemHtml.innerHTML = `
+            <div class="cart-item-info">
+                <span class="cart-item-name" style="font-weight:600; font-size:14px; display:block;">${item.nome}</span>
+                <small style="color:var(--text-soft); font-size:12px;">R$ ${item.preco.toFixed(2).replace('.', ',')} un.</small>
+                
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                    <button onclick="alterarQuantidade('${item.id}', -1)" style="background:var(--border); border:none; width:24px; height:24px; cursor:pointer; border-radius:4px; font-weight:bold;">-</button>
+                    <span style="font-weight:600; font-size:13px;">${item.quantidade}</span>
+                    <button onclick="alterarQuantidade('${item.id}', 1)" style="background:var(--border); border:none; width:24px; height:24px; cursor:pointer; border-radius:4px; font-weight:bold;">+</button>
+                </div>
+            </div>
+            <div style="text-align: right; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
+                <button class="cart-item-remove" onclick="removerDoCarrinho('${item.id}')" style="background:none; border:none; color:#dc3545; cursor:pointer;">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+                <span style="font-weight: 700; font-size: 14px; margin-top: 10px; color: var(--text);">
+                    R$ ${subtotalItemBruto.toFixed(2).replace('.', ',')}
+                </span>
+            </div>
+        `;
+        cartItemsContainer.appendChild(cartItemHtml);
     });
-    
-    document.getElementById('categoryName').textContent = CATEGORIES[category].name;
-    
-    renderProducts();
-    renderPagination();
-}
 
-function searchProducts(query) {
-    state.searchQuery = query;
-    state.currentPage = 1;
-    renderProducts();
-    renderPagination();
-}
+    // Cálculos matemáticos baseados no estado do botão externo
+    let valorDescontoGeral = ehAssociado ? (totalBrutoGeral * TAXA_DESCONTO) : 0;
+    let totalGeralLiquido = totalBrutoGeral - valorDescontoGeral;
 
-function goToPage(page) {
-    state.currentPage = page;
-    renderProducts();
-    renderPagination();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+    if (cartDiscountElement) {
+        cartDiscountElement.innerText = `-R$ ${valorDescontoGeral.toFixed(2).replace('.', ',')}`;
+        cartDiscountElement.style.color = valorDescontoGeral > 0 ? 'var(--green)' : 'var(--text-soft)';
+    }
 
-function previousPage() {
-    if (state.currentPage > 1) {
-        goToPage(state.currentPage - 1);
+    if (cartTotalElement) {
+        cartTotalElement.innerText = `R$ ${totalGeralLiquido.toFixed(2).replace('.', ',')}`;
+    }
+
+    // Altera as classes visuais do botão sem quebrar a lógica
+    if (btnToggleAssociado) {
+        const icone = btnToggleAssociado.querySelector('i');
+        if (ehAssociado) {
+            btnToggleAssociado.classList.add('active');
+            if (icone) icone.className = 'fa-solid fa-circle-check';
+        } else {
+            btnToggleAssociado.classList.remove('active');
+            if (icone) icone.className = 'fa-regular fa-circle';
+        }
     }
 }
 
-function nextPage() {
-    const totalPages = Math.ceil(getFilteredProducts().length / state.itemsPerPage);
-    if (state.currentPage < totalPages) {
-        goToPage(state.currentPage + 1);
-    }
+// ==========================================
+// 7. LISTENERS DO BOTÃO ASSOCIADO E FECHAMENTO
+// ==========================================
+
+// Ativa/Desativa o desconto global ao clicar no botão da AAPM
+if (btnToggleAssociado) {
+    btnToggleAssociado.addEventListener('click', () => {
+        ehAssociado = !ehAssociado; // Alterna true / false
+        renderizarCarrinho(); // Recalcula os valores na tela imediatamente
+    });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    updateSidebarCounts(); 
-    
-    renderProducts();
-    renderCart();
-    renderPagination();
+if (btnFecharPedido) {
+    btnFecharPedido.addEventListener('click', () => {
+        if (carrinho.length === 0) {
+            alert('O carrinho está vazio!');
+            return;
+        }
 
-    renderProducts();
-    renderCart();
-    renderPagination();
-    
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-        searchProducts(e.target.value);
+        const totalTexto = cartTotalElement ? cartTotalElement.innerText : 'R$ 0,00';
+        let resumo = `--- RESUMO DA VENDA ---\n\n`;
+        resumo += `Total Final: ${totalTexto}\n`;
+        resumo += `Perfil: ${ehAssociado ? 'Associado AAPM (10% de desconto)' : 'Não Associado (Preço Integral)'}\n\n`;
+        resumo += `Deseja finalizar a venda e atualizar o estoque?`;
+
+        if (confirm(resumo)) {
+            // Puxa os dados reais salvos no LocalStorage
+            let bancoProdutos = JSON.parse(localStorage.getItem('produtos_aapm')) || [];
+
+            // Reduz a quantidade baseando-se no carrinho
+            carrinho.forEach(itemComprado => {
+                const produtoNoBanco = bancoProdutos.find(p => p.id === itemComprado.id);
+                if (produtoNoBanco) {
+                    let estoqueAtual = produtoNoBanco.estoque !== undefined ? produtoNoBanco.estoque : 0;
+                    produtoNoBanco.estoque = Math.max(0, estoqueAtual - itemComprado.quantidade);
+                }
+            });
+
+            // Atualiza de fato o LocalStorage
+            localStorage.setItem('produtos_aapm', JSON.stringify(bancoProdutos));
+            
+            // Atualiza a vitrine da página atual com a nova lista modificada
+            produtos = bancoProdutos;
+
+            alert('Pedido processado com sucesso! Estoque atualizado.');
+            
+            // Reseta carrinho e estado do desconto para a próxima venda
+            carrinho = [];
+            ehAssociado = false; 
+
+            salvarEAtualizarCarrinho();
+            filtrarEVisualizarVitrine();
+            atualizarContadoresCategorias();
+        }
     });
-    
-    document.querySelectorAll('.cat-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            changeCategory(btn.dataset.category);
-        });
+}
+
+// ==========================================
+// 8. FUNÇÕES AUXILIARES (CONTADORES DA SIDEBAR)
+// ==========================================
+function atualizarContadoresCategorias() {
+    const counts = {
+        'todos': produtos.length, 
+        'materiais-escolares': 0,
+        'uniformes': 0,
+        'materiais-texteis': 0,
+        'ferramentas': 0
+    };
+
+    produtos.forEach(p => {
+        if (counts[p.categoria] !== undefined) counts[p.categoria]++;
     });
-    
-    document.getElementById('prevPage').addEventListener('click', previousPage);
-    document.getElementById('nextPage').addEventListener('click', nextPage);
-    
-    document.querySelector('.btn-close-order').addEventListener('click', () => {
-        alert('Função "Fechar Pedido" será implementada em breve!');
+
+    Object.keys(counts).forEach(cat => {
+        const el = document.querySelector(`.cat-count[data-category="${cat}"]`);
+        if (el) el.innerText = `(${counts[cat]})`;
     });
-    
-    document.querySelector('.btn-view-cart').addEventListener('click', () => {
-        alert('Função "Ver Carrinho" será implementada em breve!');
+}
+
+// ==========================================
+// 9. LÓGICA DE FILTRAGEM POR CATEGORIAS
+// ==========================================
+const botoesCategoria = document.querySelectorAll('.cat-btn');
+const tituloCategoria = document.getElementById('categoryName');
+
+botoesCategoria.forEach(botao => {
+    botao.addEventListener('click', () => {
+        botoesCategoria.forEach(btn => btn.classList.remove('cat-active'));
+        botao.classList.add('cat-active');
+
+        categoriaAtual = botao.getAttribute('data-category');
+
+        const textoBotao = botao.querySelector('span').childNodes[0].textContent.trim();
+        if (tituloCategoria) tituloCategoria.innerText = categoriaAtual === 'todos' ? 'Todos os Produtos' : textoBotao;
+
+        filtrarEVisualizarVitrine();
     });
 });
 
-function updateSidebarCounts() {
-    // 1. Cria um objeto para armazenar a contagem de cada categoria
-    const counts = {
-        "materiais-escolares": 0,
-        "uniformes": 0,
-        "materiais-texteis": 0,
-        "ferramentas": 0
-    };
-
-    // 2. Contabiliza os itens existentes no seu PRODUCTS_DATA
-    PRODUCTS_DATA.forEach(product => {
-        if (counts[product.category] !== undefined) {
-            counts[product.category]++;
-        }
-    });
-
-    // 3. Atualiza o HTML de cada contador na barra lateral
-    document.querySelectorAll('.cat-count').forEach(em => {
-        const cat = em.dataset.category;
-        if (counts[cat] !== undefined) {
-            em.textContent = `(${counts[cat]})`;
-        }
-    });
-}
+// ==========================================
+// 10. INICIALIZAÇÃO DA PÁGINA
+// ==========================================
+filtrarEVisualizarVitrine();
+renderizarCarrinho();
+atualizarContadoresCategorias();

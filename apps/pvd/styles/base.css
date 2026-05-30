@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
-
 #particles-js {
     position: fixed;
     top: 0;
@@ -76,6 +75,9 @@ header.topbar {
     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.05));
 }
 
+/* ==========================================
+   MENU DE NAVEGAÇÃO (PRODUTOS / CATEGORIAS)
+   ========================================== */
 nav {
     flex: 2;                    /* Ocupa o espaço central */
     display: flex;
@@ -88,10 +90,57 @@ nav ul {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 32px;                  /* Espaçamento elegante entre os links */
     padding: 0;
     margin: 0;
 }
 
+/* Ajustado especificamente para as LIs dentro do NAV do header */
+nav ul li {
+    display: flex;            
+    justify-content: center;  
+    align-items: center;      
+    text-align: center;        
+    font-size: 16px;            /* Tamanho de leitura ideal para o menu */
+    font-weight: 600;           /* Semi-bold para destaque moderno */
+    margin-bottom: 0px;
+    letter-spacing: -0.2px;
+    white-space: nowrap;       
+}
+
+/* Estilização direta dos links */
+nav ul li a {
+    color: var(--text-soft);    /* Começa com uma cor mais suave */
+    text-decoration: none;
+    padding: 8px 4px;
+    position: relative;
+    transition: color 0.3s ease;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+}
+
+/* Efeito de mudança de cor no Hover (Passar o mouse) */
+nav ul li a:hover {
+    color: var(--blue);         /* Muda para o azul oficial do site */
+}
+
+/* Linha decorativa embaixo do link que expande suavemente */
+nav ul li a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 3px;
+    background-color: var(--orange); /* Destaca em laranja o link focado */
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+nav ul li a:hover::after {
+    width: 100%;                /* Expande a barra de ponta a ponta */
+}
 /* Div invisível com o mesmo peso da logo para empurrar o menu para o centro real */
 .topbar-space-balance {
     flex: 1;
@@ -674,7 +723,7 @@ li span {
     transition: .8s;
 }
 
-.btn-close-order :hover {
+.btn-close-order:hover {
     transform: translateY(-3px);
 }
 
@@ -804,4 +853,88 @@ li span {
 
 .cart-item {
     animation: fadeIn 0.3s ease-out;
+}
+/* Recomendação para adicionar ou verificar no seu CSS */
+.cart-items {
+    overflow-y: auto;
+    max-height: 60vh; /* Impede que os cards ultrapassem a tela, gerando uma barra interna de rolagem */
+    padding-right: 4px;
+}
+/* ==========================================
+   ESTILIZAÇÃO DO BOTÃO DE ASSOCIADO (FORA DO CARD)
+   ========================================== */
+.cart-associate {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background-color: var(--bg-soft);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    margin: 8px 0;
+    user-select: none;
+}
+
+/* Efeito Hover padrão */
+.cart-associate:hover {
+    border-color: var(--blue);
+    background-color: #fff;
+    box-shadow: var(--shadow-soft);
+    transform: translateY(-1px);
+}
+
+/* Ícone de seta à direita */
+.cart-associate .dropdown-icon {
+    font-size: 12px;
+    color: var(--text-soft);
+    transition: transform 0.2s ease;
+}
+
+/* ==========================================
+   BOTÃO DE ASSOCIADOS GLOBAL (CARRINHO)
+   ========================================== */
+.cart-associate {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background-color: var(--bg-soft);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    margin-top: 5px;
+    width: 100%;
+    font-family: inherit;
+}
+
+.cart-associate i {
+    font-size: 18px;
+    color: var(--blue);
+}
+
+.cart-associate:hover {
+    border-color: var(--blue);
+    background-color: #ffffff;
+    box-shadow: var(--shadow-soft);
+    transform: translateY(-1px);
+}
+
+/* Estado Ativado (Quando o desconto é aplicado) */
+.cart-associate.active {
+    background-color: #e2f0d9 !important;
+    color: #385723 !important;
+    border-color: #bcdfb1 !important;
+}
+
+.cart-associate.active i {
+    color: #385723 !important;
 }

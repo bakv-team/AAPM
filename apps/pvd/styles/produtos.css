@@ -32,11 +32,160 @@ body {
     min-height: 100vh;
     padding: 40px 20px;
     max-width: 1200px;
-    margin: 0 auto;
+    margin: 130px auto 0; /* Adicionado margem superior para o header fixo não cobrir o conteúdo */
     position: relative;
 }
 
+/* ==========================================
+   HEADER / TOPBAR (Estrutura Conectada)
+   ========================================== */
+header.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;            
+    height: 90px;               
+    border-bottom: 1px solid var(--cinza-medio); /* Adaptado para sua paleta */
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    background: var(--branco);        
+    box-shadow: 0 4px 20px rgba(0, 70, 145, 0.06); /* Sombra adaptada ao seu azul */
+}
 
+/* Divisão proporcional das 3 áreas do header (Esquerda, Centro, Direita) */
+.logo {
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.logo img {
+    max-height: 65px;
+    width: auto;
+    display: block;
+    image-rendering: -webkit-optimize-contrast;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.05));
+}
+
+/* Div invisível com o mesmo peso da logo para empurrar o menu para o centro real */
+.topbar-space-balance {
+    flex: 1;
+}
+
+/* ==========================================
+   MENU DE NAVEGAÇÃO CENTRAL (Ajustado)
+   ========================================== */
+nav {
+    flex: 2;                    
+    display: flex;
+    justify-content: center;    
+    align-items: center;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;                  
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    display: flex;            
+    justify-content: center;  
+    align-items: center;      
+    text-align: center;        
+    font-size: 16px;            
+    font-weight: 600;           
+    margin-bottom: 0px;
+    letter-spacing: -0.2px;
+    white-space: nowrap;       
+}
+
+/* Estilização padrão dos links do Menu adaptada para suas variáveis */
+nav ul li a {
+    color: var(--cinza-escuro);    /* Cor base do seu layout */
+    text-decoration: none;
+    padding: 8px 4px;
+    position: relative;
+    transition: color 0.3s ease;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    opacity: 0.85;
+}
+
+/* Mudança de cor ao passar o mouse usando seu azul intermediário */
+nav ul li a:hover {
+    color: var(--azul-medium);         
+    opacity: 1;
+}
+
+/* Linha animada de efeito sob os links usando seu laranja primário */
+nav ul li a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 3px;
+    background-color: var(--laranja-primary); 
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+nav ul li a:hover::after {
+    width: 100%;                
+}
+
+/* ==========================================
+   ELEMENTOS DA DIREITA (Perfil e Ícones)
+   ========================================== */
+.topbar-icons {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; 
+    gap: 24px;
+}
+
+.topbar-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--cinza-escuro);
+    transition: transform 0.2s ease;
+}
+
+.avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;            
+    color: var(--azul-primary);
+}
+
+.menu-toggle {
+    display: none;
+    font-size: 24px;
+    background: none;
+    border: none;
+    color: var(--azul-primary);
+    cursor: pointer;
+}
+
+/* ==========================================
+   CONTEÚDO DA PÁGINA
+   ========================================== */
 h1 {
     font-size: 48px;
     color: var(--azul-primary);
@@ -45,7 +194,6 @@ h1 {
     text-align: center;
     text-shadow: 2px 2px 4px rgba(0, 70, 145, 0.1);
 }
-
 
 p[style*="color:green"] {
     background: linear-gradient(135deg, var(--verde-success) 0%, #20C997 100%) !important;
@@ -58,7 +206,6 @@ p[style*="color:green"] {
     display: block;
     text-align: left;
 }
-
 
 form[action="/produtos"] {
     background: white;
@@ -159,13 +306,8 @@ a[href="/produtos/novo"]:hover {
     box-shadow: var(--shadow-md);
 }
 
-
 table {
     clear: both;
-}
-
-
-table {
     width: 100%;
     border-collapse: separate !important;
     border-spacing: 0;
@@ -177,7 +319,6 @@ table {
     border: none !important; 
 }
 
-/* Cabeçalho */
 table thead tr {
     background: linear-gradient(135deg, var(--azul-primary) 0%, var(--azul-medium) 100%);
     color: white;
@@ -196,7 +337,6 @@ table th {
 table th:first-child { border-top-left-radius: 12px; }
 table th:last-child { border-top-right-radius: 12px; }
 
-/* Linhas e Células */
 table tbody tr {
     transition: var(--transition);
 }
@@ -218,7 +358,6 @@ table tbody tr:last-child td {
     border-bottom: none !important;
 }
 
-/* Imagens na Tabela */
 table td img {
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
@@ -232,7 +371,6 @@ table td img:hover {
     transform: scale(1.1);
 }
 
-
 table td a:not([href*="editar"]) {
     color: var(--azul-primary);
     text-decoration: none;
@@ -245,8 +383,6 @@ table td a:not([href*="editar"]):hover {
     color: var(--laranja-primary);
     text-decoration: underline;
 }
-
-
 
 table td a[href*="editar"] {
     display: inline-flex;
@@ -307,6 +443,9 @@ body > p:last-of-type a:hover {
     background: rgba(255, 107, 43, 0.1);
 }
 
+/* ==========================================
+   MEDIA QUERIES / RESPONSIVIDADE
+   ========================================== */
 @media (max-width: 968px) {
     form[action="/produtos"] {
         grid-template-columns: 1fr;
@@ -321,6 +460,26 @@ body > p:last-of-type a:hover {
 }
 
 @media (max-width: 768px) {
+    header.topbar {
+        padding: 10px 20px;
+    }
+
+    nav {
+        display: none; /* Oculta menu padrão em mobile */
+    }
+
+    .menu-toggle {
+        display: block;
+    }
+
+    .logo img {
+        max-height: 50px;
+    }
+
+    .topbar-icons {
+        gap: 15px;
+    }
+
     table {
         display: block;
         overflow-x: auto; 
@@ -335,6 +494,7 @@ body > p:last-of-type a:hover {
         font-size: 32px;
     }
 }
+
 .background-image {
     position: fixed;
     inset: 0;

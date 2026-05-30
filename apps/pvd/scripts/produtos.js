@@ -92,3 +92,190 @@ animate();
 
 
 //------------- Funções --------------
+
+let produtos = JSON.parse(localStorage.getItem('produtos_aapm')) || [];
+
+const categorias = [
+    { id: "materiais-escolares", nome: "Materiais Escolares" },
+    { id: "uniformes", nome: "Uniformes" },
+    { id: "materiais-texteis", nome: "Materiais Têxteis" },
+    { id: "ferramentas", nome: "Ferramentas" }
+];
+
+const formFiltro = document.querySelector('form[action="/produtos"]');
+const inputBusca = document.querySelector('input[name="busca"]');
+const selectCategoria = document.querySelector('select[name="categoria_id"]');
+const tbody = document.querySelector('tbody');
+
+function carregarCategoriasNoSelect() {
+    if (!selectCategoria) return;
+    selectCategoria.innerHTML = '<option value="0">Todas as categorias</option>';
+    categorias.forEach(c => {
+        const option = document.createElement('option');
+        option.value = c.id;
+        option.textContent = c.nome;
+        selectCategoria.appendChild(option);
+    });
+}
+
+function injetarBotaoNovoProduto() {
+    const tabela = document.querySelector('table');
+    if (!tabela) return;
+
+    const btnNovo = document.createElement('button');
+    btnNovo.innerHTML = '<i class="fa-solid fa-plus"></i> + Novo produto';
+    btnNovo.style.cssText = "margin-bottom: 15px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;";
+    
+    // Evento para Cadastrar Produto via Prompt de forma limpa
+    btnNovo.addEventListener('click', () => {
+        const nome = prompt("Nome do produto:");
+        if (!nome) return;
+
+        const preco = parseFloat(prompt("Preço do produto (Ex: 25.50):"));
+        if (isNaN(preco)) return alert("Preço inválido!");
+
+        const estoque = parseInt(prompt("Quantidade em estoque (Ex: 10):"), 10);
+        if (isNaN(estoque)) return alert("Estoque inválido!");
+
+        // Monta as opções de categoria para o admin escolher por número
+        let msgCat = "Escolha o número da Categoria:\n";
+        categorias.forEach((c, index) => msgCat += `${index + 1} - ${c.nome}\n`);
+        const indexCat = parseInt(prompt(msgCat)) - 1;
+        
+        if (indexCat < 0 || indexCat >= categorias.length || isNaN(indexCat)) {
+            return alert("Categoria inválida!");
+        }
+        const categoria_id = categorias[indexCat].id;
+
+        const imagem = prompt("URL da Imagem (Deixe em branco para usar padrão):");
+
+        const novo = {
+            id: Date.now().toString(),
+            nome: nome,
+            preco: preco,
+            estoque: estoque || 0,
+            categoria: categoria_id,
+            imagem: imagem || 'https://via.placeholder.com/150'
+        };
+
+        produtos.push(novo);
+        salvarDados();
+        alert("Produto cadastrado com sucesso!");
+        renderizarTabela();
+    });
+
+    // Insere o botão imediatamente antes da tabela
+    tabela.parentNode.insertBefore(btnNovo, tabela);
+}
+
+
+function renderizarTabela(produtosFiltrados = produtos) {
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (produtosFiltrados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; color: #777;">
+                    Nenhum produto encontrado.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    produtosFiltrados.forEach(p => {
+        const tr = document.createElement('tr');
+        
+        // Encontra o nome limpo da categoria correspondente
+        const objCategoria = categorias.find(c => c.id === p.categoria);
+        const nomeCategoria = objCategoria ? objCategoria.nome : "—";
+
+        tr.innerHTML = `
+            <td>
+                <img src="${p.imagem}" alt="${p.nome}" width="50" height="50" style="object-fit:cover; border-radius:4px;">
+            </td>
+            <td><a href="#" onclick="alert('Visualizando ID: ${p.id}')">${p.nome}</a></td>
+            <td>${nomeCategoria}</td>
+            <td>R$ ${p.preco.toFixed(2).replace('.', ',')}</td>
+            <td>${p.estoque !== undefined ? p.estoque : 0}</td>
+            <td>
+                <button onclick="editarProduto('${p.id}')" style="margin-right: 5px; background: #ffc107; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer;">Editar</button>
+                <button onclick="desativarProduto('${p.id}')" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer;">Desativar</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ==========================================
+// 4. FUNÇÕES DE AÇÃO (EDITAR E EXCLUIR)
+// ==========================================
+
+window.editarProduto = function(id) {
+    const prod = produtos.find(p => p.id === id);
+    if (!prod) return;
+
+    // Prompt com valores antigos pré-preenchidos
+    const novoNome = prompt("Editar Nome:", prod.nome);
+    if (novoNome === null) return; // Se cancelar, para
+
+    const novoPreco = parseFloat(prompt("Editar Preço:", prod.preco));
+    if (isNaN(novoPreco)) return alert("Preço inválido!");
+
+    const novoEstoque = parseInt(prompt("Editar Estoque:", prod.estoque || 0), 10);
+    if (isNaN(novoEstoque)) return alert("Estoque inválido!");
+
+    const novaImagem = prompt("Editar URL da Imagem:", prod.imagem);
+
+    prod.nome = novoNome;
+    prod.preco = novoPreco;
+    prod.estoque = novoEstoque;
+    prod.imagem = novaImagem || 'https://via.placeholder.com/150';
+
+    salvarDados();
+    alert("Produto atualizado!");
+    renderizarTabela();
+};
+
+window.desativarProduto = function(id) {
+    const prod = produtos.find(p => p.id === id);
+    if (!prod) return;
+
+    if (confirm(`Tem certeza que deseja desativar (excluir) o produto "${prod.nome}"?`)) {
+        produtos = produtos.filter(p => p.id !== id);
+        salvarDados();
+        renderizarTabela();
+    }
+};
+
+function salvarDados() {
+    localStorage.setItem('produtos_aapm', JSON.stringify(produtos));
+}
+
+
+if (formFiltro) {
+    // Intercepta o envio do formulário para o filtro acontecer no Front-End
+    formFiltro.addEventListener('submit', (e) => {
+        e.preventDefault(); // Impede o envio para a rota "/produtos" do backend
+
+        const termoBusca = inputBusca.value.toLowerCase().trim();
+        const categoriaSelecionada = selectCategoria.value;
+
+        const resultado = produtos.filter(p => {
+            const bateBusca = p.nome.toLowerCase().includes(termoBusca);
+            const bateCategoria = (categoriaSelecionada === "0" || p.categoria === categoriaSelecionada);
+            return bateBusca && bateCategoria;
+        });
+
+        renderizarTabela(resultado);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    carregarCategoriasNoSelect();
+    injetarBotaoNovoProduto();
+    renderizarTabela();
+    
+    console.log("Painel de Controle de Produtos da AAPM carregado.");
+});

@@ -7,9 +7,25 @@
     <link rel="shortcut icon" href="../assets/icones/logosemtexto.png" type="image/x-icon">
 </head>
 <body>
+    <!-- {% extends 'base.html' %} -->
     <canvas id="particles"></canvas>
-    <h1>Produtos</h1>
+    <!-- {%block%} -->
+    <header class="topbar">
+        <div class="logo">
+            <img src="/apps/pvd/assets/icones/banner_aapm.png" alt="banner">
+        </div>
 
+        <nav>
+            <ul>
+                <li><a href="/apps/pvd/views/base.html"> Painel de Vendas</a></li>
+                <li><a href="/apps/pvd/views/categorias.html"> Categorias</a></li>
+            </ul>
+        </nav>
+
+        <div class="topbar-space-balance"></div>
+    </header>
+    <!-- {%endblock} -->
+    <h1>Gerenciamento de Estoque</h1>
     <!-- {% if request.query_params.get('criado') == 'ok' %}
         <p style="color:green">Produto criado com sucesso!</p>
     {% endif %}
@@ -93,7 +109,7 @@
         </tbody>
     </table>
 
-    <p><a href="/">← Dashboard</a></p>
+    <p><a href="/apps/pvd/views/dashboard.html">← Dashboard</a></p>
     <script src="../scripts/produtos.js"></script>
     <div class="background-image"></div>
 </body>

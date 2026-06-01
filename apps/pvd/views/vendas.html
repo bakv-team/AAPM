@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Vendas AAPM</title>
+    <link rel="stylesheet" href="/apps/pvd/styles/base.css">
+    <link rel="icon" type="image/png" href="../assets/icones/logosemtexto.png?v=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+</head>
+
+<body>
+    <canvas id="particles"></canvas>
+    <main>
+        {%block%}
+    <header class="topbar">
+        <div class="logo">
+            <img src="/apps/pvd/assets/icones/banner_aapm.png" alt="banner">
+        </div>
+
+        <nav>
+            <ul>
+                <li><a href="/apps/pvd/views/produtos.html"> Produtos</a></li>
+                <li><a href="/apps/pvd/views/categorias.html"> Categorias</a></li>
+            </ul>
+        </nav>
+
+        <div class="topbar-space-balance"></div>
+    </header>
+        {%endblock%}
+    </main>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="categoria">
+                <div class="categoria-content">
+                    <h2 class="categoria-title">Categorias:</h2>
+
+                    <button class="cat-btn cat-active" data-category="todos">
+                        <i class="fa-solid fa-list"></i>
+                        <span>Todos <em class="cat-count" data-category="todos">(0)</em></span>
+                    </button>
+
+                    <button class="cat-btn" data-category="materiais-escolares">
+                        <i class="fa-solid fa-box-open"></i>
+                        <span>Materiais Escolares <em class="cat-count"
+                                data-category="materiais-escolares">(0)</em></span>
+                    </button>
+                    <button class="cat-btn" data-category="uniformes">
+                        <i class="fa-solid fa-shirt"></i>
+                        <span>Uniformes <em class="cat-count" data-category="uniformes">(0)</em></span>
+                    </button>
+                    <button class="cat-btn" data-category="materiais-texteis">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span>Materiais Têxteis <em class="cat-count" data-category="materiais-texteis">(0)</em></span>
+                    </button>
+                    <button class="cat-btn" data-category="ferramentas">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                        <span>Ferramentas <em class="cat-count" data-category="ferramentas">(0)</em></span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="breadcrumb">
+                <a href="#">Página Inicial</a>
+                <i class="fa-solid fa-chevron-right"></i>
+                <span>Produtos</span>
+            </div>
+
+            <div class="search-bar">
+                <i class="fa-solid fa-magnifying-glass search-left"></i>
+                <input type="text" id="searchInput" placeholder="Pesquisar produtos...">
+                
+            </div>
+
+            <h1 class="section-title">
+                <span id="categoryName">Todos os Produtos</span>
+                <span class="product-count">(0)</span>
+            </h1>
+
+            <section id="productsGrid" class="products-grid">
+            </section>
+
+            <div class="pagination">
+                <span class="result-count" id="resultCount">0-0 de 0 resultados</span>
+                <div class="pages">
+                    <button class="page-nav" id="prevPage" disabled>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div id="pageNumbers"></div>
+                    <button class="page-nav" id="nextPage" disabled>
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <aside class="cart">
+            <h2 class="cart-title">
+                Carrinho de Compras
+                <i class="fa-solid fa-cart-shopping cart-icon"></i>
+            </h2>
+
+            <div id="cartItems" class="cart-items"></div>
+
+            <button type="button" id="btnToggleAssociado" class="cart-associate">
+                <i class="fa-regular fa-circle"></i>
+                <span>Cliente Associado (Desconto)</span>
+            </button>
+
+            <div class="cart-total">
+                <span class="total-label">Total Geral: <strong id="cartTotal">R$ 0,00</strong></span>
+                <span class="total-discount" id="cartDiscount">-R$ 0,00</span>
+            </div>
+
+            <button type="button" id="btnFecharPedido" class="btn-close-order">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Fechar Pedido
+            </button>
+        </aside>
+    </div>
+
+    <div class="background-image"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script>
+        window.produtosDoServidor = {{ produtos_json | safe if produtos_json else '[]' }};
+    </script>
+    <script src="/apps/pvd/scripts/base.js"></script>
+</body>
+
+</html>

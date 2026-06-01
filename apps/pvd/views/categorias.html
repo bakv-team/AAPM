@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -7,9 +7,9 @@
     <link rel="shortcut icon" href="/apps/pvd/assets/icones/logosemtexto.png" type="image/x-icon">
 </head>
 <body>
-     <!-- {% extends 'base.html' %} -->
+      {% extends 'base.html' %} 
     <canvas id="particles"></canvas>
-    <!-- {%block%} -->
+     {%block%} 
     <header class="topbar">
         <div class="logo">
             <img src="/apps/pvd/assets/icones/banner_aapm.png" alt="banner">
@@ -24,7 +24,7 @@
 
         <div class="topbar-space-balance"></div>
     </header>
-    <!-- {%endblock} -->
+     {%endblock} 
     <h1>Categorias</h1>
 
     {% if request.query_params.get('criado') == 'ok' %}
@@ -59,10 +59,8 @@
             <tr>
                 <td>{{ c.nome }}</td>
 
-                <!--
                     c.produtos vem do relationship definido no model.
                     Filtramos em Python para contar apenas os ativos.
-                -->
                 <td>
                     {{ c.produtos | selectattr('ativo') | list | length }}
                 </td>
@@ -96,4 +94,4 @@
     <p><a href="/apps/pvd/views/base.html">← Painel de Vendas</a></p>
     <div class="background-image"></div>
 </body>
-</html>
+</html>  

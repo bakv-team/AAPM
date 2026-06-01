@@ -1,0 +1,321 @@
+ <!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0A1738" />
+    <meta name="description" content="Aurora PDV - Painel administrativo" />
+    <title>AAPM - Painel Administrativo</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+     
+    <!-- ====================== APP SHELL ====================== -->
+    <div class="app-shell" id="appShell">
+      <!-- =============== SIDEBAR =============== -->
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="brand-mark"><img src="assets/icones/" alt=""></div>
+          <div class="brand-text">
+            <span class="brand-title">AAPM</span>
+            <span class="brand-sub">SENAI - FM</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Navegação principal">
+          <p class="nav-label">Principal</p>
+          <button class="nav-item active" data-route="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></button>
+          <button class="nav-item" data-route="admin"><i class="fa-solid fa-table-cells-large"></i><span>Painel Administrativo</span></button>
+          <button class="nav-item" data-route="grafico"><i class="fa-solid fa-chart-column"></i><span>Painel Gráfico</span></button>
+
+          <p class="nav-label">Operacional</p>
+          <button class="nav-item" data-route="pedidos"><i class="fa-solid fa-receipt"></i><span>Pedidos</span><span class="badge-soft" id="navOrdersBadge">0</span></button>
+          <button class="nav-item" data-route="clientes"><i class="fa-solid fa-users"></i><span>Clientes</span></button>
+          <button class="nav-item" data-route="categorias"><i class="fa-solid fa-tags"></i><span>Categorias</span></button>
+          <button class="nav-item" data-route="estoque"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque</span><span class="badge-warn" id="navLowStock">0</span></button>
+
+          <p class="nav-label">Análise</p>
+          <button class="nav-item" data-route="relatorios"><i class="fa-solid fa-file-invoice"></i><span>Relatórios</span></button>
+          <button class="nav-item" data-route="configuracoes"><i class="fa-solid fa-sliders"></i><span>Configurações</span></button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div>
+              <p class="upgrade-title">2026</p>
+              <p class="upgrade-sub">Todos os direitos reservados</p>
+            </div>
+        </div>
+      </aside>
+
+      <!-- =============== MAIN =============== -->
+      <main class="main">
+        <!-- Topbar -->
+        <header class="topbar">
+          <button class="icon-btn ghost only-mobile" id="toggleSidebar" aria-label="Abrir menu"><i class="fa-solid fa-bars"></i></button>
+          <div class="page-title">
+            <h1 id="pageTitle">Dashboard</h1>
+            <p id="pageSubtitle" class="muted">Visão geral das vendas e operações.</p>
+          </div>
+
+          <div class="topbar-actions">
+            <div class="search-wrap">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="globalSearch" placeholder="Buscar produtos, pedidos, clientes..." />
+              <kbd>⌘K</kbd>
+            </div>
+            <button class="icon-btn" id="themeToggle" aria-label="Alternar tema"><i class="fa-solid fa-moon"></i></button>
+            <button class="icon-btn notif" id="notifBtn" aria-label="Notificações"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
+            <div class="admin-chip" id="adminChip">
+              <div class="avatar">RA</div>
+              <div class="who"><span class="who-name">Rafael Andrade</span><span class="who-role">Administrador</span></div>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+          </div>
+        </header>
+
+        <div class="notif-tray hidden" id="notifTray">
+          <div class="notif-head"><strong>Notificações</strong><a href="#" class="muted">Marcar todas</a></div>
+          <ul id="notifList"></ul>
+        </div>
+
+        <div class="admin-tray hidden" id="adminTray">
+          <div class="admin-tray-header">
+            <div class="avatar lg">RA</div>
+            <div><strong>Rafael Andrade</strong><p class="muted">rafael@aurorapdv.com</p></div>
+          </div>
+          <ul>
+            <li><i class="fa-solid fa-user"></i> Meu perfil</li>
+            <li><i class="fa-solid fa-key"></i> Segurança</li>
+            <li><i class="fa-solid fa-life-ring"></i> Suporte</li>
+            <li class="danger"><i class="fa-solid fa-right-from-bracket"></i> Sair</li>
+          </ul>
+        </div>
+
+        <!-- ============================= PAGE: DASHBOARD ============================= -->
+        <section class="page active" id="page-dashboard">
+          <div class="kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Receita do dia</span><span class="kpi-icon orange"><i class="fa-solid fa-money-bill-trend-up"></i></span></div><h2 class="kpi-value" id="kpiRevenue">R$ 0</h2><p class="kpi-trend up" id="kpiRevenueTrend">+0%</p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Itens vendidos</span><span class="kpi-icon blue"><i class="fa-solid fa-cart-shopping"></i></span></div><h2 class="kpi-value" id="kpiItems">0</h2><p class="kpi-trend up" id="kpiItemsTrend">+0%</p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Pedidos concluídos</span><span class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></span></div><h2 class="kpi-value" id="kpiOrders">0</h2><p class="kpi-trend up" id="kpiOrdersTrend">+0%</p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Ticket médio</span><span class="kpi-icon purple"><i class="fa-solid fa-receipt"></i></span></div><h2 class="kpi-value" id="kpiTicket">R$ 0</h2><p class="kpi-trend down" id="kpiTicketTrend">-0%</p></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass">
+              <div class="card-head">
+                <div><h3>Vendas — últimos 7 dias</h3><p class="muted">Comparativo de receita e número de pedidos</p></div>
+                <div class="seg"><button class="seg-btn active" data-range="7">7d</button><button class="seg-btn" data-range="30">30d</button><button class="seg-btn" data-range="90">90d</button></div>
+              </div>
+              <div class="chart-wrap"><canvas id="chartSalesLine"></canvas></div>
+            </div>
+            <div class="card glass">
+              <div class="card-head"><div><h3>Vendas por categoria</h3><p class="muted">Distribuição da receita total</p></div></div>
+              <div class="chart-wrap"><canvas id="chartCategoryPie"></canvas></div>
+              <ul class="legend" id="legendCategory"></ul>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass">
+              <div class="card-head"><div><h3>Top produtos</h3><p class="muted">Mais vendidos no período</p></div><button class="ghost-btn">Ver todos</button></div>
+              <ul class="top-list" id="topProducts"></ul>
+            </div>
+            <div class="card glass">
+              <div class="card-head"><div><h3>Pedidos recentes</h3><p class="muted">Últimas transações no PDV</p></div><button class="ghost-btn" data-route-link="pedidos">Ver pedidos</button></div>
+              <div class="table-wrap small">
+                <table class="data-table">
+                  <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Status</th></tr></thead>
+                  <tbody id="recentOrdersBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: ADMIN (PRODUTOS) ============================= -->
+        <section class="page" id="page-admin">
+          <div class="toolbar glass">
+            <div class="toolbar-left">
+              <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="productSearch" placeholder="Buscar produto..." /></div>
+              <select id="productCategoryFilter" class="select"><option value="">Todas categorias</option></select>
+              <select id="productStockFilter" class="select"><option value="">Estoque</option><option value="in">Em estoque</option><option value="low">Estoque baixo</option><option value="out">Sem estoque</option></select>
+            </div>
+            <div class="toolbar-right">
+              <button class="ghost-btn" id="exportProducts"><i class="fa-solid fa-file-csv"></i> Exportar</button>
+              <button class="primary-btn" id="newProductBtn"><i class="fa-solid fa-plus"></i> Novo produto</button>
+            </div>
+          </div>
+
+          <div class="card glass no-pad">
+            <div class="table-wrap">
+              <table class="data-table" id="productsTable">
+                <thead><tr><th><input type="checkbox" id="selectAllProducts" /></th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th class="right">Ações</th></tr></thead>
+                <tbody id="productsBody"></tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span class="muted" id="productsCount">0 produtos</span>
+              <div class="pager" id="productsPager"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: GRÁFICO ============================= -->
+        <section class="page" id="page-grafico">
+          <div class="kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Receita do dia</span><span class="kpi-icon orange"><i class="fa-solid fa-coins"></i></span></div><h2 class="kpi-value" id="gRevenue">R$ 0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gRevenuePct">0%</span> vs ontem</p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Itens vendidos</span><span class="kpi-icon blue"><i class="fa-solid fa-box"></i></span></div><h2 class="kpi-value" id="gItems">0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gItemsPct">0%</span></p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Pedidos concluídos</span><span class="kpi-icon green"><i class="fa-solid fa-check-double"></i></span></div><h2 class="kpi-value" id="gOrders">0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gOrdersPct">0%</span></p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Total de vendas</span><span class="kpi-icon purple"><i class="fa-solid fa-chart-pie"></i></span></div><h2 class="kpi-value" id="gTotal">R$ 0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gTotalPct">0%</span> no mês</p></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass"><div class="card-head"><div><h3>Receita por categoria</h3><p class="muted">Distribuição percentual</p></div></div><div class="chart-wrap"><canvas id="chartCategoryBar"></canvas></div></div>
+            <div class="card glass"><div class="card-head"><div><h3>Composição de vendas</h3><p class="muted">Categorias x receita</p></div></div><div class="chart-wrap"><canvas id="chartCategoryDonut"></canvas></div><ul class="legend" id="legendCategory2"></ul></div>
+          </div>
+
+          <div class="card glass">
+            <div class="card-head"><div><h3>Receita por hora</h3><p class="muted">Performance ao longo do dia</p></div></div>
+            <div class="chart-wrap"><canvas id="chartHourly"></canvas></div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: PEDIDOS ============================= -->
+        <section class="page" id="page-pedidos">
+          <div class="toolbar glass">
+            <div class="toolbar-left">
+              <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="orderSearch" placeholder="Buscar pedido ou cliente..." /></div>
+              <select id="orderStatusFilter" class="select"><option value="">Todos status</option><option value="concluido">Concluído</option><option value="pendente">Pendente</option><option value="cancelado">Cancelado</option></select>
+            </div>
+            <div class="toolbar-right"><button class="primary-btn" id="newOrderBtn"><i class="fa-solid fa-plus"></i> Novo pedido</button></div>
+          </div>
+          <div class="card glass no-pad"><div class="table-wrap">
+            <table class="data-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Data</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="ordersBody"></tbody></table>
+          </div></div>
+        </section>
+
+        <!-- ============================= PAGE: CLIENTES ============================= -->
+        <section class="page" id="page-clientes">
+          <div class="toolbar glass">
+            <div class="toolbar-left"><div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="customerSearch" placeholder="Buscar cliente..." /></div></div>
+            <div class="toolbar-right"><button class="primary-btn" id="newCustomerBtn"><i class="fa-solid fa-user-plus"></i> Novo cliente</button></div>
+          </div>
+          <div class="customer-grid" id="customersGrid"></div>
+        </section>
+
+        <!-- ============================= PAGE: CATEGORIAS ============================= -->
+        <section class="page" id="page-categorias">
+          <div class="toolbar glass">
+            <div class="toolbar-left"><h3 style="margin:0">Categorias do PDV</h3></div>
+            <div class="toolbar-right"><button class="primary-btn" id="newCategoryBtn"><i class="fa-solid fa-plus"></i> Nova categoria</button></div>
+          </div>
+          <div class="category-grid" id="categoriesGrid"></div>
+        </section>
+
+        <!-- ============================= PAGE: ESTOQUE ============================= -->
+        <section class="page" id="page-estoque">
+          <div class="kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">SKUs ativos</span><span class="kpi-icon blue"><i class="fa-solid fa-barcode"></i></span></div><h2 class="kpi-value" id="skuCount">0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Valor em estoque</span><span class="kpi-icon orange"><i class="fa-solid fa-warehouse"></i></span></div><h2 class="kpi-value" id="stockValue">R$ 0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Estoque baixo</span><span class="kpi-icon yellow"><i class="fa-solid fa-triangle-exclamation"></i></span></div><h2 class="kpi-value" id="lowStockCount">0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Sem estoque</span><span class="kpi-icon red"><i class="fa-solid fa-circle-xmark"></i></span></div><h2 class="kpi-value" id="outOfStockCount">0</h2></div>
+          </div>
+          <div class="card glass no-pad"><div class="table-wrap">
+            <table class="data-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th class="right">Ação</th></tr></thead><tbody id="stockBody"></tbody></table>
+          </div></div>
+        </section>
+
+        <!-- ============================= PAGE: RELATÓRIOS ============================= -->
+        <section class="page" id="page-relatorios">
+          <div class="card glass">
+            <div class="card-head"><div><h3>Relatórios</h3><p class="muted">Exporte e analise dados de vendas e operações</p></div></div>
+            <div class="report-grid">
+              <button class="report-card"><i class="fa-solid fa-file-csv"></i><span>Vendas (CSV)</span></button>
+              <button class="report-card"><i class="fa-solid fa-file-pdf"></i><span>Resumo Diário (PDF)</span></button>
+              <button class="report-card"><i class="fa-solid fa-file-lines"></i><span>Estoque atual</span></button>
+              <button class="report-card"><i class="fa-solid fa-chart-line"></i><span>Curva ABC</span></button>
+              <button class="report-card"><i class="fa-solid fa-people-group"></i><span>Clientes ativos</span></button>
+              <button class="report-card"><i class="fa-solid fa-tags"></i><span>Por categoria</span></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: CONFIG ============================= -->
+        <section class="page" id="page-configuracoes">
+          <div class="grid-2">
+            <div class="card glass">
+              <div class="card-head"><div><h3>Perfil da loja</h3><p class="muted">Informações do estabelecimento</p></div></div>
+              <div class="form-grid">
+                <label>Nome<input type="text" value="Aurora PDV" /></label>
+                <label>CNPJ<input type="text" value="00.000.000/0001-00" /></label>
+                <label>Email<input type="email" value="contato@aurorapdv.com" /></label>
+                <label>Telefone<input type="text" value="(11) 99999-0000" /></label>
+                <label class="span-2">Endereço<input type="text" value="Av. Paulista, 1000 — São Paulo/SP" /></label>
+              </div>
+              <button class="primary-btn">Salvar alterações</button>
+            </div>
+            <div class="card glass">
+              <div class="card-head"><div><h3>Preferências</h3><p class="muted">Customize seu painel</p></div></div>
+              <ul class="prefs">
+                <li><span>Notificações de estoque baixo</span><label class="switch"><input type="checkbox" checked /><span></span></label></li>
+                <li><span>Alerta de novos pedidos</span><label class="switch"><input type="checkbox" checked /><span></span></label></li>
+                <li><span>Modo escuro automático</span><label class="switch"><input type="checkbox" /><span></span></label></li>
+                <li><span>Email diário de resumo</span><label class="switch"><input type="checkbox" checked /><span></span></label></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ====================== MODAL: PRODUTO ====================== -->
+    <div class="modal-backdrop hidden" id="productModal">
+      <div class="modal glass">
+        <div class="modal-head">
+          <h3 id="productModalTitle">Novo produto</h3>
+          <button class="icon-btn ghost" data-close-modal="productModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="productForm" class="form-grid">
+          <input type="hidden" id="productId" />
+          <label class="span-2">Nome do produto<input type="text" id="productName" required /></label>
+          <label>Categoria<select id="productCategory" required></select></label>
+          <label>Preço (R$)<input type="number" id="productPrice" step="0.01" min="0" required /></label>
+          <label>Estoque atual<input type="number" id="productStock" min="0" required /></label>
+          <label>Estoque mínimo<input type="number" id="productMinStock" min="0" value="5" /></label>
+          <label class="span-2">SKU<input type="text" id="productSku" /></label>
+          <label class="span-2">Descrição<textarea id="productDesc" rows="3"></textarea></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="productModal">Cancelar</button>
+            <button type="submit" class="primary-btn">Salvar produto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== CONFIRM ====================== -->
+    <div class="modal-backdrop hidden" id="confirmModal">
+      <div class="modal glass small">
+        <div class="modal-head"><h3 id="confirmTitle">Confirmar</h3></div>
+        <p id="confirmText" style="padding:0 24px 8px;color:var(--text-mute)"></p>
+        <div class="modal-foot" style="padding:16px 24px 24px">
+          <button class="ghost-btn" id="confirmCancel">Cancelar</button>
+          <button class="danger-btn" id="confirmOk">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== TOAST ====================== -->
+    <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- App -->
+    <script src="dashboard.js"></script>
+  </body>
+</html>
+

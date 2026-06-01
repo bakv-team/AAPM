@@ -6,7 +6,7 @@ from sqlalchemy import pool
 import os
 from dotenv import load_dotenv
 from database.database import Base
-from database.models import usuario, produto, categoria, venda
+from database.models import usuario, produto, categoria, venda, movimentacao
 
 from alembic import context
 

@@ -152,31 +152,44 @@ window.addEventListener("resize",()=>{
 init();
 animate();
 // ==========================================
-// 1. MAPEAMENTO DE ELEMENTOS DO DOM
+// ESTADO DA APLICAÇÃO (CONECTADO AO PYTHON)
 // ==========================================
-const modal = document.getElementById('modalCadastro');
-const btnAbrirModal = document.getElementById('btnAbrirModal');
-const btnFecharModal = document.getElementById('btnFecharModal');
-const formCadastro = document.getElementById('formCadastro');
-const productsGrid = document.getElementById('productsGrid');
-const cartItemsContainer = document.getElementById('cartItems');
-const cartTotalElement = document.getElementById('cartTotal');
-const cartDiscountElement = document.getElementById('cartDiscount'); 
-const searchInput = document.getElementById('searchInput');
+// 1. Captura os dados enviados pelo Jinja ou recorre ao localStorage caso esteja offline
+let dadosBrutos = window.produtosDoServidor || JSON.parse(localStorage.getItem('produtos_aapm')) || [];
 
-// Seleção dos botões do Carrinho
-const btnToggleAssociado = document.getElementById('btnToggleAssociado');
-const btnFecharPedido = document.getElementById('btnFecharPedido');
+// 2. Normalizador Inteligente: Converte o formato do Banco para bater com o HTML
+let produtos = dadosBrutos.map(produto => {
+    let catTratada = 'todos';
+    
+    if (produto.categoria) {
+        // Se a categoria vier como um objeto relacional p.categoria.nome do Python
+        let nomeCategoria = typeof produto.categoria === 'object' ? produto.categoria.nome : String(produto.categoria);
+        
+        catTratada = nomeCategoria
+            .toLowerCase()                                   // Coloca em minúsculo
+            .trim()                                          // Remove espaços sobressalentes
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos (ex: Têxteis -> texteis)
+            .replace(/\s+/g, '-');                           // Substitui espaços por hífens
+    }
+    
+    return {
+        ...produto,
+        categoria: catTratada // Agora "Materiais Escolares" vira "materiais-escolares" perfeitamente
+    };
+});
 
-// ==========================================
-// 2. ESTADO DA APLICAÇÃO (DADOS) - ATUALIZADO
-// ==========================================
-// Se houver produtos vindo do Python (servidor), usamos eles. Se não, tenta o localStorage.
-let produtos = window.produtosDoServidor || JSON.parse(localStorage.getItem('produtos_aapm')) || [];
+// Mantém as demais variáveis de estado abaixo
 let carrinho = JSON.parse(localStorage.getItem('carrinho_aapm')) || [];
 let ehAssociado = false; 
 const TAXA_DESCONTO = 0.10; 
+
 let categoriaAtual = 'todos';
+let paginaAtual = 1;
+const produtosPorPagina = 8;
+let produtosFiltradosGlobal = [];
+
+// ... o resto do seu script continua igual ...
+
 // ==========================================
 // 3. CONTROLE DO MODAL DE CADASTRO
 // ==========================================
@@ -210,11 +223,11 @@ if (formCadastro) {
 }
 
 // ==========================================
-// 5. RENDERIZAR PRODUTOS NA VITRINE - ATUALIZADO
+// 5. RENDERIZAR PRODUTOS NA VITRINE
 // ==========================================
 function exibirProdutosNaVitrine(listaDeProdutos) {
     if (!productsGrid) return;
-    productsGrid.innerHTML = ''; // Limpa a vitrine antiga
+    productsGrid.innerHTML = '';
 
     if (listaDeProdutos.length === 0) {
         productsGrid.innerHTML = '<p style="color:#666; grid-column: 1/-1; text-align:center; padding: 40px 0;">Nenhum produto encontrado.</p>';
@@ -223,18 +236,17 @@ function exibirProdutosNaVitrine(listaDeProdutos) {
         return;
     }
 
-    // O JS varre a lista e monta o HTML de cada card na tela
     listaDeProdutos.forEach(produto => {
         const card = document.createElement('div');
         card.classList.add('card'); 
 
         card.innerHTML = `
             <div class="card-image">
-                <img src="${produto.imagem || 'https://via.placeholder.com/150'}" alt="${produto.nome}">
+                <img src="${produto.imagem}" alt="${produto.nome}">
             </div>
             <div class="card-content">
                 <h3 class="card-title">${produto.nome}</h3>
-                <p class="price">R$ ${parseFloat(produto.preco).toFixed(2).replace('.', ',')}</p>
+                <p class="price">R$ ${produto.preco.toFixed(2).replace('.', ',')}</p>
                 <button class="card-button" onclick="adicionarAoCarrinho('${produto.id}')">
                     <i class="fa-solid fa-cart-plus"></i> Adicionar
                 </button>
@@ -246,6 +258,24 @@ function exibirProdutosNaVitrine(listaDeProdutos) {
     const countVisual = document.querySelector('.product-count');
     if (countVisual) countVisual.innerText = `(${listaDeProdutos.length})`;
 }
+
+function filtrarEVisualizarVitrine() {
+    const termoBusca = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    let resultado = produtos;
+    
+    if (categoriaAtual !== 'todos') {
+        resultado = resultado.filter(p => p.categoria === categoriaAtual);
+    }
+    if (termoBusca !== '') {
+        resultado = resultado.filter(p => p.nome.toLowerCase().includes(termoBusca));
+    }
+    exibirProdutosNaVitrine(resultado);
+}
+
+if (searchInput) {
+    searchInput.addEventListener('input', filtrarEVisualizarVitrine);
+}
+
 // ==========================================
 // 6. LÓGICA INTERNA DO CARRINHO DE COMPRAS
 // ==========================================

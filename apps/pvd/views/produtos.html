@@ -7,9 +7,9 @@
     <link rel="shortcut icon" href="../assets/icones/logosemtexto.png" type="image/x-icon">
 </head>
 <body>
-    <!-- {% extends 'base.html' %} -->
+     {% extends 'base.html' %} 
     <canvas id="particles"></canvas>
-    <!-- {%block%} -->
+     {%block%} 
     <header class="topbar">
         <div class="logo">
             <img src="/apps/pvd/assets/icones/banner_aapm.png" alt="banner">
@@ -24,16 +24,16 @@
 
         <div class="topbar-space-balance"></div>
     </header>
-    <!-- {%endblock} -->
+     {%endblock} 
     <h1>Gerenciamento de Estoque</h1>
-    <!-- {% if request.query_params.get('criado') == 'ok' %}
+     {% if request.query_params.get('criado') == 'ok' %}
         <p style="color:green">Produto criado com sucesso!</p>
     {% endif %}
     {% if request.query_params.get('desativado') == 'ok' %}
         <p style="color:green">Produto desativado.</p>
-    {% endif %} -->
+    {% endif %} 
 
-    <!-- Filtros -->
+    
     <form method="get" action="/produtos">
         <input  type="text"
                 name="busca"
@@ -42,24 +42,24 @@
 
         <select name="categoria_id">
             <option value="0">Todas as categorias</option>
-            <!-- {% for c in categorias %}
+             {% for c in categorias %}
                 <option value="{{ c.id }}"
                     {{ 'selected' if categoria_id == c.id else '' }}>
                     {{ c.nome }}
                 </option>
-            {% endfor %} -->
+            {% endfor %} 
         </select>
 
         <button type="submit">Filtrar</button>
 
-        <!-- {% if busca or categoria_id %}
+         {% if busca or categoria_id %}
             <a href="/produtos">Limpar</a>
-        {% endif %} -->
+        {% endif %} 
     </form>
 
-    <!-- {% if usuario.role == 'admin' %}
+     {% if usuario.role == 'admin' %}
         <a href="/produtos/novo">+ Novo produto</a>
-    {% endif %} -->
+    {% endif %} 
 
     <table border="1" cellpadding="8">
         <thead>
@@ -73,7 +73,7 @@
             </tr>
         </thead>
         <tbody>
-            <!-- {% for p in produtos %}
+             {% for p in produtos %}
             <tr>
                 <td>
                     <img src="{{ p.imagem_url }}"
@@ -97,15 +97,15 @@
                     {% endif %}
                 </td>
             </tr>
-            {% endfor %} -->
+            {% endfor %} 
 
-            <!-- {% if not produtos %}
+             {% if not produtos %}
             <tr>
                 <td colspan="6" style="text-align:center">
                     Nenhum produto encontrado.
                 </td>
             </tr>
-            {% endif %} -->
+            {% endif %} 
         </tbody>
     </table>
 

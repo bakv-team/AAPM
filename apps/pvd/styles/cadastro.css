@@ -1526,3 +1526,27 @@ canvas{
   }
 
 }
+
+.signup-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: clamp(0.85rem, 0.9vw, 0.95rem);
+  animation: fadeIn .5s ease .92s both; /* Entra suavemente logo após o botão */
+}
+
+.signup-link p {
+  color: var(--gray);
+}
+
+.signup-link a {
+  text-decoration: none;
+  color: var(--blue);
+  font-weight: 600;
+  transition: color 0.2s ease;
+  margin-left: 4px;
+}
+
+.signup-link a:hover {
+  color: var(--orange); /* Transiciona para laranja ao passar o mouse */
+  text-decoration: underline;
+}

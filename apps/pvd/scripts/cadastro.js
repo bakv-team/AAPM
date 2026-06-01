@@ -152,35 +152,33 @@ window.addEventListener("resize",()=>{
 init();
 animate();
 
-const form =
-document.getElementById("loginForm");
+// ... Todo o código anterior das partículas e animações (Particle, connect, animate...) continua exatamente igual
 
-form.addEventListener("submit",(e)=>{
+// AJUSTE DO FORMULÁRIO DE CADASTRO:
+const form = document.getElementById("cadastroForm"); // Mudado de 'loginForm' para 'cadastroForm'
 
-  e.preventDefault();
+if (form) {
+  form.addEventListener("submit", (e) => {
+    // Nota: Remova o e.preventDefault() se você quer que o formulário seja enviado 
+    // convencionalmente para o backend processar via Jinja. 
+    // Se o envio for via Fetch/API assíncrona, mantenha o e.preventDefault().
 
-  const btn =
-  document.querySelector(".login-btn");
+    const btn = document.querySelector(".cadastro-btn"); // Mudado de '.login-btn' para '.cadastro-btn'
+    
+    if (btn) {
+      btn.innerHTML = `
+        <span>Cadastrando...</span>
+      `;
+    }
+  });
+}
 
-  btn.innerHTML = `
-    <span>Entrando...</span>
-  `;
-
-  setTimeout(()=>{
-
-    btn.innerHTML = `
-      <span>Sucesso</span>
-    `;
-
-  },1400);
-
-});
-
+// Código do DOMContentLoaded e animações de entrada permanece idêntico abaixo...
 document.addEventListener('DOMContentLoaded', () => {
   const animated = document.querySelectorAll(
     '.brand, .tag, .content h2, .text, .mini-cards, ' +
-    '.mini-card, .login-card, .line, .header h3, ' +
-    '.header p, .input-box, .options, .login-btn, ' +
+    '.mini-card, .cadastro-card, .line, .header h3, ' + // Mudado '.login-card' para '.cadastro-card'
+    '.header p, .input-box, .options, .cadastro-btn, ' + // Mudado '.login-btn' para '.cadastro-btn'
     '.security, .blur'
   );
 

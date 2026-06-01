@@ -7,6 +7,7 @@ from database.controllers import auth_controller
 from database.controllers import admin_controller
 from database.controllers import produto_controller
 from database.controllers import categoria_controller
+from database.controllers import movimentacao_controller
 
 
 
@@ -21,6 +22,7 @@ app.include_router(auth_controller.router)
 app.include_router(admin_controller.router)
 app.include_router(produto_controller.router)
 app.include_router(categoria_controller.router)
+app.include_router(movimentacao_controller.router)
 
 
 @app.get("/")

@@ -17,8 +17,10 @@
 
         <nav>
             <ul>
-                <li><a href="/apps/pvd/views/base.html"> Painel de Vendas</a></li>
+                <li><a href="/apps/pvd/views/vendas.html"> Painel de Vendas</a></li>
                 <li><a href="/apps/pvd/views/categorias.html"> Categorias</a></li>
+                <li><a href="/apps/pvd/views/dashboard.html"> Dashboard</a></li>
+                
             </ul>
         </nav>
 
@@ -53,7 +55,7 @@
         <button type="submit">Filtrar</button>
 
          {% if busca or categoria_id %}
-            <a href="/produtos">Limpar</a>
+            <a href="/apps/pvd/views/produtos.html">Limpar</a>
         {% endif %} 
     </form>
 
@@ -88,11 +90,10 @@
                 <td>
                     {% if usuario.role == 'admin' %}
                         <a href="/produtos/{{ p.id }}/editar">Editar</a>
-                        <form action="/produtos/{{ p.id }}/desativar"
-                              method="post"
-                              style="display:inline"
-                              onsubmit="return confirm('Desativar {{ p.nome }}?')">
-                            <button type="submit">Desativar</button>
+                        <form action="/categorias/{{ c.id }}/toggle-ativo" method="post" style="display:inline">
+                            <button type="submit">
+                                {{ "Desativar" if c.ativo else "Ativar" }}
+                            </button>
                         </form>
                     {% endif %}
                 </td>

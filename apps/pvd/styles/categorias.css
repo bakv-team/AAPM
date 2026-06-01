@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;500;600;700&display=swap');
 
 * {
     margin: 0;
@@ -32,12 +32,16 @@ body {
     min-height: 100vh;
     padding: 40px 20px;
     max-width: 1200px;
-    margin: 130px auto 0; /* Adicionado margem superior para o header fixo não cobrir o conteúdo */
+    margin: 130px auto 0;
     position: relative;
 }
 
+.hidden {
+    display: none !important;
+}
+
 /* ==========================================
-   HEADER / TOPBAR (Estrutura Conectada)
+   HEADER / TOPBAR
    ========================================== */
 header.topbar {
     display: flex;
@@ -45,17 +49,16 @@ header.topbar {
     justify-content: space-between;
     padding: 0 40px;            
     height: 90px;               
-    border-bottom: 1px solid var(--cinza-medio); /* Adaptado para sua paleta */
+    border-bottom: 1px solid var(--cinza-medio);
     width: 100%;
     position: fixed;
     top: 0;
     left: 0;
     z-index: 1000;
     background: var(--branco);        
-    box-shadow: 0 4px 20px rgba(0, 70, 145, 0.06); /* Sombra adaptada ao seu azul */
+    box-shadow: 0 4px 20px rgba(0, 70, 145, 0.06);
 }
 
-/* Divisão proporcional das 3 áreas do header (Esquerda, Centro, Direita) */
 .logo {
     flex: 1;
     display: flex;
@@ -71,14 +74,10 @@ header.topbar {
     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.05));
 }
 
-/* Div invisível com o mesmo peso da logo para empurrar o menu para o centro real */
 .topbar-space-balance {
     flex: 1;
 }
 
-/* ==========================================
-   MENU DE NAVEGAÇÃO CENTRAL (Ajustado)
-   ========================================== */
 nav {
     flex: 2;                    
     display: flex;
@@ -108,9 +107,8 @@ nav ul li {
     white-space: nowrap;       
 }
 
-/* Estilização padrão dos links do Menu adaptada para suas variáveis */
 nav ul li a {
-    color: var(--cinza-escuro);    /* Cor base do seu layout */
+    color: var(--cinza-escuro);    
     text-decoration: none;
     padding: 8px 4px;
     position: relative;
@@ -121,13 +119,11 @@ nav ul li a {
     opacity: 0.85;
 }
 
-/* Mudança de cor ao passar o mouse usando seu azul intermediário */
 nav ul li a:hover {
     color: var(--azul-medium);         
     opacity: 1;
 }
 
-/* Linha animada de efeito sob os links usando seu laranja primário */
 nav ul li a::after {
     content: '';
     position: absolute;
@@ -144,48 +140,6 @@ nav ul li a:hover::after {
     width: 100%;                
 }
 
-/* ==========================================
-   ELEMENTOS DA DIREITA (Perfil e Ícones)
-   ========================================== */
-.topbar-icons {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end; 
-    gap: 24px;
-}
-
-.topbar-profile {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 15px;
-    color: var(--cinza-escuro);
-    transition: transform 0.2s ease;
-}
-
-.avatar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;            
-    color: var(--azul-primary);
-}
-
-.menu-toggle {
-    display: none;
-    font-size: 24px;
-    background: none;
-    border: none;
-    color: var(--azul-primary);
-    cursor: pointer;
-}
-
-/* ==========================================
-   CONTEÚDO DA PÁGINA
-   ========================================== */
 h1 {
     font-size: 48px;
     color: var(--azul-primary);
@@ -207,28 +161,84 @@ p[style*="color:green"] {
     text-align: left;
 }
 
-form[action="/produtos"] {
+p[style*="color:red"], .alert-danger {
+    background: linear-gradient(135deg, var(--vermelho-danger) 0%, #ff4d5a 100%) !important;
+    color: white !important;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+    display: block;
+    text-align: left;
+}
+
+/* ==========================================
+   BOTÕES DE ADIÇÃO (LINK E ID CORRIGIDOS)
+   ========================================== */
+a[href="/produtos/novo"], 
+a[href="/categorias/nova"], 
+#btn-nova-categoria {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 25px;
+    float: right; 
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, var(--laranja-primary) 0%, #e05316 100%) !important;
+    color: white !important;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+a[href="/produtos/novo"]:hover, 
+a[href="/categorias/nova"]:hover, 
+#btn-nova-categoria:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* ==========================================
+   FORMULÁRIOS
+   ========================================== */
+#form-categoria-section {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+#categoria-form {
     background: white;
     border-radius: 16px;
-    padding: 30px;
+    padding: 40px;
     margin-bottom: 20px;
     box-shadow: var(--shadow-md);
     border: 2px solid transparent;
     transition: var(--transition);
-    
-    display: grid;
-    grid-template-columns: 2fr 1fr auto auto;
-    gap: 15px;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
-form[action="/produtos"]:hover {
+#categoria-form:hover {
     border-color: var(--azul-medium);
     box-shadow: var(--shadow-lg);
 }
 
-form[action="/produtos"] input[type="text"],
-form[action="/produtos"] select {
+#categoria-form label {
+    font-weight: 600;
+    color: var(--cinza-escuro);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#categoria-form input[type="text"] {
     width: 100%;
     padding: 12px 16px;
     border: 2px solid var(--cinza-medio);
@@ -241,14 +251,13 @@ form[action="/produtos"] select {
     outline: none;
 }
 
-form[action="/produtos"] input[type="text"]:focus,
-form[action="/produtos"] select:focus {
+#categoria-form input[type="text"]:focus {
     border-color: var(--azul-medium);
     box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
 }
 
-form[action="/produtos"] button[type="submit"] {
-    padding: 12px 24px;
+#btn-submit-form {
+    padding: 14px 24px;
     border: none;
     border-radius: 10px;
     font-size: 15px;
@@ -259,53 +268,34 @@ form[action="/produtos"] button[type="submit"] {
     color: white;
     box-shadow: var(--shadow-sm);
     transition: var(--transition);
-    white-space: nowrap;
 }
 
-form[action="/produtos"] button[type="submit"]:hover {
+#btn-submit-form:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
-form[action="/produtos"] a {
-    padding: 12px 24px;
+#btn-cancelar-form {
+    padding: 14px 24px;
     border-radius: 10px;
     font-size: 15px;
     font-weight: 600;
+    border: none;
+    cursor: pointer;
     font-family: 'Poppins', sans-serif;
-    text-decoration: none;
-    text-align: center;
     background: var(--cinza-medio);
     color: var(--cinza-escuro);
     transition: var(--transition);
 }
 
-form[action="/produtos"] a:hover {
+#btn-cancelar-form:hover {
     background: var(--cinza-escuro);
     color: white;
 }
 
-a[href="/produtos/novo"] {
-    display: inline-flex;
-    margin-bottom: 20px;
-    float: right; 
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    text-decoration: none;
-    font-family: 'Poppins', sans-serif;
-    background: linear-gradient(135deg, var(--laranja-primary) 0%, #e05316 100%);
-    color: white;
-    box-shadow: var(--shadow-sm);
-    transition: var(--transition);
-}
-
-a[href="/produtos/novo"]:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
+/* ==========================================
+   TABELAS DE DADOS
+   ========================================== */
 table {
     clear: both;
     width: 100%;
@@ -358,46 +348,23 @@ table tbody tr:last-child td {
     border-bottom: none !important;
 }
 
-table td img {
-    border-radius: 12px;
-    box-shadow: var(--shadow-sm);
-    border: 2px solid var(--cinza-medio);
-    transition: var(--transition);
-    width: 70px !important; 
-    height: 70px !important;
-}
-
-table td img:hover {
-    transform: scale(1.1);
-}
-
-table td a:not([href*="editar"]) {
-    color: var(--azul-primary);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 16px;
-    transition: var(--transition);
-}
-
-table td a:not([href*="editar"]):hover {
-    color: var(--laranja-primary);
-    text-decoration: underline;
-}
-
-table td a[href*="editar"] {
+table td button.btn-editar-js {
     display: inline-flex;
     padding: 8px 16px;
     background: rgba(0, 102, 204, 0.1);
     color: var(--azul-medium);
+    border: none;
     text-decoration: none;
     border-radius: 8px;
     font-weight: 600;
     font-size: 14px;
+    font-family: 'Poppins', sans-serif;
     transition: var(--transition);
     margin-right: 8px;
+    cursor: pointer;
 }
 
-table td a[href*="editar"]:hover {
+table td button.btn-editar-js:hover {
     background: var(--azul-medium);
     color: white;
     transform: scale(1.05);
@@ -444,57 +411,8 @@ body > p:last-of-type a:hover {
 }
 
 /* ==========================================
-   MEDIA QUERIES / RESPONSIVIDADE
+   ELEMENTOS DE ANIMAÇÃO / BACKGROUND
    ========================================== */
-@media (max-width: 968px) {
-    form[action="/produtos"] {
-        grid-template-columns: 1fr;
-    }
-    
-    a[href="/produtos/novo"] {
-        float: none;
-        display: flex;
-        justify-content: center;
-        margin-top: 10px;
-    }
-}
-
-@media (max-width: 768px) {
-    header.topbar {
-        padding: 10px 20px;
-    }
-
-    nav {
-        display: none; /* Oculta menu padrão em mobile */
-    }
-
-    .menu-toggle {
-        display: block;
-    }
-
-    .logo img {
-        max-height: 50px;
-    }
-
-    .topbar-icons {
-        gap: 15px;
-    }
-
-    table {
-        display: block;
-        overflow-x: auto; 
-        font-size: 14px;
-    }
-    
-    table td, table th {
-        padding: 12px;
-    }
-    
-    h1 {
-        font-size: 32px;
-    }
-}
-
 .background-image {
     position: fixed;
     inset: 0;
@@ -515,4 +433,30 @@ body > p:last-of-type a:hover {
     height: 100vh;
     z-index: -1; 
     pointer-events: none;
+}
+
+body > p a[href*="vendas.html"],
+table + p a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    text-decoration: none;
+    background: var(--cinza-medio);
+    color: var(--cinza-escuro) !important;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+    margin: 20px auto;
+}
+
+body > p a[href*="vendas.html"]:hover,
+table + p a:hover {
+    background: var(--azul-primary);
+    color: var(--branco) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }

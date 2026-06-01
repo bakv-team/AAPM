@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Categorias — AAPM SENAI</title>
+    <link rel="stylesheet" href="/apps/pvd/styles/categorias.css">
+    <link rel="shortcut icon" href="/apps/pvd/assets/icones/logosemtexto.png" type="image/x-icon">
+    <style>
+        /* Estilo utilitário essencial para ocultar elementos */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    {% extends 'base.html' %} 
+    
+    <canvas id="particles"></canvas>
+
+    {% block content %} 
+    <header class="topbar">
+        <div class="logo">
+            <img src="/apps/pvd/assets/icones/banner_aapm.png" alt="banner">
+        </div>
+
+        <nav>
+            <ul>
+                <li><a href="/apps/pvd/views/vendas.html"> Painel de Vendas</a></li>
+                <li><a href="/apps/pvd/views/produtos.html"> Produtos</a></li>
+                <li><a href="/apps/pvd/views/dashboard.html"> Dashboard</a></li>
+            </ul>
+        </nav>
+
+        <div class="topbar-space-balance"></div>
+    </header>
+
+    {% if request.query_params.get('criado') == 'ok' %}
+        <p style="color:green">Categoria criada com sucesso!</p>
+    {% endif %}
+
+    {% if request.query_params.get('editado') == 'ok' %}
+        <p style="color:green">Categoria atualizada com sucesso!</p>
+    {% endif %}
+
+    {% if request.query_params.get('erro') == 'produtos_vinculados' %}
+        <p style="color:red">
+            Não é possível desativar "{{ request.query_params.get('categoria') }}"
+            pois ela possui produtos ativos vinculados. Desative ou mova os produtos antes.
+        </p>
+    {% endif %}
+
+    {% if erro %}
+        <p style="color:red">{{ erro }}</p>
+    {% endif %}
+
+
+    <section id="lista-categorias-section">
+        <h1>Categorias</h1>
+        
+        {% if usuario.role == 'admin' %}
+            <a href="/categorias/nova" id="btn-nova-categoria">+ Nova categoria</a>
+        {% endif %}
+        <br><br>
+
+        <table border="1" cellpadding="8">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Produtos ativos</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in categorias %}
+                <tr>
+                    <td>{{ c.nome }}</td>
+                    <td>
+                        {{ c.produtos | selectattr('ativo') | list | length }}
+                    </td>
+                    <td>{{ "Ativa" if c.ativo else "Inativa" }}</td>
+                    <td>
+                        <button type="button" 
+                                class="btn-editar-js" 
+                                data-id="{{ c.id }}" 
+                                data-name="{{ c.nome }}"
+                                data-nome="{{ c.nome }}">
+                            <a href="/categorias/{{ c.id }}/editar">Editar</a>
+                        </button>
+
+                        <form action="/categorias/{{ c.id }}/toggle-ativo" method="post" style="display:inline">
+                            <button type="submit">
+                                {{ "Desativar" if c.ativo else "Ativar" }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% if not categorias %}
+                <tr>
+                    <td colspan="4" style="text-align:center">
+                        Nenhuma categoria cadastrada.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <p><a href="/apps/pvd/views/vendas.html" class="btn-voltar">← Painel de Vendas</a></p>
+    </section>
+
+    {% include 'form_categorias.html' %}
+
+    <div class="background-image"></div>
+    {% endblock %}
+
+    <script src="/apps/pvd/js/categorias.js"></script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Produtos — AAPM SENAI</title>
+    <link rel="stylesheet" href="../styles/produtos.css">
+    <link rel="shortcut icon" href="../assets/icones/logosemtexto.png" type="image/x-icon">
+</head>
+<body>
+     {% extends 'base.html' %} 
+    <canvas id="particles"></canvas>
+     {%block%} 
+    <header class="topbar">
+        <div class="logo">
+            <img src="/apps/pvd/assets/icones/banner_aapm.png" alt="banner">
+        </div>
+
+        <nav>
+            <ul>
+                <li><a href="/apps/pvd/views/vendas.html"> Painel de Vendas</a></li>
+                <li><a href="/apps/pvd/views/categorias.html"> Categorias</a></li>
+                <li><a href="/apps/pvd/views/dashboard.html"> Dashboard</a></li>
+                
+            </ul>
+        </nav>
+
+        <div class="topbar-space-balance"></div>
+    </header>
+     {%endblock} 
+    <h1>Gerenciamento de Estoque</h1>
+     {% if request.query_params.get('criado') == 'ok' %}
+        <p style="color:green">Produto criado com sucesso!</p>
+    {% endif %}
+    {% if request.query_params.get('desativado') == 'ok' %}
+        <p style="color:green">Produto desativado.</p>
+    {% endif %} 
+
+    
+    <form method="get" action="/produtos">
+        <input  type="text"
+                name="busca"
+                placeholder="Buscar por nome..."
+                value="">
+
+        <select name="categoria_id">
+            <option value="0">Todas as categorias</option>
+             {% for c in categorias %}
+                <option value="{{ c.id }}"
+                    {{ 'selected' if categoria_id == c.id else '' }}>
+                    {{ c.nome }}
+                </option>
+            {% endfor %} 
+        </select>
+
+        <button type="submit">Filtrar</button>
+
+         {% if busca or categoria_id %}
+            <a href="/apps/pvd/views/produtos.html">Limpar</a>
+        {% endif %} 
+    </form>
+
+     {% if usuario.role == 'admin' %}
+        <a href="/produtos/novo">+ Novo produto</a>
+    {% endif %} 
+
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Imagem</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Preço</th>
+                <th>Estoque</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+             {% for p in produtos %}
+            <tr>
+                <td>
+                    <img src="{{ p.imagem_url }}"
+                         alt="{{ p.nome }}"
+                         width="50" height="50"
+                         style="object-fit:cover">
+                </td>
+                <td><a href="/produtos/{{ p.id }}">{{ p.nome }}</a></td>
+                <td>{{ p.categoria.nome if p.categoria else "—" }}</td>
+                <td>R$ {{ "%.2f"|format(p.preco) }}</td>
+                <td>{{ p.estoque_atual }}</td>
+                <td>
+                    {% if usuario.role == 'admin' %}
+                        <a href="/produtos/{{ p.id }}/editar">Editar</a>
+                        <form action="/categorias/{{ c.id }}/toggle-ativo" method="post" style="display:inline">
+                            <button type="submit">
+                                {{ "Desativar" if c.ativo else "Ativar" }}
+                            </button>
+                        </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %} 
+
+             {% if not produtos %}
+            <tr>
+                <td colspan="6" style="text-align:center">
+                    Nenhum produto encontrado.
+                </td>
+            </tr>
+            {% endif %} 
+        </tbody>
+    </table>
+
+    <p><a href="/apps/pvd/views/dashboard.html">← Dashboard</a></p>
+    <script src="../scripts/produtos.js"></script>
+    <div class="background-image"></div>
+</body>
+</html>

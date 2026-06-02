@@ -31,11 +31,11 @@
  *  função pelo bloco fetch() correspondente (já comentado em cada uma).
  * ===================================================================== */
 window.API = (function () {
-  const BASE_URL = "http://localhost:8000";
+  const BASE_URL = window.location.origin;
 
   // Helpers HTTP genéricos — já prontos para uso futuro
   async function apiGet(path) {
-    const res = await fetch(`${BASE_URL}${path}`);
+    const res = await fetch(`${BASE_URL}${path}`, { credentials: "same-origin" });
     if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
     return res.json();
   }
@@ -43,6 +43,7 @@ window.API = (function () {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(`POST ${path} -> ${res.status}`);
@@ -52,53 +53,73 @@ window.API = (function () {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(`PUT ${path} -> ${res.status}`);
     return res.json();
   }
   async function apiDelete(path) {
-    const res = await fetch(`${BASE_URL}${path}`, { method: "DELETE" });
+    const res = await fetch(`${BASE_URL}${path}`, { method: "DELETE", credentials: "same-origin" });
     if (!res.ok) throw new Error(`DELETE ${path} -> ${res.status}`);
     return res.ok;
   }
 
+  async function apiForm(path, method, body) {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      credentials: "same-origin",
+      body
+    });
+    if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}`);
+    return res.json();
+  }
+
+  function productFormData(payload) {
+    const data = new FormData();
+    data.set("nome", payload.name);
+    data.set("descricao", payload.description || "");
+    data.set("preco", payload.price);
+    data.set("estoque_atual", payload.stock);
+    data.set("categoria_id", payload.categoryId || 0);
+    if (payload.image) data.set("imagem", payload.image);
+    return data;
+  }
+
   // ----- Categorias -----
   async function getCategories() {
-    // TODO: conectar ao backend
-    // return apiGet("/api/categories");
-    return window.DB.categories;
+    return apiGet("/api/v1/pdv/categories");
   }
   async function createCategory(payload) {
-    // TODO: conectar ao backend
-    // return apiPost("/api/categories", payload);
-    return payload;
+    return apiPost("/api/v1/pdv/categories", payload);
+  }
+  async function updateCategory(id, payload) {
+    return apiPut(`/api/v1/pdv/categories/${id}`, payload);
+  }
+  async function deleteCategory(id) {
+    return apiDelete(`/api/v1/pdv/categories/${id}`);
   }
 
   // ----- Produtos -----
   async function getProducts(filters = {}) {
-    // TODO: conectar ao backend
-    // const qs = new URLSearchParams();
-    // if (filters.q)         qs.set("q", filters.q);
-    // if (filters.category)  qs.set("category_id", filters.category);
-    // if (filters.stock)     qs.set("stock", filters.stock);
-    // return apiGet(`/api/products?${qs.toString()}`);
-    return window.DB.products;
+    const qs = new URLSearchParams();
+    if (filters.q) qs.set("q", filters.q);
+    if (filters.category) qs.set("category_id", filters.category);
+    if (filters.stock) qs.set("stock", filters.stock);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiGet(`/api/v1/pdv/products${suffix}`);
   }
   async function createProduct(payload) {
-    // TODO: conectar ao backend
-    // return apiPost("/api/products", payload);
-    return { id: window.DB.nextProductId(), ...payload };
+    return apiForm("/api/v1/pdv/products", "POST", productFormData(payload));
   }
   async function updateProduct(id, payload) {
-    // TODO: conectar ao backend
-    // return apiPut(`/api/products/${id}`, payload);
-    return { id, ...payload };
+    return apiForm(`/api/v1/pdv/products/${id}`, "PUT", productFormData(payload));
+  }
+  async function addProductStock(id, quantidade) {
+    return apiPost(`/api/v1/pdv/products/${id}/stock`, { quantidade });
   }
   async function deleteProduct(id) {
-    // TODO: conectar ao backend
-    // return apiDelete(`/api/products/${id}`);
-    return true;
+    return apiDelete(`/api/v1/pdv/products/${id}`);
   }
 
   // ----- Clientes -----
@@ -161,8 +182,8 @@ window.API = (function () {
   return {
     BASE_URL,
     apiGet, apiPost, apiPut, apiDelete,
-    getCategories, createCategory,
-    getProducts, createProduct, updateProduct, deleteProduct,
+    getCategories, createCategory, updateCategory, deleteCategory,
+    getProducts, createProduct, updateProduct, addProductStock, deleteProduct,
     getCustomers, createCustomer,
     getOrders, createOrder,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts,
@@ -187,21 +208,21 @@ window.API = (function () {
   ];
 
   const PRODUCTS = [
-    { id: "p1",  name: "Café Espresso Premium",  sku: "BBE-001", categoryId: "c1", price: 8.50,  cost: 3.20, stock: 124, minStock: 20, description: "Grão 100% arábica torrado na hora." },
-    { id: "p2",  name: "Cappuccino Italiano",    sku: "BBE-002", categoryId: "c1", price: 12.00, cost: 4.50, stock: 78,  minStock: 15 },
-    { id: "p3",  name: "Suco Verde Detox 300ml", sku: "BBE-003", categoryId: "c1", price: 14.90, cost: 5.10, stock: 8,   minStock: 10 },
-    { id: "p4",  name: "X-Tudo Artesanal",       sku: "LAN-001", categoryId: "c2", price: 28.90, cost: 11.50, stock: 42, minStock: 10 },
-    { id: "p5",  name: "Hot Dog Gourmet",        sku: "LAN-002", categoryId: "c2", price: 18.50, cost: 6.20, stock: 31,  minStock: 8 },
-    { id: "p6",  name: "Wrap de Frango",         sku: "LAN-003", categoryId: "c2", price: 22.00, cost: 9.10, stock: 0,   minStock: 10 },
-    { id: "p7",  name: "Brownie de Chocolate",   sku: "SOB-001", categoryId: "c3", price: 11.00, cost: 3.80, stock: 56,  minStock: 12 },
-    { id: "p8",  name: "Cheesecake de Frutas",   sku: "SOB-002", categoryId: "c3", price: 15.90, cost: 5.40, stock: 14,  minStock: 8 },
-    { id: "p9",  name: "Pão Italiano 500g",      sku: "PAD-001", categoryId: "c4", price: 9.50,  cost: 3.10, stock: 88,  minStock: 20 },
-    { id: "p10", name: "Croissant de Manteiga",  sku: "PAD-002", categoryId: "c4", price: 7.20,  cost: 2.40, stock: 64,  minStock: 15 },
-    { id: "p11", name: "Arroz Branco 5kg",       sku: "MER-001", categoryId: "c5", price: 32.90, cost: 21.00, stock: 27, minStock: 6 },
-    { id: "p12", name: "Azeite Extra Virgem",    sku: "MER-002", categoryId: "c5", price: 38.50, cost: 22.00, stock: 19, minStock: 5 },
-    { id: "p13", name: "Maçã Fuji (kg)",         sku: "HOR-001", categoryId: "c6", price: 9.80,  cost: 5.00, stock: 102, minStock: 25 },
-    { id: "p14", name: "Banana Prata (kg)",      sku: "HOR-002", categoryId: "c6", price: 6.50,  cost: 2.80, stock: 5,   minStock: 15 },
-    { id: "p15", name: "Salada Mix 200g",        sku: "HOR-003", categoryId: "c6", price: 12.00, cost: 4.50, stock: 36,  minStock: 10 }
+    { id: "p1",  name: "Café Espresso Premium",  sku: "BBE-001", categoryId: "c1", price: 8.50,  cost: 3.20, stock: 124, description: "Grão 100% arábica torrado na hora." },
+    { id: "p2",  name: "Cappuccino Italiano",    sku: "BBE-002", categoryId: "c1", price: 12.00, cost: 4.50, stock: 78 },
+    { id: "p3",  name: "Suco Verde Detox 300ml", sku: "BBE-003", categoryId: "c1", price: 14.90, cost: 5.10, stock: 8 },
+    { id: "p4",  name: "X-Tudo Artesanal",       sku: "LAN-001", categoryId: "c2", price: 28.90, cost: 11.50, stock: 42 },
+    { id: "p5",  name: "Hot Dog Gourmet",        sku: "LAN-002", categoryId: "c2", price: 18.50, cost: 6.20, stock: 31 },
+    { id: "p6",  name: "Wrap de Frango",         sku: "LAN-003", categoryId: "c2", price: 22.00, cost: 9.10, stock: 0 },
+    { id: "p7",  name: "Brownie de Chocolate",   sku: "SOB-001", categoryId: "c3", price: 11.00, cost: 3.80, stock: 56 },
+    { id: "p8",  name: "Cheesecake de Frutas",   sku: "SOB-002", categoryId: "c3", price: 15.90, cost: 5.40, stock: 14 },
+    { id: "p9",  name: "Pão Italiano 500g",      sku: "PAD-001", categoryId: "c4", price: 9.50,  cost: 3.10, stock: 88 },
+    { id: "p10", name: "Croissant de Manteiga",  sku: "PAD-002", categoryId: "c4", price: 7.20,  cost: 2.40, stock: 64 },
+    { id: "p11", name: "Arroz Branco 5kg",       sku: "MER-001", categoryId: "c5", price: 32.90, cost: 21.00, stock: 27 },
+    { id: "p12", name: "Azeite Extra Virgem",    sku: "MER-002", categoryId: "c5", price: 38.50, cost: 22.00, stock: 19 },
+    { id: "p13", name: "Maçã Fuji (kg)",         sku: "HOR-001", categoryId: "c6", price: 9.80,  cost: 5.00, stock: 102 },
+    { id: "p14", name: "Banana Prata (kg)",      sku: "HOR-002", categoryId: "c6", price: 6.50,  cost: 2.80, stock: 5 },
+    { id: "p15", name: "Salada Mix 200g",        sku: "HOR-003", categoryId: "c6", price: 12.00, cost: 4.50, stock: 36 }
   ];
 
   const CUSTOMERS = [
@@ -316,7 +337,7 @@ window.UI = (function () {
   }
   function stockStatus(product) {
     if (product.stock <= 0) return { pill: "red", label: "Sem estoque" };
-    if (product.stock <= (product.minStock || 5)) return { pill: "yellow", label: "Estoque baixo" };
+    if (product.stock <= 5) return { pill: "yellow", label: "Estoque baixo" };
     return { pill: "green", label: "Em estoque" };
   }
   function initialsFromName(name) {
@@ -654,20 +675,24 @@ window.ProductsPage = (function () {
     } else {
       body.innerHTML = items.map(p => {
         const cat = window.DB.getCategory(p.categoryId);
-        const color = UI.palette[window.DB.categories.findIndex(c => c.id === p.categoryId) % UI.palette.length];
+        const catIndex = window.DB.categories.findIndex(c => c.id === p.categoryId);
+        const color = UI.palette[(catIndex >= 0 ? catIndex : 0) % UI.palette.length];
         const s = UI.stockStatus(p);
+        const thumb = p.imageUrl
+          ? `<div class="prod-thumb image"><img src="${p.imageUrl}" alt=""></div>`
+          : `<div class="prod-thumb" style="background:linear-gradient(135deg, ${color}, ${color}aa)"><i class="fa-solid ${cat?.icon || "fa-box"}"></i></div>`;
         return `
           <tr data-id="${p.id}">
             <td><input type="checkbox" class="row-check" /></td>
             <td>
               <div class="prod-cell">
-                <div class="prod-thumb" style="background:linear-gradient(135deg, ${color}, ${color}aa)"><i class="fa-solid ${cat?.icon || "fa-box"}"></i></div>
+                ${thumb}
                 <div class="prod-name"><strong>${p.name}</strong><span>${p.sku || "—"}</span></div>
               </div>
             </td>
             <td><span class="pill gray">${cat?.name || "—"}</span></td>
             <td><strong>${UI.money(p.price)}</strong></td>
-            <td>${p.stock} <span class="muted" style="font-size:11px">/ min ${p.minStock || 0}</span></td>
+            <td>${p.stock}</td>
             <td><span class="pill ${s.pill}">${s.label}</span></td>
             <td class="right">
               <div class="actions-cell">
@@ -726,14 +751,17 @@ window.ProductsPage = (function () {
     });
     if (!ok) return;
 
-    // TODO: conectar ao backend
-    // await window.API.deleteProduct(id);
-
-    window.DB.products = window.DB.products.filter(x => x.id !== id);
-    UI.toast(`Produto "${p.name}" excluído.`, "success");
-    render();
-    if (window.Dashboard) window.Dashboard.refresh();
-    if (window.StockPage) window.StockPage.render();
+    try {
+      await window.API.deleteProduct(id);
+      window.DB.products = window.DB.products.filter(x => x.id !== id);
+      UI.toast(`Produto "${p.name}" excluído.`, "success");
+      render();
+      if (window.Dashboard) window.Dashboard.refresh();
+      if (window.StockPage) window.StockPage.render();
+    } catch (err) {
+      console.error("Falha ao excluir produto:", err);
+      UI.toast("Não foi possível excluir o produto.", "error");
+    }
   }
 
   function openProductForm(id) {
@@ -749,14 +777,12 @@ window.ProductsPage = (function () {
       document.getElementById("productCategory").value = p.categoryId;
       document.getElementById("productPrice").value = p.price;
       document.getElementById("productStock").value = p.stock;
-      document.getElementById("productMinStock").value = p.minStock || 5;
-      document.getElementById("productSku").value = p.sku || "";
+      document.getElementById("productImage").value = "";
       document.getElementById("productDesc").value = p.description || "";
     } else {
       titleEl.textContent = "Novo produto";
       document.getElementById("productForm").reset();
       document.getElementById("productId").value = "";
-      document.getElementById("productMinStock").value = 5;
     }
     UI.openModal("productModal");
   }
@@ -769,28 +795,26 @@ window.ProductsPage = (function () {
       categoryId: document.getElementById("productCategory").value,
       price: parseFloat(document.getElementById("productPrice").value) || 0,
       stock: parseInt(document.getElementById("productStock").value, 10) || 0,
-      minStock: parseInt(document.getElementById("productMinStock").value, 10) || 0,
-      sku: document.getElementById("productSku").value.trim(),
-      description: document.getElementById("productDesc").value.trim()
+      description: document.getElementById("productDesc").value.trim(),
+      image: document.getElementById("productImage").files[0] || null
     };
     if (!data.name) { UI.toast("Informe o nome do produto.", "error"); return; }
+    if (data.stock < 5) { UI.toast("O estoque não pode ser menor que 5.", "error"); return; }
 
-    if (id) {
-      // TODO: conectar ao backend
-      // const updated = await window.API.updateProduct(id, data);
-      // Object.assign(window.DB.getProduct(id), updated);
-
-      const p = window.DB.getProduct(id);
-      Object.assign(p, data);
-      UI.toast(`Produto "${data.name}" atualizado.`, "success");
-    } else {
-      // TODO: conectar ao backend
-      // const created = await window.API.createProduct(data);
-      // window.DB.products.push(created);
-
-      const newP = { id: window.DB.nextProductId(), ...data };
-      window.DB.products.push(newP);
-      UI.toast(`Produto "${data.name}" criado.`, "success");
+    try {
+      if (id) {
+        const updated = await window.API.updateProduct(id, data);
+        Object.assign(window.DB.getProduct(id), updated);
+        UI.toast(`Produto "${data.name}" atualizado.`, "success");
+      } else {
+        const created = await window.API.createProduct(data);
+        window.DB.products.push(created);
+        UI.toast(`Produto "${data.name}" criado.`, "success");
+      }
+    } catch (err) {
+      console.error("Falha ao salvar produto:", err);
+      UI.toast("Não foi possível salvar o produto.", "error");
+      return;
     }
     UI.closeModal("productModal");
     render();
@@ -821,9 +845,9 @@ window.ProductsPage = (function () {
     document.getElementById("productForm").addEventListener("submit", saveProduct);
 
     document.getElementById("exportProducts").addEventListener("click", () => {
-      const rows = [["Nome", "SKU", "Categoria", "Preço", "Estoque", "Mínimo"]];
+      const rows = [["Nome", "SKU", "Categoria", "Preço", "Estoque"]];
       window.DB.products.forEach(p => {
-        rows.push([p.name, p.sku || "", window.DB.getCategory(p.categoryId)?.name || "", p.price.toFixed(2).replace(".", ","), p.stock, p.minStock || 0]);
+        rows.push([p.name, p.sku || "", window.DB.getCategory(p.categoryId)?.name || "", p.price.toFixed(2).replace(".", ","), p.stock]);
       });
       UI.downloadCSV("produtos.csv", rows);
       UI.toast("Exportação CSV gerada.", "success");
@@ -993,6 +1017,145 @@ window.CategoriesPage = (function () {
 
 
 
+window.CategoriesPage = (function () {
+  function syncProductCategoryFilter() {
+    const sel = document.getElementById("productCategoryFilter");
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = `<option value="">Todas categorias</option>` +
+      window.DB.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+    sel.value = window.DB.categories.some(c => c.id === current) ? current : "";
+  }
+
+  function render() {
+    const grid = document.getElementById("categoriesGrid");
+    if (!grid) return;
+
+    if (!window.DB.categories.length) {
+      grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center;padding:32px">Nenhuma categoria cadastrada.</p>`;
+      syncProductCategoryFilter();
+      return;
+    }
+
+    const agg = window.CHARTS.aggregateByCategory();
+    grid.innerHTML = window.DB.categories.map(c => {
+      const a = agg.find(x => x.id === c.id) || { value: 0, color: c.color || "#2D7BFF" };
+      const productCount = c.productCount ?? window.DB.products.filter(p => p.categoryId === c.id).length;
+      return `
+        <article class="category-card" data-category-id="${c.id}">
+          <div class="cat-ic" style="background:linear-gradient(135deg, ${a.color}, ${a.color}aa)"><i class="fa-solid ${c.icon || "fa-box"}"></i></div>
+          <div class="category-main">
+            <h4>${c.name}</h4>
+            <p>${productCount} produto${productCount === 1 ? "" : "s"}</p>
+          </div>
+          <div class="cat-rev">
+            <strong>${UI.money(a.value)}</strong>
+            <span>Receita vinculada</span>
+          </div>
+          <div class="actions-cell category-actions">
+            <button class="act-btn edit" type="button" data-edit-category="${c.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+            <button class="act-btn delete" type="button" data-delete-category="${c.id}" title="Remover"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </article>
+      `;
+    }).join("");
+    bindActions();
+    syncProductCategoryFilter();
+  }
+
+  function openForm(category = null) {
+    const form = document.getElementById("categoryForm");
+    if (!form) return;
+
+    form.reset();
+    document.getElementById("categoryId").value = category?.id || "";
+    document.getElementById("categoryName").value = category?.name || "";
+    document.getElementById("categoryModalTitle").textContent = category ? "Editar categoria" : "Nova categoria";
+    UI.openModal("categoryModal");
+  }
+
+  async function saveCategory(event) {
+    event.preventDefault();
+
+    const id = document.getElementById("categoryId").value;
+    const nome = document.getElementById("categoryName").value.trim();
+    if (!nome) {
+      UI.toast("Informe o nome da categoria.", "error");
+      return;
+    }
+
+    try {
+      if (id) {
+        const updated = await window.API.updateCategory(id, { nome });
+        Object.assign(window.DB.categories.find(c => c.id === id), updated);
+        UI.toast(`Categoria "${updated.name}" atualizada.`, "success");
+      } else {
+        const created = await window.API.createCategory({ nome });
+        window.DB.categories.push(created);
+        UI.toast(`Categoria "${created.name}" criada.`, "success");
+      }
+      UI.closeModal("categoryModal");
+      render();
+      if (window.ProductsPage) window.ProductsPage.render();
+      if (window.StockPage) window.StockPage.render();
+      if (window.Dashboard) window.Dashboard.refresh();
+    } catch (err) {
+      console.error("Falha ao salvar categoria:", err);
+      UI.toast("Não foi possível salvar a categoria.", "error");
+    }
+  }
+
+  async function deleteCategory(id) {
+    const category = window.DB.categories.find(c => c.id === id);
+    if (!category) return;
+
+    const ok = await UI.confirmDialog({
+      title: "Remover categoria",
+      text: `Remover "${category.name}"? Categorias com produtos ativos vinculados não podem ser removidas.`,
+      okLabel: "Remover"
+    });
+    if (!ok) return;
+
+    try {
+      await window.API.deleteCategory(id);
+      window.DB.categories = window.DB.categories.filter(c => c.id !== id);
+      UI.toast(`Categoria "${category.name}" removida.`, "success");
+      render();
+      if (window.ProductsPage) window.ProductsPage.render();
+      if (window.StockPage) window.StockPage.render();
+      if (window.Dashboard) window.Dashboard.refresh();
+    } catch (err) {
+      console.error("Falha ao remover categoria:", err);
+      UI.toast("Não foi possível remover. Verifique se há produtos vinculados.", "error");
+    }
+  }
+
+  function bindActions() {
+    document.querySelectorAll("[data-edit-category]").forEach(button => {
+      button.addEventListener("click", () => {
+        const category = window.DB.categories.find(c => c.id === button.dataset.editCategory);
+        openForm(category);
+      });
+    });
+
+    document.querySelectorAll("[data-delete-category]").forEach(button => {
+      button.addEventListener("click", () => deleteCategory(button.dataset.deleteCategory));
+    });
+  }
+
+  function init() {
+    document.getElementById("newCategoryBtn").addEventListener("click", () => openForm());
+    document.getElementById("categoryForm")?.addEventListener("submit", saveCategory);
+    document.getElementById("categoryModal")?.addEventListener("click", event => {
+      if (event.target.id === "categoryModal") UI.closeModal("categoryModal");
+    });
+    render();
+  }
+
+  return { init, render };
+})();
+
+
 window.EmployeesPage = (function () {
   function rows() {
     return Array.from(document.querySelectorAll("[data-employee-row]"));
@@ -1089,12 +1252,52 @@ window.EmployeesPage = (function () {
 
 
 window.StockPage = (function () {
+  function openStockForm(product) {
+    if (!product) return;
+
+    document.getElementById("stockForm").reset();
+    document.getElementById("stockProductId").value = product.id;
+    document.getElementById("stockProductName").value = product.name;
+    document.getElementById("stockCurrent").value = product.stock;
+    document.getElementById("stockQuantity").value = "";
+    document.getElementById("stockModalTitle").textContent = `Repor estoque`;
+    UI.openModal("stockModal");
+  }
+
+  async function saveStock(event) {
+    event.preventDefault();
+
+    const id = document.getElementById("stockProductId").value;
+    const product = window.DB.getProduct(id);
+    const quantity = parseInt(document.getElementById("stockQuantity").value, 10);
+
+    if (!product || !Number.isInteger(quantity) || quantity <= 0) {
+      UI.toast("Informe uma quantidade maior que zero.", "error");
+      return;
+    }
+
+    if (product.stock + quantity < 5) {
+      UI.toast("O estoque não pode ficar menor que 5.", "error");
+      return;
+    }
+
+    try {
+      const updated = await window.API.addProductStock(id, quantity);
+      Object.assign(product, updated);
+      UI.toast(`+${quantity} unidades adicionadas a ${product.name}.`, "success");
+      UI.closeModal("stockModal");
+      render();
+      if (window.ProductsPage) window.ProductsPage.render();
+      if (window.Dashboard) window.Dashboard.refresh();
+    } catch (err) {
+      console.error("Falha ao repor estoque:", err);
+      UI.toast("Não foi possível atualizar o estoque.", "error");
+    }
+  }
+
   function render() {
     const body = document.getElementById("stockBody");
     if (!body) return;
-
-    // TODO: conectar ao backend
-    // window.API.getProducts().then(prods => { ... renderiza tabela e KPIs ... });
 
     const prods = window.DB.products.slice().sort((a, b) => a.stock - b.stock);
     body.innerHTML = prods.map(p => {
@@ -1105,7 +1308,6 @@ window.StockPage = (function () {
           <td><strong>${p.name}</strong> <span class="muted" style="font-family:'DM Mono',monospace;font-size:11px">${p.sku || ""}</span></td>
           <td><span class="pill gray">${cat?.name || "—"}</span></td>
           <td><strong>${p.stock}</strong></td>
-          <td>${p.minStock || 0}</td>
           <td><span class="pill ${s.pill}">${s.label}</span></td>
           <td class="right">
             <div class="actions-cell">
@@ -1119,7 +1321,7 @@ window.StockPage = (function () {
     // KPIs
     const skuCount = window.DB.products.length;
     const stockValue = window.DB.products.reduce((s, p) => s + (p.cost || p.price * 0.5) * p.stock, 0);
-    const low = window.DB.products.filter(p => p.stock > 0 && p.stock <= (p.minStock || 5)).length;
+    const low = window.DB.products.filter(p => p.stock > 0 && p.stock <= 5).length;
     const out = window.DB.products.filter(p => p.stock <= 0).length;
     document.getElementById("skuCount").textContent = UI.num(skuCount);
     document.getElementById("stockValue").textContent = UI.money(stockValue);
@@ -1127,24 +1329,22 @@ window.StockPage = (function () {
     document.getElementById("outOfStockCount").textContent = out;
 
     document.querySelectorAll("#stockBody .act-btn").forEach(b => {
-      b.addEventListener("click", async () => {
+      b.addEventListener("click", () => {
         const p = window.DB.getProduct(b.dataset.id);
-        if (!p) return;
-        const qty = parseInt(prompt(`Adicionar ao estoque de "${p.name}":`, "10"), 10);
-        if (!qty || isNaN(qty)) return;
-
-        // TODO: conectar ao backend
-        // await window.API.updateProduct(p.id, { ...p, stock: p.stock + qty });
-
-        p.stock += qty;
-        UI.toast(`+${qty} unidades adicionadas a ${p.name}.`, "success");
-        render();
-        if (window.ProductsPage) window.ProductsPage.render();
-        if (window.Dashboard) window.Dashboard.refresh();
+        openStockForm(p);
       });
     });
   }
-  return { render, init: render };
+
+  function init() {
+    document.getElementById("stockForm")?.addEventListener("submit", saveStock);
+    document.getElementById("stockModal")?.addEventListener("click", event => {
+      if (event.target.id === "stockModal") UI.closeModal("stockModal");
+    });
+    render();
+  }
+
+  return { render, init };
 })();
 
 
@@ -1334,7 +1534,7 @@ window.Dashboard = (function () {
   }
 
   function updateSidebarBadges() {
-    const lowStock = window.DB.products.filter(p => p.stock <= (p.minStock || 5)).length;
+    const lowStock = window.DB.products.filter(p => p.stock <= 5).length;
     document.getElementById("navLowStock").textContent = lowStock;
     document.getElementById("navLowStock").style.display = lowStock ? "" : "none";
     const pending = window.DB.orders.filter(o => o.status === "pendente").length;
@@ -1404,35 +1604,18 @@ window.Dashboard = (function () {
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    // -----------------------------------------------------------------
-    // TODO: conectar ao backend (boot-up)
-    // Para alimentar todas as páginas com dados reais do SQLite, basta:
-    //
-    //   Promise.all([
-    //     window.API.getCategories(),
-    //     window.API.getProducts(),
-    //     window.API.getCustomers(),
-    //     window.API.getOrders(),
-    //     window.API.getDailySales(30),
-    //     window.API.getHourlySales(),
-    //     window.API.getNotifications()
-    //   ]).then(([cats, prods, custs, ords, daily, hourly, notifs]) => {
-    //     window.DB.categories    = cats;
-    //     window.DB.products      = prods;
-    //     window.DB.customers     = custs;
-    //     window.DB.orders        = ords;
-    //     window.DB.daily         = daily;
-    //     window.DB.hourly        = hourly;
-    //     window.DB.notifications = notifs;
-    //     bootUI();
-    //   }).catch(err => {
-    //     console.error("Falha ao carregar dados do backend:", err);
-    //     bootUI(); // segue com mock em caso de falha
-    //   });
-    //
-    //   function bootUI() { ... mesmo código do bloco abaixo ... }
-    // -----------------------------------------------------------------
+  document.addEventListener("DOMContentLoaded", async () => {
+    try {
+      const [cats, prods] = await Promise.all([
+        window.API.getCategories(),
+        window.API.getProducts()
+      ]);
+      window.DB.categories = cats;
+      window.DB.products = prods;
+    } catch (err) {
+      console.error("Falha ao carregar dados do backend:", err);
+      UI.toast("Produtos do banco indisponíveis. Exibindo dados temporários.", "warn");
+    }
 
     // Init pages
     window.Dashboard.init();

@@ -72,6 +72,7 @@
               <input type="text" id="globalSearch" placeholder="Buscar produtos, pedidos, clientes..." />
               <kbd>⌘K</kbd>
             </div>
+            <a class="topbar-link" href="/pdv"><i class="fa-solid fa-cash-register"></i><span>PDV</span></a>
             <button class="icon-btn" id="themeToggle" aria-label="Alternar tema"><i class="fa-solid fa-moon"></i></button>
             <button class="icon-btn notif" id="notifBtn" aria-label="Notificações"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
             <div class="admin-chip" id="adminChip">
@@ -307,7 +308,7 @@
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Sem estoque</span><span class="kpi-icon red"><i class="fa-solid fa-circle-xmark"></i></span></div><h2 class="kpi-value" id="outOfStockCount">0</h2></div>
           </div>
           <div class="card glass no-pad"><div class="table-wrap">
-            <table class="data-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th class="right">Ação</th></tr></thead><tbody id="stockBody"></tbody></table>
+            <table class="data-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Status</th><th class="right">Ação</th></tr></thead><tbody id="stockBody"></tbody></table>
           </div></div>
         </section>
 
@@ -361,18 +362,55 @@
           <h3 id="productModalTitle">Novo produto</h3>
           <button class="icon-btn ghost" data-close-modal="productModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <form id="productForm" class="form-grid">
+        <form id="productForm" class="form-grid" enctype="multipart/form-data">
           <input type="hidden" id="productId" />
           <label class="span-2">Nome do produto<input type="text" id="productName" required /></label>
           <label>Categoria<select id="productCategory" required></select></label>
           <label>Preço (R$)<input type="number" id="productPrice" step="0.01" min="0" required /></label>
           <label>Estoque atual<input type="number" id="productStock" min="0" required /></label>
-          <label>Estoque mínimo<input type="number" id="productMinStock" min="0" value="5" /></label>
-          <label class="span-2">SKU<input type="text" id="productSku" /></label>
+          <label class="span-2">Imagem do produto<input type="file" id="productImage" accept="image/png,image/jpeg,image/webp" /></label>
           <label class="span-2">Descrição<textarea id="productDesc" rows="3"></textarea></label>
           <div class="modal-foot span-2">
             <button type="button" class="ghost-btn" data-close-modal="productModal">Cancelar</button>
             <button type="submit" class="primary-btn">Salvar produto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: ESTOQUE ====================== -->
+    <div class="modal-backdrop hidden" id="stockModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3 id="stockModalTitle">Repor estoque</h3>
+          <button class="icon-btn ghost" data-close-modal="stockModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="stockForm" class="form-grid">
+          <input type="hidden" id="stockProductId" />
+          <label class="span-2">Produto<input type="text" id="stockProductName" readonly /></label>
+          <label>Estoque atual<input type="number" id="stockCurrent" readonly /></label>
+          <label>Quantidade a adicionar<input type="number" id="stockQuantity" min="1" step="1" required /></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="stockModal">Cancelar</button>
+            <button type="submit" class="primary-btn">Adicionar estoque</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: CATEGORIA ====================== -->
+    <div class="modal-backdrop hidden" id="categoryModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3 id="categoryModalTitle">Nova categoria</h3>
+          <button class="icon-btn ghost" data-close-modal="categoryModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="categoryForm" class="form-grid">
+          <input type="hidden" id="categoryId" />
+          <label class="span-2">Nome da categoria<input type="text" id="categoryName" required /></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="categoryModal">Cancelar</button>
+            <button type="submit" class="primary-btn">Salvar categoria</button>
           </div>
         </form>
       </div>

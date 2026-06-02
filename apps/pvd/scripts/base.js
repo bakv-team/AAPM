@@ -1,456 +1,458 @@
 const canvas = document.getElementById("particles");
-const ctx = canvas.getContext("2d");
+const ctx = canvas?.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-let particles = [];
-
-class Particle{
-
-  constructor(){
-
-    this.x = Math.random() * canvas.width;
-    this.y = Math.random() * canvas.height;
-
-    this.size = Math.random() * 3 + 1;
-
-    this.speedX = (Math.random() - .5) * .4;
-    this.speedY = (Math.random() - .5) * .4;
-
-    this.color =
-      Math.random() > .5
-      ? "rgba(58,92,233,.35)"
-      : "rgba(245,138,31,.35)";
-  }
-
-  update(){
-
-    this.x += this.speedX;
-    this.y += this.speedY;
-
-    if(this.x > canvas.width || this.x < 0){
-      this.speedX *= -1;
-    }
-
-    if(this.y > canvas.height || this.y < 0){
-      this.speedY *= -1;
-    }
-
-  }
-
-  draw(){
-
-    ctx.beginPath();
-
-    ctx.arc(
-      this.x,
-      this.y,
-      this.size,
-      0,
-      Math.PI * 2
-    );
-
-    ctx.fillStyle = this.color;
-    ctx.fill();
-
-  }
-
-}
-
-function init(){
-
-  particles = [];
-
-  for(let i = 0; i < 75; i++){
-
-    particles.push(
-      new Particle()
-    );
-
-  }
-
-}
-
-function connect(){
-
-  for(let a = 0; a < particles.length; a++){
-
-    for(let b = a; b < particles.length; b++){
-
-      const dx =
-        particles[a].x -
-        particles[b].x;
-
-      const dy =
-        particles[a].y -
-        particles[b].y;
-
-      const distance =
-        dx * dx + dy * dy;
-
-      if(distance < 10000){
-
-        ctx.beginPath();
-
-        ctx.strokeStyle =
-          "rgba(120,120,160,.07)";
-
-        ctx.lineWidth = 1;
-
-        ctx.moveTo(
-          particles[a].x,
-          particles[a].y
-        );
-
-        ctx.lineTo(
-          particles[b].x,
-          particles[b].y
-        );
-
-        ctx.stroke();
-
-      }
-
-    }
-
-  }
-
-}
-
-function animate(){
-
-  ctx.clearRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-  particles.forEach((particle)=>{
-
-    particle.update();
-    particle.draw();
-
-  });
-
-  connect();
-
-  requestAnimationFrame(animate);
-
-}
-
-window.addEventListener("resize",()=>{
-
+if (canvas && ctx) {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  init();
+  let particles = [];
 
-});
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.size = Math.random() * 3 + 1;
+      this.speedX = (Math.random() - 0.5) * 0.4;
+      this.speedY = (Math.random() - 0.5) * 0.4;
+      this.color = Math.random() > 0.5 ? "rgba(58,92,233,.25)" : "rgba(245,138,31,.25)";
+    }
 
-init();
-animate();
-// ==========================================
-// 1. MAPEAMENTO DE ELEMENTOS DO DOM
-// ==========================================
-const modal = document.getElementById('modalCadastro');
-const btnAbrirModal = document.getElementById('btnAbrirModal');
-const btnFecharModal = document.getElementById('btnFecharModal');
-const formCadastro = document.getElementById('formCadastro');
-const productsGrid = document.getElementById('productsGrid');
-const cartItemsContainer = document.getElementById('cartItems');
-const cartTotalElement = document.getElementById('cartTotal');
-const cartDiscountElement = document.getElementById('cartDiscount'); 
-const searchInput = document.getElementById('searchInput');
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+      if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+    }
 
-// Seleção dos botões do Carrinho
-const btnToggleAssociado = document.getElementById('btnToggleAssociado');
-const btnFecharPedido = document.getElementById('btnFecharPedido');
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.fill();
+    }
+  }
 
-// ==========================================
-// 2. ESTADO DA APLICAÇÃO (DADOS) - ATUALIZADO
-// ==========================================
-// Se houver produtos vindo do Python (servidor), usamos eles. Se não, tenta o localStorage.
-let produtos = window.produtosDoServidor || JSON.parse(localStorage.getItem('produtos_aapm')) || [];
-let carrinho = JSON.parse(localStorage.getItem('carrinho_aapm')) || [];
-let ehAssociado = false; 
-const TAXA_DESCONTO = 0.10; 
-let categoriaAtual = 'todos';
-// ==========================================
-// 3. CONTROLE DO MODAL DE CADASTRO
-// ==========================================
-if (btnAbrirModal) btnAbrirModal.addEventListener('click', () => modal.style.display = 'flex');
-if (btnFecharModal) btnFecharModal.addEventListener('click', () => modal.style.display = 'none');
+  function initParticles() {
+    particles = Array.from({ length: 60 }, () => new Particle());
+  }
 
-// ==========================================
-// 4. CADASTRO DE NOVOS PRODUTOS
-// ==========================================
-if (formCadastro) {
-    formCadastro.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        const novoProduto = {
-            id: Date.now().toString(), 
-            nome: document.getElementById('prodNome').value,
-            preco: parseFloat(document.getElementById('prodPreco').value),
-            categoria: document.getElementById('prodCategoria').value,
-            imagem: document.getElementById('prodImagem').value || 'https://via.placeholder.com/150'
-        };
-
-        produtos.push(novoProduto);
-        localStorage.setItem('produtos_aapm', JSON.stringify(produtos));
-
-        formCadastro.reset();
-        modal.style.display = 'none';
-        
-        filtrarEVisualizarVitrine();
-        atualizarContadoresCategorias();
+  function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(particle => {
+      particle.update();
+      particle.draw();
     });
+    requestAnimationFrame(animateParticles);
+  }
+
+  window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    initParticles();
+  });
+
+  initParticles();
+  animateParticles();
 }
 
-// ==========================================
-// 5. RENDERIZAR PRODUTOS NA VITRINE - ATUALIZADO
-// ==========================================
-function exibirProdutosNaVitrine(listaDeProdutos) {
-    if (!productsGrid) return;
-    productsGrid.innerHTML = ''; // Limpa a vitrine antiga
+const API_BASE = window.location.origin;
+const MIN_STOCK = 5;
+const DISCOUNT = 0.10;
+const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-    if (listaDeProdutos.length === 0) {
-        productsGrid.innerHTML = '<p style="color:#666; grid-column: 1/-1; text-align:center; padding: 40px 0;">Nenhum produto encontrado.</p>';
-        const countVisual = document.querySelector('.product-count');
-        if (countVisual) countVisual.innerText = '(0)';
-        return;
-    }
+const productsGrid = document.getElementById("productsGrid");
+const categoryButtons = document.getElementById("categoryButtons");
+const cartItemsContainer = document.getElementById("cartItems");
+const cartTotalElement = document.getElementById("cartTotal");
+const cartDiscountElement = document.getElementById("cartDiscount");
+const searchInput = document.getElementById("searchInput");
+const btnToggleAssociado = document.getElementById("btnToggleAssociado");
+const btnFecharPedido = document.getElementById("btnFecharPedido");
+const paymentOptions = document.getElementById("paymentOptions");
+const categoryTitle = document.getElementById("categoryName");
+const productCount = document.querySelector(".product-count");
+const resultCount = document.getElementById("resultCount");
+const prevPage = document.getElementById("prevPage");
+const nextPage = document.getElementById("nextPage");
+const pageNumbers = document.getElementById("pageNumbers");
 
-    // O JS varre a lista e monta o HTML de cada card na tela
-    listaDeProdutos.forEach(produto => {
-        const card = document.createElement('div');
-        card.classList.add('card'); 
+let produtos = [];
+let categorias = [];
+let carrinho = JSON.parse(localStorage.getItem("carrinho_aapm_pdv") || "[]");
+let categoriaAtual = "todos";
+let termoBusca = "";
+let ehAssociado = false;
+let pagamentoAtual = "pix";
+let page = 1;
+const perPage = 8;
 
-        card.innerHTML = `
-            <div class="card-image">
-                <img src="${produto.imagem || 'https://via.placeholder.com/150'}" alt="${produto.nome}">
-            </div>
-            <div class="card-content">
-                <h3 class="card-title">${produto.nome}</h3>
-                <p class="price">R$ ${parseFloat(produto.preco).toFixed(2).replace('.', ',')}</p>
-                <button class="card-button" onclick="adicionarAoCarrinho('${produto.id}')">
-                    <i class="fa-solid fa-cart-plus"></i> Adicionar
-                </button>
-            </div>
-        `;
-        productsGrid.appendChild(card);
+function money(value) {
+  return BRL.format(Number(value) || 0);
+}
+
+function toast(message, type = "info") {
+  const wrap = document.getElementById("toastWrap");
+  if (!wrap) return;
+
+  const item = document.createElement("div");
+  item.className = `toast ${type}`;
+  const icons = {
+    success: "fa-circle-check",
+    error: "fa-circle-xmark",
+    warn: "fa-triangle-exclamation",
+    info: "fa-circle-info"
+  };
+  item.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${message}</span>`;
+  wrap.appendChild(item);
+  setTimeout(() => {
+    item.classList.add("leaving");
+    setTimeout(() => item.remove(), 250);
+  }, 2800);
+}
+
+async function apiGet(path) {
+  const response = await fetch(`${API_BASE}${path}`, { credentials: "same-origin" });
+  if (!response.ok) throw new Error(`GET ${path} -> ${response.status}`);
+  return response.json();
+}
+
+async function apiPost(path, body) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || `POST ${path} -> ${response.status}`);
+  }
+  return response.json();
+}
+
+function produtoDisponivel(produto) {
+  return Math.max(0, (Number(produto.stock) || 0) - MIN_STOCK);
+}
+
+function categoriaNome(id) {
+  return categorias.find(categoria => categoria.id === id)?.name || "Sem categoria";
+}
+
+function produtoImagem(produto) {
+  return produto.imageUrl || "/apps/pvd/assets/icones/logosemtexto.png";
+}
+
+function normalizarCarrinho() {
+  carrinho = carrinho
+    .map(item => {
+      const produto = produtos.find(p => p.id === item.id);
+      if (!produto) return null;
+      const quantidade = Math.min(item.quantidade, produtoDisponivel(produto));
+      return quantidade > 0 ? { ...produto, quantidade } : null;
+    })
+    .filter(Boolean);
+  salvarCarrinho();
+}
+
+function salvarCarrinho() {
+  localStorage.setItem("carrinho_aapm_pdv", JSON.stringify(carrinho));
+}
+
+function produtosFiltrados() {
+  return produtos.filter(produto => {
+    const texto = `${produto.name} ${categoriaNome(produto.categoryId)}`.toLowerCase();
+    const bateBusca = !termoBusca || texto.includes(termoBusca.toLowerCase());
+    const bateCategoria = categoriaAtual === "todos" || produto.categoryId === categoriaAtual;
+    return bateBusca && bateCategoria;
+  });
+}
+
+function renderCategorias() {
+  if (!categoryButtons) return;
+
+  categoryButtons.innerHTML = categorias.map(categoria => `
+    <button class="cat-btn" data-category="${categoria.id}">
+      <i class="fa-solid ${categoria.icon || "fa-box"}"></i>
+      <span>${categoria.name} <em class="cat-count" data-category="${categoria.id}">(0)</em></span>
+    </button>
+  `).join("");
+
+  document.querySelectorAll(".cat-btn").forEach(button => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".cat-btn").forEach(item => item.classList.remove("cat-active"));
+      button.classList.add("cat-active");
+      categoriaAtual = button.dataset.category;
+      page = 1;
+      categoryTitle.textContent = categoriaAtual === "todos" ? "Todos os Produtos" : button.querySelector("span").childNodes[0].textContent.trim();
+      renderProdutos();
     });
+  });
 
-    const countVisual = document.querySelector('.product-count');
-    if (countVisual) countVisual.innerText = `(${listaDeProdutos.length})`;
-}
-// ==========================================
-// 6. LÓGICA INTERNA DO CARRINHO DE COMPRAS
-// ==========================================
-window.adicionarAoCarrinho = function(idProduto) {
-    const produto = produtos.find(p => p.id === idProduto);
-    if (!produto) return;
-
-    const itemNoCarrinho = carrinho.find(item => item.id === idProduto);
-
-    if (itemNoCarrinho) {
-        itemNoCarrinho.quantidade += 1; 
-    } else {
-        carrinho.push({ ...produto, quantidade: 1 });
-    }
-
-    salvarEAtualizarCarrinho();
-};
-
-window.alterarQuantidade = function(idProduto, mudanca) {
-    const item = carrinho.find(item => item.id === idProduto);
-    if (!item) return;
-
-    item.quantidade += mudanca;
-
-    if (item.quantidade <= 0) {
-        carrinho = carrinho.filter(item => item.id !== idProduto);
-    }
-
-    salvarEAtualizarCarrinho();
-};
-
-window.removerDoCarrinho = function(idProduto) {
-    carrinho = carrinho.filter(item => item.id !== idProduto);
-    salvarEAtualizarCarrinho();
-};
-
-function salvarEAtualizarCarrinho() {
-    localStorage.setItem('carrinho_aapm', JSON.stringify(carrinho));
-    renderizarCarrinho();
+  atualizarContadoresCategorias();
 }
 
-function renderizarCarrinho() {
-    if (!cartItemsContainer) return;
-    cartItemsContainer.innerHTML = '';
-
-    let totalBrutoGeral = 0;
-
-    carrinho.forEach(item => {
-        const subtotalItemBruto = item.preco * item.quantidade;
-        totalBrutoGeral += subtotalItemBruto;
-
-        const cartItemHtml = document.createElement('div');
-        cartItemHtml.classList.add('cart-item'); 
-        
-        cartItemHtml.innerHTML = `
-            <div class="cart-item-info">
-                <span class="cart-item-name" style="font-weight:600; font-size:14px; display:block;">${item.nome}</span>
-                <small style="color:var(--text-soft); font-size:12px;">R$ ${item.preco.toFixed(2).replace('.', ',')} un.</small>
-                
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
-                    <button onclick="alterarQuantidade('${item.id}', -1)" style="background:var(--border); border:none; width:24px; height:24px; cursor:pointer; border-radius:4px; font-weight:bold;">-</button>
-                    <span style="font-weight:600; font-size:13px;">${item.quantidade}</span>
-                    <button onclick="alterarQuantidade('${item.id}', 1)" style="background:var(--border); border:none; width:24px; height:24px; cursor:pointer; border-radius:4px; font-weight:bold;">+</button>
-                </div>
-            </div>
-            <div style="text-align: right; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
-                <button class="cart-item-remove" onclick="removerDoCarrinho('${item.id}')" style="background:none; border:none; color:#dc3545; cursor:pointer;">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-                <span style="font-weight: 700; font-size: 14px; margin-top: 10px; color: var(--text);">
-                    R$ ${subtotalItemBruto.toFixed(2).replace('.', ',')}
-                </span>
-            </div>
-        `;
-        cartItemsContainer.appendChild(cartItemHtml);
-    });
-
-    // Cálculos matemáticos baseados no estado do botão externo
-    let valorDescontoGeral = ehAssociado ? (totalBrutoGeral * TAXA_DESCONTO) : 0;
-    let totalGeralLiquido = totalBrutoGeral - valorDescontoGeral;
-
-    if (cartDiscountElement) {
-        cartDiscountElement.innerText = `-R$ ${valorDescontoGeral.toFixed(2).replace('.', ',')}`;
-        cartDiscountElement.style.color = valorDescontoGeral > 0 ? 'var(--green)' : 'var(--text-soft)';
-    }
-
-    if (cartTotalElement) {
-        cartTotalElement.innerText = `R$ ${totalGeralLiquido.toFixed(2).replace('.', ',')}`;
-    }
-
-    // Altera as classes visuais do botão sem quebrar a lógica
-    if (btnToggleAssociado) {
-        const icone = btnToggleAssociado.querySelector('i');
-        if (ehAssociado) {
-            btnToggleAssociado.classList.add('active');
-            if (icone) icone.className = 'fa-solid fa-circle-check';
-        } else {
-            btnToggleAssociado.classList.remove('active');
-            if (icone) icone.className = 'fa-regular fa-circle';
-        }
-    }
-}
-
-// ==========================================
-// 7. LISTENERS DO BOTÃO ASSOCIADO E FECHAMENTO
-// ==========================================
-
-// Ativa/Desativa o desconto global ao clicar no botão da AAPM
-if (btnToggleAssociado) {
-    btnToggleAssociado.addEventListener('click', () => {
-        ehAssociado = !ehAssociado; // Alterna true / false
-        renderizarCarrinho(); // Recalcula os valores na tela imediatamente
-    });
-}
-
-if (btnFecharPedido) {
-    btnFecharPedido.addEventListener('click', () => {
-        if (carrinho.length === 0) {
-            alert('O carrinho está vazio!');
-            return;
-        }
-
-        const totalTexto = cartTotalElement ? cartTotalElement.innerText : 'R$ 0,00';
-        let resumo = `--- RESUMO DA VENDA ---\n\n`;
-        resumo += `Total Final: ${totalTexto}\n`;
-        resumo += `Perfil: ${ehAssociado ? 'Associado AAPM (10% de desconto)' : 'Não Associado (Preço Integral)'}\n\n`;
-        resumo += `Deseja finalizar a venda e atualizar o estoque?`;
-
-        if (confirm(resumo)) {
-            // Puxa os dados reais salvos no LocalStorage
-            let bancoProdutos = JSON.parse(localStorage.getItem('produtos_aapm')) || [];
-
-            // Reduz a quantidade baseando-se no carrinho
-            carrinho.forEach(itemComprado => {
-                const produtoNoBanco = bancoProdutos.find(p => p.id === itemComprado.id);
-                if (produtoNoBanco) {
-                    let estoqueAtual = produtoNoBanco.estoque !== undefined ? produtoNoBanco.estoque : 0;
-                    produtoNoBanco.estoque = Math.max(0, estoqueAtual - itemComprado.quantidade);
-                }
-            });
-
-            // Atualiza de fato o LocalStorage
-            localStorage.setItem('produtos_aapm', JSON.stringify(bancoProdutos));
-            
-            // Atualiza a vitrine da página atual com a nova lista modificada
-            produtos = bancoProdutos;
-
-            alert('Pedido processado com sucesso! Estoque atualizado.');
-            
-            // Reseta carrinho e estado do desconto para a próxima venda
-            carrinho = [];
-            ehAssociado = false; 
-
-            salvarEAtualizarCarrinho();
-            filtrarEVisualizarVitrine();
-            atualizarContadoresCategorias();
-        }
-    });
-}
-
-// ==========================================
-// 8. FUNÇÕES AUXILIARES (CONTADORES DA SIDEBAR)
-// ==========================================
 function atualizarContadoresCategorias() {
-    const counts = {
-        'todos': produtos.length, 
-        'materiais-escolares': 0,
-        'uniformes': 0,
-        'materiais-texteis': 0,
-        'ferramentas': 0
-    };
+  const total = produtos.length;
+  const all = document.querySelector('.cat-count[data-category="todos"]');
+  if (all) all.textContent = `(${total})`;
 
-    produtos.forEach(p => {
-        if (counts[p.categoria] !== undefined) counts[p.categoria]++;
-    });
-
-    Object.keys(counts).forEach(cat => {
-        const el = document.querySelector(`.cat-count[data-category="${cat}"]`);
-        if (el) el.innerText = `(${counts[cat]})`;
-    });
+  categorias.forEach(categoria => {
+    const count = produtos.filter(produto => produto.categoryId === categoria.id).length;
+    const el = document.querySelector(`.cat-count[data-category="${categoria.id}"]`);
+    if (el) el.textContent = `(${count})`;
+  });
 }
 
-// ==========================================
-// 9. LÓGICA DE FILTRAGEM POR CATEGORIAS
-// ==========================================
-const botoesCategoria = document.querySelectorAll('.cat-btn');
-const tituloCategoria = document.getElementById('categoryName');
+function renderProdutos() {
+  if (!productsGrid) return;
 
-botoesCategoria.forEach(botao => {
-    botao.addEventListener('click', () => {
-        botoesCategoria.forEach(btn => btn.classList.remove('cat-active'));
-        botao.classList.add('cat-active');
+  const rows = produtosFiltrados();
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / perPage));
+  if (page > pages) page = pages;
 
-        categoriaAtual = botao.getAttribute('data-category');
+  const start = (page - 1) * perPage;
+  const items = rows.slice(start, start + perPage);
 
-        const textoBotao = botao.querySelector('span').childNodes[0].textContent.trim();
-        if (tituloCategoria) tituloCategoria.innerText = categoriaAtual === 'todos' ? 'Todos os Produtos' : textoBotao;
+  if (!items.length) {
+    productsGrid.innerHTML = `<p class="empty-state">Nenhum produto encontrado.</p>`;
+  } else {
+    productsGrid.innerHTML = items.map(produto => {
+      const disponivel = produtoDisponivel(produto);
+      const disabled = disponivel <= 0 ? "disabled" : "";
+      const estoqueLabel = disponivel > 0 ? `${disponivel} disponiveis` : "Indisponivel";
+      return `
+        <article class="card">
+          <div class="card-image">
+            <img src="${produtoImagem(produto)}" alt="${produto.name}">
+          </div>
+          <div class="card-content">
+            <div>
+              <span class="card-category">${categoriaNome(produto.categoryId)}</span>
+              <h3 class="card-title">${produto.name}</h3>
+            </div>
+            <p class="stock-chip ${disponivel <= 0 ? "danger" : ""}">${estoqueLabel}</p>
+            <p class="price">${money(produto.price)}</p>
+            <button class="card-button" data-add-product="${produto.id}" ${disabled}>
+              <i class="fa-solid fa-cart-plus"></i> Adicionar
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
 
-        filtrarEVisualizarVitrine();
+  productsGrid.querySelectorAll("[data-add-product]").forEach(button => {
+    button.addEventListener("click", () => adicionarAoCarrinho(button.dataset.addProduct));
+  });
+
+  if (productCount) productCount.textContent = `(${total})`;
+  if (resultCount) {
+    const first = total ? start + 1 : 0;
+    const last = Math.min(start + items.length, total);
+    resultCount.textContent = `${first}-${last} de ${total} resultados`;
+  }
+
+  renderPagination(pages);
+}
+
+function renderPagination(pages) {
+  if (!pageNumbers || !prevPage || !nextPage) return;
+  prevPage.disabled = page <= 1;
+  nextPage.disabled = page >= pages;
+  pageNumbers.innerHTML = Array.from({ length: pages }, (_, index) => {
+    const number = index + 1;
+    return `<button class="page-number ${number === page ? "active" : ""}" data-page="${number}">${number}</button>`;
+  }).join("");
+  pageNumbers.querySelectorAll("[data-page]").forEach(button => {
+    button.addEventListener("click", () => {
+      page = Number(button.dataset.page);
+      renderProdutos();
     });
-});
+  });
+}
 
-// ==========================================
-// 10. INICIALIZAÇÃO DA PÁGINA
-// ==========================================
-filtrarEVisualizarVitrine();
-renderizarCarrinho();
-atualizarContadoresCategorias();
+function adicionarAoCarrinho(idProduto) {
+  const produto = produtos.find(p => p.id === idProduto);
+  if (!produto) return;
+
+  const item = carrinho.find(row => row.id === idProduto);
+  const novaQuantidade = (item?.quantidade || 0) + 1;
+  if (novaQuantidade > produtoDisponivel(produto)) {
+    toast("Estoque insuficiente para manter a reserva minima de 5 unidades.", "warn");
+    return;
+  }
+
+  if (item) item.quantidade = novaQuantidade;
+  else carrinho.push({ ...produto, quantidade: 1 });
+
+  salvarCarrinho();
+  renderCarrinho();
+}
+
+function alterarQuantidade(idProduto, delta) {
+  const item = carrinho.find(row => row.id === idProduto);
+  const produto = produtos.find(p => p.id === idProduto);
+  if (!item || !produto) return;
+
+  const novaQuantidade = item.quantidade + delta;
+  if (novaQuantidade <= 0) {
+    carrinho = carrinho.filter(row => row.id !== idProduto);
+  } else if (novaQuantidade <= produtoDisponivel(produto)) {
+    item.quantidade = novaQuantidade;
+  } else {
+    toast("Quantidade maior que o estoque disponivel para venda.", "warn");
+  }
+
+  salvarCarrinho();
+  renderCarrinho();
+}
+
+function removerDoCarrinho(idProduto) {
+  carrinho = carrinho.filter(row => row.id !== idProduto);
+  salvarCarrinho();
+  renderCarrinho();
+}
+
+function totaisCarrinho() {
+  const totalBruto = carrinho.reduce((sum, item) => sum + item.price * item.quantidade, 0);
+  const desconto = ehAssociado ? totalBruto * DISCOUNT : 0;
+  return { totalBruto, desconto, totalLiquido: totalBruto - desconto };
+}
+
+function renderCarrinho() {
+  if (!cartItemsContainer) return;
+
+  if (!carrinho.length) {
+    cartItemsContainer.innerHTML = `<p class="cart-empty">Nenhum item no carrinho.</p>`;
+  } else {
+    cartItemsContainer.innerHTML = carrinho.map(item => `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <span class="cart-item-name">${item.name}</span>
+          <small>${money(item.price)} un.</small>
+          <div class="qty-control">
+            <button type="button" data-qty="${item.id}" data-delta="-1">-</button>
+            <span>${item.quantidade}</span>
+            <button type="button" data-qty="${item.id}" data-delta="1">+</button>
+          </div>
+        </div>
+        <div class="cart-item-side">
+          <button class="cart-item-remove" type="button" data-remove="${item.id}">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+          <strong>${money(item.price * item.quantidade)}</strong>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  cartItemsContainer.querySelectorAll("[data-qty]").forEach(button => {
+    button.addEventListener("click", () => alterarQuantidade(button.dataset.qty, Number(button.dataset.delta)));
+  });
+  cartItemsContainer.querySelectorAll("[data-remove]").forEach(button => {
+    button.addEventListener("click", () => removerDoCarrinho(button.dataset.remove));
+  });
+
+  const totals = totaisCarrinho();
+  if (cartDiscountElement) {
+    cartDiscountElement.textContent = `-${money(totals.desconto)}`;
+    cartDiscountElement.style.color = totals.desconto > 0 ? "var(--green)" : "var(--text-soft)";
+  }
+  if (cartTotalElement) cartTotalElement.textContent = money(totals.totalLiquido);
+
+  if (btnToggleAssociado) {
+    const icon = btnToggleAssociado.querySelector("i");
+    btnToggleAssociado.classList.toggle("active", ehAssociado);
+    if (icon) icon.className = ehAssociado ? "fa-solid fa-circle-check" : "fa-regular fa-circle";
+  }
+}
+
+async function fecharPedido() {
+  if (!carrinho.length) {
+    toast("O carrinho esta vazio.", "warn");
+    return;
+  }
+
+  btnFecharPedido.disabled = true;
+  btnFecharPedido.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processando`;
+
+  try {
+    const venda = await apiPost("/api/v1/pdv/sales", {
+      pagamento: pagamentoAtual,
+      associado: ehAssociado,
+      itens: carrinho.map(item => ({
+        produto_id: Number(item.id),
+        quantidade: item.quantidade
+      }))
+    });
+
+    carrinho = [];
+    ehAssociado = false;
+    salvarCarrinho();
+    await carregarDados();
+    renderCarrinho();
+    toast(`Venda ${venda.number} finalizada com sucesso.`, "success");
+  } catch (error) {
+    toast(error.message || "Nao foi possivel fechar a venda.", "error");
+  } finally {
+    btnFecharPedido.disabled = false;
+    btnFecharPedido.innerHTML = `<i class="fa-solid fa-file-invoice-dollar"></i> Fechar Pedido`;
+  }
+}
+
+async function carregarDados() {
+  const [cats, prods] = await Promise.all([
+    apiGet("/api/v1/pdv/categories"),
+    apiGet("/api/v1/pdv/sale/products")
+  ]);
+  categorias = cats;
+  produtos = prods;
+  normalizarCarrinho();
+  renderCategorias();
+  renderProdutos();
+}
+
+function bindEventos() {
+  searchInput?.addEventListener("input", event => {
+    termoBusca = event.target.value.trim();
+    page = 1;
+    renderProdutos();
+  });
+
+  prevPage?.addEventListener("click", () => {
+    page = Math.max(1, page - 1);
+    renderProdutos();
+  });
+
+  nextPage?.addEventListener("click", () => {
+    page += 1;
+    renderProdutos();
+  });
+
+  btnToggleAssociado?.addEventListener("click", () => {
+    ehAssociado = !ehAssociado;
+    renderCarrinho();
+  });
+
+  paymentOptions?.querySelectorAll("[data-payment]").forEach(button => {
+    button.addEventListener("click", () => {
+      paymentOptions.querySelectorAll("[data-payment]").forEach(item => item.classList.remove("active"));
+      button.classList.add("active");
+      pagamentoAtual = button.dataset.payment;
+    });
+  });
+
+  btnFecharPedido?.addEventListener("click", fecharPedido);
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  bindEventos();
+  renderCarrinho();
+
+  try {
+    await carregarDados();
+  } catch (error) {
+    toast("Nao foi possivel carregar o ponto de venda.", "error");
+  }
+});

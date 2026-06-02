@@ -15,13 +15,15 @@
     <link rel="icon" type="image/png" href="../assets/icones/logosemtexto.png?v=1">
   </head>
   <body>
+    <canvas id="dashboardParticles" aria-hidden="true"></canvas>
+    <div class="dashboard-background-image" aria-hidden="true"></div>
      
     <!-- ====================== APP SHELL ====================== -->
     <div class="app-shell" id="appShell">
       <!-- =============== SIDEBAR =============== -->
       <aside class="sidebar" id="sidebar">
         <div class="brand">
-          <div class="brand-mark"><img src="assets/icones/" alt=""></div>
+          <div class="brand-mark"></div>
           <div class="brand-text">
             <span class="brand-title">AAPM</span>
             <span class="brand-sub">SENAI - FM</span>
@@ -32,6 +34,7 @@
           <p class="nav-label">Principal</p>
           <button class="nav-item active" data-route="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></button>
           <button class="nav-item" data-route="admin"><i class="fa-solid fa-table-cells-large"></i><span>Painel Administrativo</span></button>
+          <button class="nav-item" data-route="funcionarios"><i class="fa-solid fa-id-badge"></i><span>Login de Funcionários</span></button>
           <button class="nav-item" data-route="grafico"><i class="fa-solid fa-chart-column"></i><span>Painel Gráfico</span></button>
 
           <p class="nav-label">Operacional</p>
@@ -246,6 +249,35 @@
           </div>
         </section>
 
+        <!-- ============================= PAGE: FUNCIONARIOS ============================= -->
+        <section class="page" id="page-funcionarios">
+          <div class="grid-2">
+            <div class="card glass">
+              <div class="card-head"><div><h3>Novo login de funcionário</h3><p class="muted">Crie acessos para uso interno do sistema.</p></div></div>
+              <form id="employeeLoginForm" class="form-grid">
+                <label class="span-2">Nome completo<input type="text" id="employeeName" name="nome" required /></label>
+                <label class="span-2">Email de acesso<input type="email" id="employeeEmail" name="email" required /></label>
+                <label>Senha temporária<input type="password" id="employeePassword" name="senha" minlength="6" required /></label>
+                <label>Perfil<input type="text" value="Funcionário" disabled /></label>
+                <input type="hidden" id="employeeRole" name="role" value="funcionario" />
+                <div class="modal-foot span-2">
+                  <button type="reset" class="ghost-btn">Limpar</button>
+                  <button type="submit" class="primary-btn"><i class="fa-solid fa-user-plus"></i> Criar login</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card glass no-pad">
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead><tr><th>Funcionário</th><th>Email</th><th>Perfil</th><th>Status</th></tr></thead>
+                  <tbody id="employeeLoginsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- ============================= PAGE: CONFIG ============================= -->
         <section class="page" id="page-configuracoes">
           <div class="grid-2">
@@ -319,4 +351,3 @@
     <script src="../scripts/dashboard.js"></script>
   </body>
 </html>
-

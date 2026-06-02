@@ -1,3 +1,94 @@
+function initDashboardParticles() {
+  const canvas = document.getElementById("dashboardParticles");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  let particles = [];
+  let frameId = null;
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    init();
+  }
+
+  class Particle {
+    constructor() {
+      this.x = Math.random() * window.innerWidth;
+      this.y = Math.random() * window.innerHeight;
+      this.size = Math.random() * 3 + 1;
+      this.speedX = (Math.random() - 0.5) * 0.4;
+      this.speedY = (Math.random() - 0.5) * 0.4;
+      this.color = Math.random() > 0.5
+        ? "rgba(58,92,233,.35)"
+        : "rgba(245,138,31,.35)";
+    }
+
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+
+      if (this.x > window.innerWidth || this.x < 0) this.speedX *= -1;
+      if (this.y > window.innerHeight || this.y < 0) this.speedY *= -1;
+    }
+
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.fill();
+    }
+  }
+
+  function init() {
+    particles = [];
+    for (let i = 0; i < 75; i++) {
+      particles.push(new Particle());
+    }
+  }
+
+  function connect() {
+    for (let a = 0; a < particles.length; a++) {
+      for (let b = a; b < particles.length; b++) {
+        const dx = particles[a].x - particles[b].x;
+        const dy = particles[a].y - particles[b].y;
+        const distance = dx * dx + dy * dy;
+
+        if (distance < 10000) {
+          ctx.beginPath();
+          ctx.strokeStyle = "rgba(120,120,160,.07)";
+          ctx.lineWidth = 1;
+          ctx.moveTo(particles[a].x, particles[a].y);
+          ctx.lineTo(particles[b].x, particles[b].y);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+    particles.forEach((particle) => {
+      particle.update();
+      particle.draw();
+    });
+
+    connect();
+    frameId = requestAnimationFrame(animate);
+  }
+
+  window.addEventListener("resize", resize);
+  resize();
+  cancelAnimationFrame(frameId);
+  animate();
+}
 
 //  *  Como conectar ao banco depois:
 //  *    1. Suba o backend (FastAPI) em http://localhost:8000
@@ -31,11 +122,11 @@
  *  função pelo bloco fetch() correspondente (já comentado em cada uma).
  * ===================================================================== */
 window.API = (function () {
-  const BASE_URL = "http://localhost:8000";
+  const BASE_URL = window.location.origin;
 
   // Helpers HTTP genéricos — já prontos para uso futuro
   async function apiGet(path) {
-    const res = await fetch(`${BASE_URL}${path}`);
+    const res = await fetch(`${BASE_URL}${path}`, { credentials: "same-origin" });
     if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
     return res.json();
   }
@@ -43,22 +134,31 @@ window.API = (function () {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(`POST ${path} -> ${res.status}`);
+    if (!res.ok) {
+      let message = `POST ${path} -> ${res.status}`;
+      try {
+        const data = await res.json();
+        message = data.detail || message;
+      } catch (err) {}
+      throw new Error(message);
+    }
     return res.json();
   }
   async function apiPut(path, body) {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(`PUT ${path} -> ${res.status}`);
     return res.json();
   }
   async function apiDelete(path) {
-    const res = await fetch(`${BASE_URL}${path}`, { method: "DELETE" });
+    const res = await fetch(`${BASE_URL}${path}`, { method: "DELETE", credentials: "same-origin" });
     if (!res.ok) throw new Error(`DELETE ${path} -> ${res.status}`);
     return res.ok;
   }
@@ -158,6 +258,14 @@ window.API = (function () {
     return window.DB.notifications;
   }
 
+  // ----- Usuarios -----
+  async function getUsers() {
+    return apiGet("/usuarios/api");
+  }
+  async function createUser(payload) {
+    return apiPost("/usuarios/api", payload);
+  }
+
   return {
     BASE_URL,
     apiGet, apiPost, apiPut, apiDelete,
@@ -166,7 +274,8 @@ window.API = (function () {
     getCustomers, createCustomer,
     getOrders, createOrder,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts,
-    getNotifications
+    getNotifications,
+    getUsers, createUser
   };
 })();
 
@@ -1053,6 +1162,83 @@ window.StockPage = (function () {
 })();
 
 
+window.EmployeeLoginsPage = (function () {
+  const fallbackRows = [];
+
+  function roleLabel(role) {
+    return role === "admin" ? "Administrador" : "Funcionário";
+  }
+
+  function statusPill(active) {
+    return active === false ? `<span class="pill red">Inativo</span>` : `<span class="pill green">Ativo</span>`;
+  }
+
+  function rowTemplate(user) {
+    return `
+      <tr>
+        <td><strong>${user.nome || user.name || "Funcionário"}</strong></td>
+        <td>${user.email || ""}</td>
+        <td><span class="pill blue">${roleLabel(user.role)}</span></td>
+        <td>${statusPill(user.ativo)}</td>
+      </tr>
+    `;
+  }
+
+  async function render() {
+    const body = document.getElementById("employeeLoginsBody");
+    if (!body) return;
+
+    body.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--text-mute)">Carregando logins...</td></tr>`;
+
+    try {
+      const users = await window.API.getUsers();
+      const employees = users.filter(user => user.role !== "admin");
+      const rows = employees.length ? employees : fallbackRows;
+      body.innerHTML = rows.length
+        ? rows.map(rowTemplate).join("")
+        : `<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--text-mute)">Nenhum login de funcionário cadastrado.</td></tr>`;
+    } catch (err) {
+      body.innerHTML = fallbackRows.length
+        ? fallbackRows.map(rowTemplate).join("")
+        : `<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--text-mute)">Cadastre o primeiro login de funcionário.</td></tr>`;
+    }
+  }
+
+  async function saveEmployee(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const payload = {
+      nome: document.getElementById("employeeName").value.trim(),
+      email: document.getElementById("employeeEmail").value.trim(),
+      senha: document.getElementById("employeePassword").value,
+      role: document.getElementById("employeeRole").value
+    };
+
+    if (!payload.nome || !payload.email || !payload.senha) {
+      UI.toast("Preencha todos os campos do login.", "error");
+      return;
+    }
+
+    try {
+      const created = await window.API.createUser(payload);
+      fallbackRows.unshift(created);
+      UI.toast(`Login de ${payload.nome} criado.`, "success");
+      form.reset();
+      render();
+    } catch (err) {
+      UI.toast(err.message || "Não foi possível criar o login.", "error");
+    }
+  }
+
+  function init() {
+    document.getElementById("employeeLoginForm")?.addEventListener("submit", saveEmployee);
+    render();
+  }
+
+  return { init, render };
+})();
+
+
 
 window.Dashboard = (function () {
   function todayMetrics() {
@@ -1187,6 +1373,7 @@ window.Dashboard = (function () {
   const ROUTE_META = {
     dashboard:     { title: "Dashboard",             sub: "Visão geral das vendas e operações." },
     admin:         { title: "Painel Administrativo", sub: "Gerencie os produtos da sua loja." },
+    funcionarios:  { title: "Login de Funcionários", sub: "Crie e acompanhe acessos de funcionários." },
     grafico:       { title: "Painel Gráfico",        sub: "Indicadores e gráficos em tempo real." },
     pedidos:       { title: "Pedidos",               sub: "Acompanhe transações e status." },
     clientes:      { title: "Clientes",              sub: "Base de clientes e histórico de compras." },
@@ -1218,6 +1405,7 @@ window.Dashboard = (function () {
     if (route === "clientes")   window.CustomersPage.render();
     if (route === "categorias") window.CategoriesPage.render();
     if (route === "estoque")    window.StockPage.render();
+    if (route === "funcionarios") window.EmployeeLoginsPage.render();
 
     location.hash = "#" + route;
   }
@@ -1338,12 +1526,14 @@ window.Dashboard = (function () {
     // -----------------------------------------------------------------
 
     // Init pages
+    initDashboardParticles();
     window.Dashboard.init();
     window.ProductsPage.init();
     window.OrdersPage.init();
     window.CustomersPage.init();
     window.CategoriesPage.init();
     window.StockPage.init();
+    window.EmployeeLoginsPage.init();
     renderNotifications();
     updateSidebarBadges();
     bindGlobal();

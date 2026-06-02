@@ -2,12 +2,15 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.orm import Session
 
 from database.controllers import auth_controller
 from database.controllers import admin_controller
 from database.controllers import produto_controller
 from database.controllers import categoria_controller
 from database.controllers import movimentacao_controller
+from database.database import get_db
+from database.models.usuario import Usuario
 
 
 
@@ -47,10 +50,19 @@ def tela_home(
 @app.get("/dashboard", response_class=HTMLResponse)
 def tela_dashboard(
     request: Request,
-    usuario = Depends(get_usuario_logado)
+    usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db)
 ):
+    usuarios = []
+    if usuario.get("role") == "admin":
+        usuarios = db.query(Usuario).order_by(Usuario.nome).all()
+
     return dashboard_templates.TemplateResponse(
         request,
         "dashboard.html",
-        {"request": request, "usuario": usuario}
+        {
+            "request": request,
+            "usuario": usuario,
+            "usuarios": usuarios,
+        }
     )

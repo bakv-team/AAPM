@@ -21,7 +21,7 @@
       <!-- =============== SIDEBAR =============== -->
       <aside class="sidebar" id="sidebar">
         <div class="brand">
-          <div class="brand-mark"><img src="/apps/pvd/assets/icones/logosemtexto.png" alt="AAPM"></div>
+          <div class="brand-mark"></div>
           <div class="brand-text">
             <span class="brand-title">AAPM</span>
             <span class="brand-sub">SENAI - FM</span>
@@ -37,6 +37,9 @@
           <p class="nav-label">Operacional</p>
           <button class="nav-item" data-route="pedidos"><i class="fa-solid fa-receipt"></i><span>Pedidos</span><span class="badge-soft" id="navOrdersBadge">0</span></button>
           <button class="nav-item" data-route="clientes"><i class="fa-solid fa-users"></i><span>Clientes</span></button>
+          {% if usuario.role == 'admin' %}
+          <button class="nav-item" data-route="funcionarios"><i class="fa-solid fa-user-shield"></i><span>Funcionários</span></button>
+          {% endif %}
           <button class="nav-item" data-route="categorias"><i class="fa-solid fa-tags"></i><span>Categorias</span></button>
           <button class="nav-item" data-route="estoque"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque</span><span class="badge-warn" id="navLowStock">0</span></button>
 
@@ -72,8 +75,8 @@
             <button class="icon-btn" id="themeToggle" aria-label="Alternar tema"><i class="fa-solid fa-moon"></i></button>
             <button class="icon-btn notif" id="notifBtn" aria-label="Notificações"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
             <div class="admin-chip" id="adminChip">
-              <div class="avatar">RA</div>
-              <div class="who"><span class="who-name">Rafael Andrade</span><span class="who-role">Administrador</span></div>
+              <div class="avatar">{{ (usuario.nome or usuario.sub or "U")[:2]|upper }}</div>
+              <div class="who"><span class="who-name">{{ usuario.nome or usuario.sub }}</span><span class="who-role">{{ "Administrador" if usuario.role == "admin" else "Funcionário" }}</span></div>
               <i class="fa-solid fa-chevron-down"></i>
             </div>
           </div>
@@ -86,8 +89,8 @@
 
         <div class="admin-tray hidden" id="adminTray">
           <div class="admin-tray-header">
-            <div class="avatar lg">RA</div>
-            <div><strong>Rafael Andrade</strong><p class="muted">rafael@aurorapdv.com</p></div>
+            <div class="avatar lg">{{ (usuario.nome or usuario.sub or "U")[:2]|upper }}</div>
+            <div><strong>{{ usuario.nome or usuario.sub }}</strong><p class="muted">{{ usuario.sub }}</p></div>
           </div>
           <ul>
             <li><i class="fa-solid fa-user"></i> Meu perfil</li>
@@ -209,6 +212,83 @@
           <div class="customer-grid" id="customersGrid"></div>
         </section>
 
+        {% if usuario.role == 'admin' %}
+        <!-- ============================= PAGE: FUNCIONARIOS ============================= -->
+        <section class="page" id="page-funcionarios">
+          {% set usuarios_ativos = usuarios | selectattr('ativo') | list | length %}
+          {% set admins_total = usuarios | selectattr('role', 'equalto', 'admin') | list | length %}
+          <div class="kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Funcionários</span><span class="kpi-icon blue"><i class="fa-solid fa-users-gear"></i></span></div><h2 class="kpi-value">{{ usuarios|length }}</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Ativos</span><span class="kpi-icon green"><i class="fa-solid fa-user-check"></i></span></div><h2 class="kpi-value">{{ usuarios_ativos }}</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Administradores</span><span class="kpi-icon purple"><i class="fa-solid fa-shield-halved"></i></span></div><h2 class="kpi-value">{{ admins_total }}</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Inativos</span><span class="kpi-icon red"><i class="fa-solid fa-user-slash"></i></span></div><h2 class="kpi-value">{{ usuarios|length - usuarios_ativos }}</h2></div>
+          </div>
+
+          <div class="toolbar glass">
+            <div class="toolbar-left">
+              <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="employeeSearch" placeholder="Buscar funcionário..." /></div>
+              <select id="employeeRoleFilter" class="select">
+                <option value="">Todos perfis</option>
+                <option value="admin">Administradores</option>
+                <option value="operador">Operadores</option>
+                <option value="funcionario">Funcionários</option>
+              </select>
+              <select id="employeeStatusFilter" class="select">
+                <option value="">Todos status</option>
+                <option value="true">Ativos</option>
+                <option value="false">Inativos</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <button class="primary-btn" id="newEmployeeBtn" type="button"><i class="fa-solid fa-user-plus"></i> Novo funcionário</button>
+            </div>
+          </div>
+
+          <div class="card glass no-pad">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Funcionário</th><th>E-mail</th><th>Perfil</th><th>Status</th><th class="right">Ações</th></tr></thead>
+                <tbody id="employeesBody">
+                  {% for u in usuarios %}
+                  <tr data-employee-row data-name="{{ u.nome|lower }}" data-email="{{ u.email|lower }}" data-role="{{ u.role }}" data-active="{{ 'true' if u.ativo else 'false' }}">
+                    <td>
+                      <div class="prod-cell">
+                        <div class="prod-thumb employee-thumb">{{ (u.nome or u.email or "U")[:2]|upper }}</div>
+                        <div class="prod-name">
+                          <strong>{{ u.nome }}</strong>
+                          <span>ID {{ u.id }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{{ u.email }}</td>
+                    <td><span class="pill {{ 'blue' if u.role == 'admin' else 'gray' }}">{{ "Administrador" if u.role == "admin" else ("Operador" if u.role == "operador" else "Funcionário") }}</span></td>
+                    <td><span class="pill {{ 'green' if u.ativo else 'red' }}">{{ "Ativo" if u.ativo else "Inativo" }}</span></td>
+                    <td class="right">
+                      <div class="actions-cell">
+                        <button class="act-btn edit" type="button" data-edit-employee data-id="{{ u.id }}" data-name="{{ u.nome }}" data-email="{{ u.email }}" data-role="{{ u.role }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                        <form action="/usuarios/{{ u.id }}/toggle-ativo" method="post" data-employee-confirm="{{ 'Desativar' if u.ativo else 'Ativar' }} o usuário {{ u.nome }}?" style="display:inline">
+                          <button class="act-btn {{ 'delete' if u.ativo else 'view' }}" type="submit" title="{{ 'Desativar' if u.ativo else 'Ativar' }}">
+                            <i class="fa-solid {{ 'fa-ban' if u.ativo else 'fa-check' }}"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                  {% if not usuarios %}
+                  <tr><td colspan="5" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum funcionário cadastrado.</td></tr>
+                  {% endif %}
+                  <tr id="employeesEmptyRow" style="display:none"><td colspan="5" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum funcionário encontrado.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span class="muted" id="employeesCount">{{ usuarios|length }} funcionário{{ "" if usuarios|length == 1 else "s" }}</span>
+            </div>
+          </div>
+        </section>
+        {% endif %}
+
         <!-- ============================= PAGE: CATEGORIAS ============================= -->
         <section class="page" id="page-categorias">
           <div class="toolbar glass">
@@ -293,6 +373,30 @@
           <div class="modal-foot span-2">
             <button type="button" class="ghost-btn" data-close-modal="productModal">Cancelar</button>
             <button type="submit" class="primary-btn">Salvar produto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: FUNCIONARIO ====================== -->
+    <div class="modal-backdrop hidden" id="employeeModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3 id="employeeModalTitle">Novo funcionário</h3>
+          <button class="icon-btn ghost" data-close-modal="employeeModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="employeeForm" class="form-grid" method="post" action="/usuarios/novo">
+          <label class="span-2">Nome completo<input type="text" id="employeeName" name="nome" required /></label>
+          <label class="span-2">E-mail de acesso<input type="email" id="employeeEmail" name="email" required /></label>
+          <label>Perfil<select id="employeeRole" name="role" required>
+            <option value="funcionario">Funcionário</option>
+            <option value="operador">Operador</option>
+            <option value="admin">Administrador</option>
+          </select></label>
+          <label>Senha<input type="password" id="employeePassword" name="senha" minlength="6" required /></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="employeeModal">Cancelar</button>
+            <button type="submit" class="primary-btn">Salvar acesso</button>
           </div>
         </form>
       </div>

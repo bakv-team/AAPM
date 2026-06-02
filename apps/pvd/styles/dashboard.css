@@ -1050,6 +1050,11 @@ textarea {
   font-size: 14px;
 }
 
+.employee-thumb {
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
 .prod-name strong {
   display: block;
   font-size: 14px;

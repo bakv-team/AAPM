@@ -993,6 +993,101 @@ window.CategoriesPage = (function () {
 
 
 
+window.EmployeesPage = (function () {
+  function rows() {
+    return Array.from(document.querySelectorAll("[data-employee-row]"));
+  }
+
+  function render() {
+    const q = (document.getElementById("employeeSearch")?.value || "").trim().toLowerCase();
+    const role = document.getElementById("employeeRoleFilter")?.value || "";
+    const active = document.getElementById("employeeStatusFilter")?.value || "";
+    let visible = 0;
+
+    rows().forEach(row => {
+      const matches =
+        (!q || row.dataset.name.includes(q) || row.dataset.email.includes(q)) &&
+        (!role || row.dataset.role === role) &&
+        (!active || row.dataset.active === active);
+
+      row.style.display = matches ? "" : "none";
+      if (matches) visible += 1;
+    });
+
+    const count = document.getElementById("employeesCount");
+    if (count) count.textContent = `${visible} funcionário${visible === 1 ? "" : "s"}`;
+
+    const empty = document.getElementById("employeesEmptyRow");
+    if (empty) empty.style.display = rows().length && visible === 0 ? "" : "none";
+  }
+
+  function openForm(employee = null) {
+    const form = document.getElementById("employeeForm");
+    const password = document.getElementById("employeePassword");
+    if (!form || !password) return;
+
+    form.reset();
+    if (employee) {
+      form.action = `/usuarios/${employee.id}/editar`;
+      document.getElementById("employeeModalTitle").textContent = "Editar funcionário";
+      document.getElementById("employeeName").value = employee.name || "";
+      document.getElementById("employeeEmail").value = employee.email || "";
+      document.getElementById("employeeRole").value = employee.role || "funcionario";
+      password.required = false;
+      password.placeholder = "Deixe em branco para manter";
+    } else {
+      form.action = "/usuarios/novo";
+      document.getElementById("employeeModalTitle").textContent = "Novo funcionário";
+      document.getElementById("employeeRole").value = "funcionario";
+      password.required = true;
+      password.placeholder = "";
+    }
+    UI.openModal("employeeModal");
+  }
+
+  function init() {
+    if (!document.getElementById("page-funcionarios")) return;
+
+    ["employeeSearch", "employeeRoleFilter", "employeeStatusFilter"].forEach(id => {
+      document.getElementById(id)?.addEventListener("input", render);
+      document.getElementById(id)?.addEventListener("change", render);
+    });
+
+    document.getElementById("newEmployeeBtn")?.addEventListener("click", () => openForm());
+
+    document.querySelectorAll("[data-edit-employee]").forEach(button => {
+      button.addEventListener("click", () => openForm({
+        id: button.dataset.id,
+        name: button.dataset.name,
+        email: button.dataset.email,
+        role: button.dataset.role
+      }));
+    });
+
+    document.querySelectorAll("[data-employee-confirm]").forEach(form => {
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const ok = await UI.confirmDialog({
+          title: "Alterar acesso",
+          text: form.dataset.employeeConfirm,
+          okLabel: "Confirmar"
+        });
+        if (ok) form.submit();
+      });
+    });
+
+    document.getElementById("employeeModal")?.addEventListener("click", event => {
+      if (event.target.id === "employeeModal") UI.closeModal("employeeModal");
+    });
+
+    render();
+  }
+
+  return { init, render };
+})();
+
+
+
 window.StockPage = (function () {
   function render() {
     const body = document.getElementById("stockBody");
@@ -1190,6 +1285,7 @@ window.Dashboard = (function () {
     grafico:       { title: "Painel Gráfico",        sub: "Indicadores e gráficos em tempo real." },
     pedidos:       { title: "Pedidos",               sub: "Acompanhe transações e status." },
     clientes:      { title: "Clientes",              sub: "Base de clientes e histórico de compras." },
+    funcionarios:  { title: "Funcionários",          sub: "Cadastre acessos e acompanhe permissões da equipe." },
     categorias:    { title: "Categorias",            sub: "Organize seus produtos por categoria." },
     estoque:       { title: "Estoque",               sub: "Controle de SKUs, mínimos e reposições." },
     relatorios:    { title: "Relatórios",            sub: "Exportações e análises detalhadas." },
@@ -1216,6 +1312,7 @@ window.Dashboard = (function () {
     if (route === "admin")      window.ProductsPage.render();
     if (route === "pedidos")    window.OrdersPage.render();
     if (route === "clientes")   window.CustomersPage.render();
+    if (route === "funcionarios" && window.EmployeesPage) window.EmployeesPage.render();
     if (route === "categorias") window.CategoriesPage.render();
     if (route === "estoque")    window.StockPage.render();
 
@@ -1342,6 +1439,7 @@ window.Dashboard = (function () {
     window.ProductsPage.init();
     window.OrdersPage.init();
     window.CustomersPage.init();
+    window.EmployeesPage.init();
     window.CategoriesPage.init();
     window.StockPage.init();
     renderNotifications();

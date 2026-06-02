@@ -156,23 +156,13 @@ const form =
 document.getElementById("loginForm");
 
 form.addEventListener("submit",(e)=>{
-
-  e.preventDefault();
-
   const btn =
   document.querySelector(".login-btn");
 
+  btn.disabled = true;
   btn.innerHTML = `
     <span>Entrando...</span>
   `;
-
-  setTimeout(()=>{
-
-    btn.innerHTML = `
-      <span>Sucesso</span>
-    `;
-
-  },1400);
 
 });
 

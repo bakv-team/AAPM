@@ -11,12 +11,15 @@ from database.controllers import movimentacao_controller
 
 
 
-from database.auth import get_usuario_opcional
+from database.auth import get_usuario_logado, get_usuario_opcional
 
 app = FastAPI(title="AAPM")
 
 #Configura para renderizar os templates HTML
 templates = Jinja2Templates(directory="database/templates")
+dashboard_templates = Jinja2Templates(directory="apps/pvd/views")
+
+app.mount("/apps", StaticFiles(directory="apps"), name="apps")
 
 app.include_router(auth_controller.router)
 app.include_router(admin_controller.router)
@@ -35,10 +38,19 @@ def tela_home(
     if usuario is None:
         return templates.TemplateResponse(
             request,
-            "index.html",
+            "login.html",
             {"request": request})
     
-    return templates.TemplateResponse(
+    return RedirectResponse(url="/dashboard", status_code=302)
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def tela_dashboard(
+    request: Request,
+    usuario = Depends(get_usuario_logado)
+):
+    return dashboard_templates.TemplateResponse(
         request,
-        "home.html",
-        {"request": request, "usuario": usuario})
+        "dashboard.html",
+        {"request": request, "usuario": usuario}
+    )

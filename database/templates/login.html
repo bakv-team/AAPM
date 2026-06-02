@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - AAPM</title>
 
-    <link rel="stylesheet" href="../styles/login.css">
-    <link rel="icon" type="image/png" href="../assets/icones/logosemtexto.png?v=1">
+    <link rel="stylesheet" href="/apps/pvd/styles/login.css">
+    <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://googleapis.com">
@@ -44,7 +44,7 @@
             <div class="brand">
 
                 <div class="logo-box">
-                    <img src="../assets/icones/logosemtexto.png" alt="Logo">
+                    <img src="/apps/pvd/assets/icones/logosemtexto.png" alt="Logo">
                 </div>
 
                 <div>
@@ -112,13 +112,13 @@
 
                 </div>
 
-                <form action="/auth/login" id="loginForm">
+                <form action="/auth/" method="post" id="loginForm">
 
                     <div class="input-box">
 
                         <i data-lucide="user"></i>
 
-                        <input type="text" placeholder="Usuário" required>
+                        <input type="email" name="email" placeholder="E-mail" required>
 
                     </div>
 
@@ -126,7 +126,7 @@
 
                         <i data-lucide="lock"></i>
 
-                        <input type="password" placeholder="Senha" required>
+                        <input type="password" name="senha" placeholder="Senha" required>
 
                     </div>
 
@@ -153,9 +153,6 @@
                         <p style="color: red;">{{ erro }}</p>
                     {% endif %} 
                 </form>
-                <div class="signup-link">
-                    <p>Não tem uma conta? <a href="/auth/cadastro">Cadastrar-se</a></p>
-                </div>
                 <div class="security">
 
                     <div class="dot"></div>
@@ -172,7 +169,7 @@
 
     </main>
 
-    <script src="../scripts/login.js"></script>
+    <script src="/apps/pvd/scripts/login.js"></script>
 
     <script>
         lucide.createIcons();

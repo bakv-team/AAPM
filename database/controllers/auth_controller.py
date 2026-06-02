@@ -14,14 +14,16 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 templates = Jinja2Templates(directory="database/templates")
 
 # Tela Login
+@router.get("/")
 @router.get("/login")
 def tela_login(request: Request):
     return templates.TemplateResponse(
         request,
-        "auth/login.html",
+        "login.html",
         {"request": request}
     )
 
+@router.post("/")
 @router.post("/login")
 def login(
     request: Request,
@@ -56,7 +58,7 @@ def login(
     if not senha_correta:
         return templates.TemplateResponse(
             request,
-            "auth/login",
+            "login.html",
             {
                 "request": request,
                 "erro": "E-mail ou senha incorretos." # Padronizado para 'erro'
@@ -68,7 +70,7 @@ def login(
     if not usuario.ativo:
         return templates.TemplateResponse(
             request,
-            "auth/login.html", # Adicionado o caminho do template que faltava
+            "login.html", # Adicionado o caminho do template que faltava
             {
                 "request": request,
                 "erro": "Usuário inativo. Contate o administrador."
@@ -88,7 +90,7 @@ def login(
     token = criar_token(token_data)
 
     # Cria a resposta de redirecionamento
-    response = RedirectResponse(url="/", status_code=302)
+    response = RedirectResponse(url="/dashboard", status_code=302)
 
     # Define o cookie com o token JWT
     response.set_cookie(
@@ -105,6 +107,6 @@ def login(
 #Rota para sair
 @router.get("/logout")
 def sair():
-    response = RedirectResponse(url="/auth/login", status_code=302)
+    response = RedirectResponse(url="/", status_code=302)
     response.delete_cookie("access_token")
     return response

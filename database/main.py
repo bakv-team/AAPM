@@ -63,9 +63,12 @@ def tela_home(
 @app.get("/dashboard", response_class=HTMLResponse)
 def tela_dashboard(
     request: Request,
-    usuario = Depends(get_usuario_logado),
+    usuario = Depends(get_usuario_opcional),
     db: Session = Depends(get_db)
 ):
+    if usuario is None:
+        return RedirectResponse(url="/auth/login", status_code=302)
+
     if usuario.get("role") != "admin":
         return RedirectResponse(url="/pdv", status_code=302)
 
@@ -86,8 +89,11 @@ def tela_dashboard(
 @app.get("/pdv", response_class=HTMLResponse)
 def tela_pdv(
     request: Request,
-    usuario = Depends(get_usuario_logado),
+    usuario = Depends(get_usuario_opcional),
 ):
+    if usuario is None:
+        return RedirectResponse(url="/auth/login", status_code=302)
+
     return dashboard_templates.TemplateResponse(
         request,
         "vendas.html",

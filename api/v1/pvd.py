@@ -1,10 +1,14 @@
 from datetime import date, datetime, time, timedelta
 import csv
 import io
+import os
+import smtplib
+from email.message import EmailMessage
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -96,24 +100,65 @@ def _produto_json(produto: Produto) -> dict:
     }
 
 
+def _usuario_id_atual(usuario: dict, db: Session) -> int | None:
+    usuario_id = usuario.get("id")
+    if usuario_id:
+        return usuario_id
+
+    email = usuario.get("sub")
+    if not email:
+        return None
+
+    usuario_db = db.query(Usuario).filter(Usuario.email == email).first()
+    return usuario_db.id if usuario_db else None
+
+
+def _movimentacao_json(movimento: Movimentacao) -> dict:
+    tipo = movimento.tipo.value if hasattr(movimento.tipo, "value") else str(movimento.tipo)
+    is_entrada = tipo == Tipo_movimentacao.ENTRADA.value
+    preco = movimento.preco_unitario or 0
+    quantidade = movimento.quantidade or 0
+    criado_em = movimento.criado_em or getattr(movimento, "data", None)
+
+    return {
+        "id": str(movimento.id),
+        "type": "entrada" if is_entrada else "saida",
+        "typeLabel": "Entrada" if is_entrada else "Saída",
+        "quantity": quantidade,
+        "unitPrice": preco,
+        "total": quantidade * preco,
+        "note": movimento.observacao or "",
+        "createdAt": criado_em.isoformat() if criado_em else None,
+        "productId": str(movimento.produto_id),
+        "productName": movimento.produto.nome if movimento.produto else "Produto removido",
+        "userId": str(movimento.usuario_id),
+        "userName": movimento.usuario.nome if movimento.usuario else "Usuario",
+    }
+
+
 def _venda_json(venda: Venda) -> dict:
     observacao = venda.observacao or ""
     pagamento = _extrair_pagamento(observacao)
+    if pagamento == "nao informado" and getattr(venda, "metodo_pagamento", None):
+        pagamento = venda.metodo_pagamento
     cliente_nome = venda.cliente.nome if venda.cliente else _extrair_cliente(observacao)
+    total_bruto = venda.total_bruto or getattr(venda, "valor_total", 0) or 0
+    total_liquido = venda.total_liquido or getattr(venda, "valor_final", 0) or 0
+    criado_em = venda.criado_em or getattr(venda, "data", None)
     return {
         "id": venda.id,
         "number": f"#{venda.id:04d}",
-        "total_bruto": venda.total_bruto,
-        "total_liquido": venda.total_liquido,
-        "subtotal": venda.total_bruto,
-        "total": venda.total_liquido,
+        "total_bruto": total_bruto,
+        "total_liquido": total_liquido,
+        "subtotal": total_bruto,
+        "total": total_liquido,
         "desconto_percentual": venda.desconto_percentual,
         "desconto_valor": venda.desconto_valor,
         "customerName": cliente_nome,
         "payment": pagamento,
         "status": "concluido",
         "observacao": venda.observacao or "",
-        "createdAt": venda.criado_em.isoformat() if venda.criado_em else None,
+        "createdAt": criado_em.isoformat() if criado_em else None,
         "items": [
             {
                 "produto_id": item.produto_id,
@@ -162,6 +207,48 @@ def _cliente_json(cliente: Cliente) -> dict:
         "totalSpent": total_gasto,
         "lastOrder": ultima.strftime("%d/%m/%Y") if ultima else "-",
     }
+
+
+def _smtp_config() -> dict:
+    senha = os.getenv("SMTP_PASSWORD") or ""
+    return {
+        "host": os.getenv("SMTP_HOST"),
+        "port": int(os.getenv("SMTP_PORT", "587")),
+        "user": os.getenv("SMTP_USER"),
+        "password": "".join(senha.split()),
+        "from": os.getenv("SMTP_FROM") or os.getenv("SMTP_USER"),
+        "to": os.getenv("SUPPORT_EMAIL") or os.getenv("SMTP_FROM") or os.getenv("SMTP_USER"),
+        "tls": os.getenv("SMTP_TLS", "true").strip().lower() != "false",
+        "ssl": os.getenv("SMTP_SSL", "false").strip().lower() == "true",
+    }
+
+
+def _enviar_email_suporte(usuario: dict, assunto: str, mensagem: str):
+    config = _smtp_config()
+    if not config["host"] or not config["from"] or not config["to"]:
+        print(f"[SUPORTE] {usuario.get('sub')} - {assunto}: {mensagem}")
+        return
+
+    email = EmailMessage()
+    email["Subject"] = f"Suporte AAPM - {assunto.strip() or 'Solicitacao'}"
+    email["From"] = config["from"]
+    email["To"] = config["to"]
+    email.set_content(
+        "Nova solicitacao de suporte registrada no sistema AAPM.\n\n"
+        f"Usuario: {usuario.get('nome') or '-'}\n"
+        f"E-mail: {usuario.get('sub') or '-'}\n"
+        f"Perfil: {usuario.get('role') or '-'}\n"
+        f"Assunto: {assunto.strip() or 'Suporte'}\n\n"
+        f"Mensagem:\n{mensagem.strip()}\n"
+    )
+
+    smtp_client = smtplib.SMTP_SSL if config["ssl"] or config["port"] == 465 else smtplib.SMTP
+    with smtp_client(config["host"], config["port"], timeout=15, local_hostname="localhost") as smtp:
+        if config["tls"] and config["port"] != 465:
+            smtp.starttls()
+        if config["user"] and config["password"]:
+            smtp.login(config["user"], config["password"])
+        smtp.send_message(email)
 
 
 def _inicio_do_dia(dia: date) -> datetime:
@@ -278,6 +365,36 @@ def remover_categoria_api(
     return {"ok": True}
 
 
+@router.get("/stock/movements")
+def listar_movimentacoes_estoque_api(
+    produto_id: int | None = Query(default=None),
+    tipo: str = "",
+    limit: int = Query(default=80, ge=1, le=200),
+    db: Session = Depends(get_db),
+    admin=Depends(get_admin),
+):
+    query = db.query(Movimentacao).order_by(Movimentacao.criado_em.desc(), Movimentacao.id.desc())
+
+    if produto_id:
+        query = query.filter(Movimentacao.produto_id == produto_id)
+
+    tipo_normalizado = (tipo or "").strip().lower()
+    if tipo_normalizado:
+        mapa_tipo = {
+            "entrada": Tipo_movimentacao.ENTRADA,
+            "adicionar": Tipo_movimentacao.ENTRADA,
+            "saida": Tipo_movimentacao.SAIDA,
+            "retirar": Tipo_movimentacao.SAIDA,
+        }
+        tipo_enum = mapa_tipo.get(tipo_normalizado)
+        if not tipo_enum:
+            raise HTTPException(status_code=400, detail="Tipo de movimentacao invalido.")
+        query = query.filter(Movimentacao.tipo == tipo_enum)
+
+    movimentos = query.limit(limit).all()
+    return [_movimentacao_json(movimento) for movimento in movimentos]
+
+
 @router.get("/products")
 def listar_produtos_api(
     q: str = "",
@@ -326,6 +443,14 @@ def criar_venda_api(
     db: Session = Depends(get_db),
     usuario=Depends(get_usuario_logado),
 ):
+    usuario_id = usuario.get("id")
+    if not usuario_id and usuario.get("sub"):
+        usuario_db = db.query(Usuario).filter(Usuario.email == usuario.get("sub"), Usuario.ativo == True).first()
+        usuario_id = usuario_db.id if usuario_db else None
+
+    if not usuario_id:
+        raise HTTPException(status_code=401, detail="Sessao invalida. Faca login novamente para registrar a venda.")
+
     if not payload.itens:
         raise HTTPException(status_code=400, detail="Adicione produtos ao carrinho.")
 
@@ -358,64 +483,90 @@ def criar_venda_api(
                 detail=f"Estoque insuficiente para {produto.nome}. Mantenha ao menos 5 unidades.",
             )
 
-    desconto_percentual = 10.0 if payload.associado else 0.0
-    total_bruto = sum(produtos_por_id[id].preco * qtd for id, qtd in quantidades.items())
-    total_liquido = total_bruto * (1 - desconto_percentual / 100)
-
-    cliente_nome = (payload.cliente_nome or payload.customerName or "").strip()
-    cliente = None
-    if cliente_nome and cliente_nome.lower() not in ("cliente balcao", "cliente balcão"):
-        cliente = db.query(Cliente).filter(Cliente.nome.ilike(cliente_nome)).first()
-        if not cliente:
-            cliente = Cliente(
-                nome=cliente_nome,
-                is_associado=payload.associado,
-                ativo=True,
+    try:
+        cliente_nome = (payload.cliente_nome or payload.customerName or "").strip()
+        cliente = None
+        if cliente_nome and cliente_nome.lower() not in ("cliente balcao", "cliente balcão"):
+            like_cliente = f"%{cliente_nome}%"
+            cliente = (
+                db.query(Cliente)
+                .filter(
+                    Cliente.ativo == True,
+                    or_(
+                        Cliente.nome.ilike(cliente_nome),
+                        Cliente.matricula.ilike(cliente_nome),
+                        Cliente.telefone.ilike(cliente_nome),
+                        Cliente.nome.ilike(like_cliente),
+                        Cliente.matricula.ilike(like_cliente),
+                        Cliente.telefone.ilike(like_cliente),
+                    ),
+                )
+                .order_by(Cliente.is_associado.desc(), Cliente.nome)
+                .first()
             )
-            db.add(cliente)
-            db.flush()
+            if not cliente:
+                cliente = Cliente(
+                    nome=cliente_nome,
+                    is_associado=False,
+                    ativo=True,
+                )
+                db.add(cliente)
+                db.flush()
 
-    observacoes = [f"Pagamento: {pagamento}."]
-    if cliente_nome:
-        observacoes.append(f"Cliente: {cliente_nome}.")
-    if payload.observacao:
-        obs_limpa = payload.observacao.strip()
-        if obs_limpa and not obs_limpa.lower().startswith("cliente:"):
-            observacoes.append(obs_limpa)
+        associado_confirmado = bool(cliente and cliente.is_associado)
+        desconto_percentual = 10.0 if associado_confirmado else 0.0
+        total_bruto = sum(produtos_por_id[id].preco * qtd for id, qtd in quantidades.items())
+        total_liquido = total_bruto * (1 - desconto_percentual / 100)
 
-    venda = Venda(
-        cliente_id=cliente.id if cliente else None,
-        usuario_id=usuario.get("id"),
-        desconto_percentual=desconto_percentual,
-        total_bruto=total_bruto,
-        total_liquido=total_liquido,
-        observacao=" ".join(observacoes).strip(),
-    )
-    db.add(venda)
-    db.flush()
+        observacoes = [f"Pagamento: {pagamento}."]
+        if cliente_nome:
+            observacoes.append(f"Cliente: {cliente_nome}.")
+        if payload.observacao:
+            obs_limpa = payload.observacao.strip()
+            if obs_limpa and not obs_limpa.lower().startswith("cliente:"):
+                observacoes.append(obs_limpa)
 
-    for produto_id, quantidade in quantidades.items():
-        produto = produtos_por_id[produto_id]
-        produto.estoque_atual -= quantidade
+        venda = Venda(
+            cliente_id=cliente.id if cliente else None,
+            usuario_id=usuario_id,
+            metodo_pagamento=pagamento,
+            desconto=total_bruto - total_liquido,
+            valor_total=total_bruto,
+            valor_final=total_liquido,
+            desconto_percentual=desconto_percentual,
+            total_bruto=total_bruto,
+            total_liquido=total_liquido,
+            observacao=" ".join(observacoes).strip(),
+        )
+        db.add(venda)
+        db.flush()
 
-        db.add(ItemVenda(
-            venda_id=venda.id,
-            produto_id=produto.id,
-            produto_nome=produto.nome,
-            quantidade=quantidade,
-            preco_unitario=produto.preco,
-        ))
-        db.add(Movimentacao(
-            tipo=Tipo_movimentacao.SAIDA,
-            quantidade=quantidade,
-            preco_unitario=produto.preco,
-            observacao=f"Venda #{venda.id:04d}",
-            produto_id=produto.id,
-            usuario_id=usuario.get("id"),
-        ))
+        for produto_id, quantidade in quantidades.items():
+            produto = produtos_por_id[produto_id]
+            produto.estoque_atual -= quantidade
 
-    db.commit()
-    db.refresh(venda)
+            db.add(ItemVenda(
+                venda_id=venda.id,
+                produto_id=produto.id,
+                produto_nome=produto.nome,
+                quantidade=quantidade,
+                preco_unitario=produto.preco,
+            ))
+            db.add(Movimentacao(
+                tipo=Tipo_movimentacao.SAIDA,
+                quantidade=quantidade,
+                preco_unitario=produto.preco,
+                observacao=f"Venda #{venda.id:04d}",
+                produto_id=produto.id,
+                usuario_id=usuario_id,
+            ))
+
+        db.commit()
+        db.refresh(venda)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        print(f"[PDV] Falha ao registrar venda: {exc}")
+        raise HTTPException(status_code=500, detail="Nao foi possivel salvar a venda no banco.")
 
     return _venda_json(venda)
 
@@ -436,6 +587,39 @@ def listar_clientes_api(
     return [_cliente_json(cliente) for cliente in clientes]
 
 
+@router.get("/associates/lookup")
+def consultar_associado_api(
+    q: str = Query("", max_length=100),
+    db: Session = Depends(get_db),
+    usuario=Depends(get_usuario_logado),
+):
+    termo = q.strip()
+    if not termo:
+        return {"found": False, "isAssociado": False, "message": "Informe o nome ou matricula."}
+
+    like = f"%{termo}%"
+    associado = (
+        db.query(Cliente)
+        .filter(
+            Cliente.ativo == True,
+            or_(Cliente.nome.ilike(like), Cliente.matricula.ilike(like), Cliente.telefone.ilike(like)),
+        )
+        .order_by(Cliente.is_associado.desc(), Cliente.nome)
+        .first()
+    )
+
+    if not associado:
+        return {"found": False, "isAssociado": False, "message": "Associado nao encontrado."}
+
+    data = _cliente_json(associado)
+    data.update({
+        "found": True,
+        "isAssociado": associado.is_associado,
+        "message": "Associado confirmado." if associado.is_associado else "Cadastro encontrado, mas sem beneficio de associado.",
+    })
+    return data
+
+
 @router.post("/customers", status_code=status.HTTP_201_CREATED)
 def criar_cliente_api(
     payload: ClientePayload,
@@ -449,6 +633,11 @@ def criar_cliente_api(
     matricula = (payload.matricula or payload.email or "").strip() or None
     existente = db.query(Cliente).filter(Cliente.nome.ilike(nome), Cliente.ativo == True).first()
     if existente:
+        existente.matricula = matricula or existente.matricula
+        existente.telefone = (payload.telefone or "").strip() or existente.telefone
+        existente.is_associado = payload.is_associado
+        db.commit()
+        db.refresh(existente)
         return _cliente_json(existente)
 
     cliente = Cliente(
@@ -731,9 +920,14 @@ def suporte_api(
 ):
     if not (payload.mensagem or "").strip():
         raise HTTPException(status_code=400, detail="Descreva a solicitacao de suporte.")
+    try:
+        _enviar_email_suporte(usuario, payload.assunto or "Suporte", payload.mensagem)
+    except Exception as exc:
+        print(f"[SUPORTE] Falha ao enviar solicitacao de suporte: {exc}")
+        raise HTTPException(status_code=502, detail="Nao foi possivel enviar a solicitacao de suporte.")
     return {
         "ok": True,
-        "message": "Solicitacao registrada. A equipe administradora pode acompanhar pelo e-mail cadastrado.",
+        "message": "Solicitacao enviada para a equipe de suporte.",
     }
 
 
@@ -863,7 +1057,19 @@ def adicionar_estoque_api(
     if novo_estoque < 5:
         raise HTTPException(status_code=400, detail="O estoque nao pode ser menor que 5.")
 
+    usuario_id = _usuario_id_atual(admin, db)
+    if not usuario_id:
+        raise HTTPException(status_code=401, detail="Usuario nao identificado.")
+
     produto.estoque_atual = novo_estoque
+    db.add(Movimentacao(
+        tipo=Tipo_movimentacao.ENTRADA,
+        quantidade=payload.quantidade,
+        preco_unitario=produto.preco,
+        observacao="Reposicao manual de estoque",
+        produto_id=produto.id,
+        usuario_id=usuario_id,
+    ))
     db.commit()
     db.refresh(produto)
 

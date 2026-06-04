@@ -26,6 +26,13 @@ class Venda(Base):
     # Guardamos o valor histórico para não depender do cadastro do cliente
     desconto_percentual = Column(Float, nullable=False, default=0.0)
 
+    # Campos legados ainda presentes no banco SQLite atual.
+    metodo_pagamento = Column(String(150), nullable=False, default="nao informado")
+    desconto = Column(Float, nullable=True, default=0.0)
+    valor_total = Column(Float, nullable=False, default=0.0)
+    valor_final = Column(Float, nullable=False, default=0.0)
+    data = Column(DateTime, server_default=func.now())
+
     # Valores calculados e persistidos para histórico imutável
     # (mesmo que o preço do produto mude, a venda permanece correta)
     total_bruto  = Column(Float, nullable=False, default=0.0)

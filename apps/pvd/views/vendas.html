@@ -12,7 +12,7 @@
             }
         } catch (error) {}
     </script>
-    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=fixed-bg-scroll-20260604-1">
+    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=checkout-return-20260604-2">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 
-<body>
+<body data-user-role="{{ usuario.role }}">
     <div class="app-shell" id="pdvShell">
         <canvas id="particles"></canvas>
 
@@ -139,7 +139,8 @@
 
                 <aside class="cart">
                     <h2 class="cart-title">
-                        Carrinho
+                        <span>Carrinho</span>
+                        <small id="cartItemCount">0 itens</small>
                         <i class="fa-solid fa-cart-shopping cart-icon"></i>
                     </h2>
 
@@ -149,13 +150,14 @@
                         <label for="customerNameInput">Cliente</label>
                         <div class="cart-customer-field">
                             <i class="fa-solid fa-user"></i>
-                            <input type="text" id="customerNameInput" placeholder="Nome do cliente" autocomplete="name">
+                            <input type="text" id="customerNameInput" placeholder="Nome do cliente para registrar no pedido" autocomplete="name">
                         </div>
+                        <p class="associate-status" id="associateStatus">Se o cliente for associado, o desconto será aplicado automaticamente.</p>
                     </div>
 
-                    <button type="button" id="btnToggleAssociado" class="cart-associate">
+                    <button type="button" id="btnToggleAssociado" class="cart-associate" disabled>
                         <i class="fa-regular fa-circle"></i>
-                        <span>Associado AAPM (10%)</span>
+                        <span>Sem desconto de associado</span>
                     </button>
 
                     <div class="payment-box">
@@ -168,23 +170,120 @@
                         </div>
                     </div>
 
-                    <div class="cart-total">
-                        <span class="total-label">Total Geral: <strong id="cartTotal">R$ 0,00</strong></span>
-                        <span class="total-discount" id="cartDiscount">-R$ 0,00</span>
+                    <div class="cart-summary">
+                        <div class="summary-row">
+                            <span>Subtotal</span>
+                            <strong id="cartSubtotal">R$ 0,00</strong>
+                        </div>
+                        <div class="summary-row discount">
+                            <span>Desconto associado</span>
+                            <strong id="cartDiscount">-R$ 0,00</strong>
+                        </div>
+                        <div class="summary-row total">
+                            <span>Total</span>
+                            <strong id="cartTotal">R$ 0,00</strong>
+                        </div>
                     </div>
 
                     <button type="button" id="btnFecharPedido" class="btn-close-order">
-                        <i class="fa-solid fa-file-invoice-dollar"></i> Fechar Pedido
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                        <span>Fechar Pedido</span>
                     </button>
                 </aside>
             </div>
         </main>
     </div>
 
+    <section class="checkout-screen hidden" id="checkoutScreen" aria-live="polite">
+        <div class="checkout-shell">
+            <header class="checkout-header">
+                <div>
+                    <span class="checkout-eyebrow">Revisão da compra</span>
+                    <h1>Conferir pedido</h1>
+                    <p>Confira os itens, pagamento e descontos antes de registrar a venda.</p>
+                </div>
+                <button type="button" class="icon-btn checkout-close" id="checkoutBackBtn" aria-label="Voltar para o ponto de venda">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+
+            <div class="checkout-grid">
+                <article class="checkout-card checkout-items-card">
+                    <div class="checkout-card-head">
+                        <div>
+                            <h2>Itens da compra</h2>
+                            <p id="checkoutItemsCount">0 itens</p>
+                        </div>
+                        <button type="button" class="checkout-note-btn" id="checkoutPrintBtn">
+                            <i class="fa-solid fa-print"></i>
+                            <span>Emitir nota</span>
+                        </button>
+                    </div>
+                    <div class="checkout-items" id="checkoutItems"></div>
+                </article>
+
+                <aside class="checkout-card checkout-summary-card">
+                    <h2>Resumo</h2>
+                    <dl class="checkout-info">
+                        <div><dt>Cliente</dt><dd id="checkoutCustomer">Cliente balcão</dd></div>
+                        <div><dt>Associado</dt><dd id="checkoutAssociate">Não</dd></div>
+                        <div><dt>Pagamento</dt><dd id="checkoutPayment">Pix</dd></div>
+                        <div><dt>Operador</dt><dd>{{ usuario.nome or usuario.sub }}</dd></div>
+                    </dl>
+                    <div class="checkout-totals">
+                        <div><span>Subtotal</span><strong id="checkoutSubtotal">R$ 0,00</strong></div>
+                        <div><span>Desconto</span><strong id="checkoutDiscount">-R$ 0,00</strong></div>
+                        <div class="checkout-total"><span>Total</span><strong id="checkoutTotal">R$ 0,00</strong></div>
+                    </div>
+                    <div class="checkout-actions">
+                        <button type="button" class="checkout-secondary" id="checkoutCancelBtn">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Cancelar</span>
+                        </button>
+                        <button type="button" class="checkout-primary" id="checkoutConfirmBtn">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>Confirmar compra</span>
+                        </button>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <div class="confirm-modal hidden" id="confirmPurchaseModal" role="dialog" aria-modal="true" aria-labelledby="confirmPurchaseTitle">
+        <div class="confirm-panel">
+            <div class="confirm-icon"><i class="fa-solid fa-check"></i></div>
+            <h2 id="confirmPurchaseTitle">Confirmar esta compra?</h2>
+            <p>Depois de confirmar, a venda será salva no banco, o estoque será movimentado e o pedido aparecerá no dashboard.</p>
+            <div class="confirm-actions">
+                <button type="button" class="checkout-secondary" id="confirmPurchaseNo">Voltar</button>
+                <button type="button" class="checkout-primary" id="confirmPurchaseYes">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Sim, finalizar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <section class="checkout-success hidden" id="checkoutSuccess" aria-live="polite">
+        <div class="success-panel">
+            <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+            <span class="checkout-eyebrow">Compra finalizada</span>
+            <h1 id="successOrderNumber">Pedido registrado</h1>
+            <p id="successOrderSummary">A venda foi salva com sucesso.</p>
+            <div class="success-actions">
+                <a href="/pdv" class="checkout-primary"><i class="fa-solid fa-cash-register"></i><span>Voltar ao PDV</span></a>
+                {% if usuario.role == "admin" %}
+                <a href="/dashboard" class="checkout-secondary"><i class="fa-solid fa-gauge-high"></i><span>Ir para o dashboard</span></a>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
     <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
     <div class="background-image"></div>
 
-    <script src="/apps/pvd/scripts/base.js?v=functional-pdv-20260604-1"></script>
+    <script src="/apps/pvd/scripts/base.js?v=checkout-return-20260604-2"></script>
 </body>
 
 </html>

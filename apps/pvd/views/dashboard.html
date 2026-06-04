@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=fixed-bg-scroll-20260604-1" />
+    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=stock-movements-20260604-1" />
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
   </head>
   <body>
@@ -51,7 +51,7 @@
 
           <p class="nav-label">Operacional</p>
           <button class="nav-item" data-route="pedidos"><i class="fa-solid fa-receipt"></i><span>Pedidos</span><span class="badge-soft" id="navOrdersBadge">0</span></button>
-          <button class="nav-item" data-route="clientes"><i class="fa-solid fa-users"></i><span>Clientes</span></button>
+          <button class="nav-item" data-route="clientes"><i class="fa-solid fa-id-card"></i><span>Associados</span></button>
           {% if usuario.role == 'admin' %}
           <button class="nav-item" data-route="funcionarios"><i class="fa-solid fa-user-shield"></i><span>Funcionários</span></button>
           {% endif %}
@@ -89,7 +89,7 @@
           <div class="topbar-actions">
             <div class="search-wrap">
               <i class="fa-solid fa-magnifying-glass"></i>
-              <input type="text" id="globalSearch" placeholder="Buscar produtos, pedidos, clientes..." />
+              <input type="text" id="globalSearch" placeholder="Buscar produtos, pedidos, associados..." />
               <kbd>⌘K</kbd>
             </div>
             <button class="icon-btn" id="themeToggle" aria-label="Alternar tema"><i class="fa-solid fa-moon"></i></button>
@@ -153,7 +153,7 @@
               <div class="card-head"><div><h3>Pedidos recentes</h3><p class="muted">Últimas transações no PDV</p></div><button class="ghost-btn" data-route-link="pedidos">Ver pedidos</button></div>
               <div class="table-wrap small">
                 <table class="data-table">
-                  <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Status</th></tr></thead>
+                  <thead><tr><th>#</th><th>Associado/Cliente</th><th>Total</th><th>Status</th></tr></thead>
                   <tbody id="recentOrdersBody"></tbody>
                 </table>
               </div>
@@ -213,21 +213,21 @@
         <section class="page" id="page-pedidos">
           <div class="toolbar glass">
             <div class="toolbar-left">
-              <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="orderSearch" placeholder="Buscar pedido ou cliente..." /></div>
+              <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="orderSearch" placeholder="Buscar pedido ou associado..." /></div>
               <select id="orderStatusFilter" class="select"><option value="">Todos status</option><option value="concluido">Concluído</option><option value="pendente">Pendente</option><option value="cancelado">Cancelado</option></select>
             </div>
-            <div class="toolbar-right"><button class="primary-btn" id="newOrderBtn"><i class="fa-solid fa-plus"></i> Novo pedido</button></div>
+            <div class="toolbar-right"><a class="primary-btn" href="/pdv"><i class="fa-solid fa-cash-register"></i> Abrir PDV</a></div>
           </div>
           <div class="card glass no-pad"><div class="table-wrap">
-            <table class="data-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Data</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="ordersBody"></tbody></table>
+            <table class="data-table"><thead><tr><th>Pedido</th><th>Associado/Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Data</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="ordersBody"></tbody></table>
           </div></div>
         </section>
 
-        <!-- ============================= PAGE: CLIENTES ============================= -->
+        <!-- ============================= PAGE: ASSOCIADOS ============================= -->
         <section class="page" id="page-clientes">
           <div class="toolbar glass">
-            <div class="toolbar-left"><div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="customerSearch" placeholder="Buscar cliente..." /></div></div>
-            <div class="toolbar-right"><button class="primary-btn" id="newCustomerBtn"><i class="fa-solid fa-user-plus"></i> Novo cliente</button></div>
+            <div class="toolbar-left"><div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="customerSearch" placeholder="Buscar associado por nome, matrícula ou telefone..." /></div></div>
+            <div class="toolbar-right"><button class="primary-btn" id="newCustomerBtn"><i class="fa-solid fa-user-plus"></i> Novo associado</button></div>
           </div>
           <div class="customer-grid" id="customersGrid"></div>
         </section>
@@ -329,6 +329,17 @@
           <div class="card glass no-pad"><div class="table-wrap">
             <table class="data-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Status</th><th class="right">Ação</th></tr></thead><tbody id="stockBody"></tbody></table>
           </div></div>
+          <div class="card glass no-pad">
+            <div class="card-head padded">
+              <div><h3>Histórico de movimentações</h3><p class="muted">Entradas por reposição e saídas geradas pelas vendas</p></div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Valor</th><th>Operador</th><th>Observação</th></tr></thead>
+                <tbody id="stockMovementsBody"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         <!-- ============================= PAGE: RELATÓRIOS ============================= -->
@@ -340,7 +351,7 @@
               <button class="report-card" data-report="daily"><i class="fa-solid fa-file-pdf"></i><span>Resumo Diário (PDF)</span></button>
               <button class="report-card" data-report="stock"><i class="fa-solid fa-file-lines"></i><span>Estoque atual</span></button>
               <button class="report-card" data-report="abc"><i class="fa-solid fa-chart-line"></i><span>Curva ABC</span></button>
-              <button class="report-card" data-report="customers"><i class="fa-solid fa-people-group"></i><span>Clientes ativos</span></button>
+              <button class="report-card" data-report="customers"><i class="fa-solid fa-people-group"></i><span>Associados ativos</span></button>
               <button class="report-card" data-report="categories"><i class="fa-solid fa-tags"></i><span>Por categoria</span></button>
             </div>
           </div>
@@ -466,11 +477,20 @@
           <h3>Meu perfil</h3>
           <button class="icon-btn ghost" data-close-modal="profileModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="form-grid">
-          <label>Nome <strong id="profileName">-</strong></label>
-          <label>E-mail <strong id="profileEmail">-</strong></label>
-          <label>Perfil <strong id="profileRole">-</strong></label>
-          <label>Status <strong id="profileStatus">-</strong></label>
+        <div class="profile-summary">
+          <div class="profile-avatar-lg" id="profileInitials">--</div>
+          <div>
+            <strong id="profileName">-</strong>
+            <span id="profileEmail">-</span>
+          </div>
+        </div>
+        <div class="profile-info-grid">
+          <div><span>Perfil</span><strong id="profileRole">-</strong></div>
+          <div><span>Status</span><strong id="profileStatus">-</strong></div>
+        </div>
+        <div class="modal-foot profile-actions">
+          <button type="button" class="ghost-btn" id="profileSecurityShortcut"><i class="fa-solid fa-lock"></i> Alterar senha</button>
+          <button type="button" class="primary-btn" id="profileSupportShortcut"><i class="fa-solid fa-life-ring"></i> Suporte</button>
         </div>
       </div>
     </div>
@@ -512,6 +532,25 @@
       </div>
     </div>
 
+    <div class="modal-backdrop hidden" id="associateModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3>Novo associado</h3>
+          <button class="icon-btn ghost" data-close-modal="associateModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="associateForm" class="form-grid">
+          <label class="span-2">Nome completo <input type="text" id="associateName" required autocomplete="name"></label>
+          <label>Matrícula <input type="text" id="associateRegistry" placeholder="Opcional"></label>
+          <label>Telefone <input type="tel" id="associatePhone" placeholder="Opcional"></label>
+          <label class="span-2 check-row"><input type="checkbox" id="associateActiveDiscount" checked> Associado AAPM com desconto ativo</label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="associateModal">Cancelar</button>
+            <button class="primary-btn" type="submit">Salvar associado</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- ====================== CONFIRM ====================== -->
     <div class="modal-backdrop hidden" id="confirmModal">
       <div class="modal glass small">
@@ -530,7 +569,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- App -->
-    <script src="/apps/pvd/scripts/dashboard.js?v=functional-dashboard-20260604-1"></script>
+    <script src="/apps/pvd/scripts/dashboard.js?v=stock-movements-20260604-1"></script>
   </body>
 </html>
 

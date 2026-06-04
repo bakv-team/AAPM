@@ -225,11 +225,19 @@ window.API = (function () {
   async function addProductStock(id, quantidade) {
     return apiPost(`/api/v1/pdv/products/${id}/stock`, { quantidade });
   }
+  async function getStockMovements(filters = {}) {
+    const qs = new URLSearchParams();
+    if (filters.productId) qs.set("produto_id", filters.productId);
+    if (filters.type) qs.set("tipo", filters.type);
+    if (filters.limit) qs.set("limit", filters.limit);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiGet(`/api/v1/pdv/stock/movements${suffix}`);
+  }
   async function deleteProduct(id) {
     return apiDelete(`/api/v1/pdv/products/${id}`);
   }
 
-  // ----- Clientes -----
+  // ----- Associados -----
   async function getCustomers(q = "") {
     const qs = q ? `?q=${encodeURIComponent(q)}` : "";
     return apiGet(`/api/v1/pdv/customers${qs}`);
@@ -285,7 +293,7 @@ window.API = (function () {
     BASE_URL,
     apiGet, apiPost, apiPut, apiDelete,
     getCategories, createCategory, updateCategory, deleteCategory,
-    getProducts, createProduct, updateProduct, addProductStock, deleteProduct,
+    getProducts, createProduct, updateProduct, addProductStock, getStockMovements, deleteProduct,
     getCustomers, createCustomer,
     getOrders, createOrder,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts,
@@ -396,7 +404,7 @@ window.API = (function () {
     { id: 1, type: "warn",    icon: "fa-triangle-exclamation", text: "3 produtos com estoque abaixo do mínimo.", time: "há 5 min" },
     { id: 2, type: "success", icon: "fa-circle-check",         text: "Pedido #1027 concluído por Mariana Costa.", time: "há 12 min" },
     { id: 3, type: "info",    icon: "fa-bell",                  text: "Relatório diário disponível para download.", time: "há 1 h" },
-    { id: 4, type: "info",    icon: "fa-user-plus",             text: "Novo cliente cadastrado: Felipe Oliveira.", time: "há 2 h" }
+    { id: 4, type: "info",    icon: "fa-user-plus",             text: "Novo associado cadastrado: Felipe Oliveira.", time: "há 2 h" }
   ];
 
   window.DB = {
@@ -409,6 +417,7 @@ window.API = (function () {
     notifications: [],
     metrics: null,
     topProducts: [],
+    stockMovements: [],
 
     nextProductId() {
       let n = this.products.length + 1;
@@ -439,7 +448,9 @@ window.UI = (function () {
     return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
   }
   function dateBR(date) {
-    return date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const parsed = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "-";
+    return parsed.toLocaleDateString("pt-BR") + " " + parsed.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   }
   function stockStatus(product) {
     if (product.stock <= 0) return { pill: "red", label: "Sem estoque" };
@@ -984,12 +995,20 @@ window.OrdersPage = (function () {
     return `<span class="pill gray">${s}</span>`;
   }
 
-  function render() {
+  async function refreshFromApi() {
+    try {
+      window.DB.orders = await window.API.getOrders(filters);
+    } catch (err) {
+      console.error("Falha ao carregar pedidos:", err);
+      UI.toast("Nao foi possivel carregar os pedidos.", "warn");
+    }
+  }
+
+  async function render() {
     const body = document.getElementById("ordersBody");
     if (!body) return;
 
-    // TODO: conectar ao backend
-    // window.API.getOrders(filters).then(rows => { ... atualiza body.innerHTML ... });
+    await refreshFromApi();
     const rows = window.DB.orders.filter(o => {
       if (filters.q && !(`${o.number} ${o.customerName}`.toLowerCase().includes(filters.q.toLowerCase()))) return false;
       if (filters.status && o.status !== filters.status) return false;
@@ -1005,7 +1024,7 @@ window.OrdersPage = (function () {
       <tr>
         <td><strong>${o.number}</strong></td>
         <td>${o.customerName}</td>
-        <td>${o.items.length}</td>
+        <td>${(o.items || []).length}</td>
         <td><strong>${UI.money(o.total)}</strong></td>
         <td><span class="pill blue">${o.payment}</span></td>
         <td class="muted">${UI.dateBR(o.createdAt)}</td>
@@ -1023,11 +1042,6 @@ window.OrdersPage = (function () {
   function init() {
     document.getElementById("orderSearch").addEventListener("input", e => { filters.q = e.target.value; render(); });
     document.getElementById("orderStatusFilter").addEventListener("change", e => { filters.status = e.target.value; render(); });
-    document.getElementById("newOrderBtn").addEventListener("click", () => {
-      // TODO: conectar ao backend
-      // Abrir PDV / criar pedido via window.API.createOrder(payload)
-      UI.toast("Abertura de PDV em breve — conecte ao backend para criar pedidos.", "info");
-    });
     render();
   }
 
@@ -1045,11 +1059,11 @@ window.CustomersPage = (function () {
     // TODO: conectar ao backend
     // window.API.getCustomers(q).then(rows => { ... atualiza grid.innerHTML ... });
     const rows = window.DB.customers.filter(c =>
-      !q || `${c.name} ${c.email}`.toLowerCase().includes(q.toLowerCase())
+      !q || `${c.name} ${c.email || ""} ${c.matricula || ""} ${c.phone || ""}`.toLowerCase().includes(q.toLowerCase())
     );
 
     if (!rows.length) {
-      grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center;padding:32px">Nenhum cliente encontrado.</p>`;
+      grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center;padding:32px">Nenhum associado encontrado.</p>`;
       return;
     }
 
@@ -1057,8 +1071,9 @@ window.CustomersPage = (function () {
       <article class="customer-card">
         <div class="avatar lg">${UI.initialsFromName(c.name)}</div>
         <h4>${c.name}</h4>
-        <p><i class="fa-solid fa-envelope"></i> ${c.email}</p>
-        <p><i class="fa-solid fa-phone"></i> ${c.phone}</p>
+        <p><i class="fa-solid fa-id-card"></i> ${c.matricula || "Sem matrícula"}</p>
+        <p><i class="fa-solid fa-phone"></i> ${c.phone || "Sem telefone"}</p>
+        <p><i class="fa-solid ${c.isAssociado ? "fa-circle-check" : "fa-circle-minus"}"></i> ${c.isAssociado ? "Desconto ativo" : "Sem desconto"}</p>
         <div class="customer-meta">
           <div><strong>${UI.money(c.totalSpent)}</strong><span>Total gasto</span></div>
           <div><strong>${c.orders}</strong><span>Pedidos</span></div>
@@ -1070,18 +1085,11 @@ window.CustomersPage = (function () {
 
   function init() {
     document.getElementById("customerSearch").addEventListener("input", e => { q = e.target.value; render(); });
-    document.getElementById("newCustomerBtn").addEventListener("click", async () => {
-      const nome = window.prompt("Nome do cliente");
-      if (!nome) return;
-      try {
-        const cliente = await window.API.createCustomer({ nome });
-        window.DB.customers.push(cliente);
-        render();
-        UI.toast("Cliente cadastrado.", "success");
-      } catch (err) {
-        console.error("Falha ao cadastrar cliente:", err);
-        UI.toast("Nao foi possivel cadastrar o cliente.", "error");
-      }
+    document.getElementById("newCustomerBtn").addEventListener("click", () => {
+      document.getElementById("associateForm")?.reset();
+      const discount = document.getElementById("associateActiveDiscount");
+      if (discount) discount.checked = true;
+      UI.openModal("associateModal");
     });
     render();
   }
@@ -1410,7 +1418,44 @@ window.StockPage = (function () {
     }
   }
 
-  function render() {
+  async function refreshMovements() {
+    try {
+      window.DB.stockMovements = await window.API.getStockMovements({ limit: 80 });
+    } catch (err) {
+      console.error("Falha ao carregar movimentações de estoque:", err);
+      window.DB.stockMovements = [];
+    }
+  }
+
+  function renderMovements() {
+    const body = document.getElementById("stockMovementsBody");
+    if (!body) return;
+
+    const movements = window.DB.stockMovements || [];
+    body.innerHTML = movements.length ? movements.map(m => {
+      const isEntrada = m.type === "entrada";
+      const pill = isEntrada ? "green" : "red";
+      const icon = isEntrada ? "fa-arrow-trend-up" : "fa-arrow-trend-down";
+      const sign = isEntrada ? "+" : "-";
+      return `
+        <tr>
+          <td>${m.createdAt ? UI.dateBR(m.createdAt) : "—"}</td>
+          <td><strong>${m.productName || "Produto"}</strong></td>
+          <td><span class="pill ${pill}"><i class="fa-solid ${icon}"></i> ${m.typeLabel || (isEntrada ? "Entrada" : "Saída")}</span></td>
+          <td><strong>${sign}${UI.num(m.quantity || 0)}</strong></td>
+          <td>${UI.money(m.total || 0)}</td>
+          <td>${m.userName || "Usuário"}</td>
+          <td class="muted">${m.note || "—"}</td>
+        </tr>
+      `;
+    }).join("") : `
+      <tr>
+        <td colspan="7" class="empty-cell">Nenhuma movimentação registrada ainda.</td>
+      </tr>
+    `;
+  }
+
+  async function render() {
     const body = document.getElementById("stockBody");
     if (!body) return;
 
@@ -1449,6 +1494,9 @@ window.StockPage = (function () {
         openStockForm(p);
       });
     });
+
+    await refreshMovements();
+    renderMovements();
   }
 
   function init() {
@@ -1593,7 +1641,7 @@ window.Dashboard = (function () {
     admin:         { title: "Painel Administrativo", sub: "Gerencie os produtos da sua loja." },
     grafico:       { title: "Painel Gráfico",        sub: "Indicadores e gráficos em tempo real." },
     pedidos:       { title: "Pedidos",               sub: "Acompanhe transações e status." },
-    clientes:      { title: "Clientes",              sub: "Base de clientes e histórico de compras." },
+    clientes:      { title: "Associados",            sub: "Cadastre associados e acompanhe benefícios de desconto." },
     funcionarios:  { title: "Funcionários",          sub: "Cadastre acessos e acompanhe permissões da equipe." },
     categorias:    { title: "Categorias",            sub: "Organize seus produtos por categoria." },
     estoque:       { title: "Estoque",               sub: "Controle de SKUs, mínimos e reposições." },
@@ -1647,14 +1695,19 @@ window.Dashboard = (function () {
     document.getElementById("sidebar").classList.remove("open");
 
     // Page-specific refreshes
-    if (route === "dashboard")  window.Dashboard.refresh();
-    if (route === "grafico")    window.Dashboard.refresh();
-    if (route === "admin")      window.ProductsPage.render();
-    if (route === "pedidos")    window.OrdersPage.render();
-    if (route === "clientes")   window.CustomersPage.render();
-    if (route === "funcionarios" && window.EmployeesPage) window.EmployeesPage.render();
-    if (route === "categorias") window.CategoriesPage.render();
-    if (route === "estoque")    window.StockPage.render();
+    try {
+      if (route === "dashboard")  window.Dashboard.refresh();
+      if (route === "grafico")    window.Dashboard.refresh();
+      if (route === "admin")      window.ProductsPage.render();
+      if (route === "pedidos")    window.OrdersPage.render();
+      if (route === "clientes")   window.CustomersPage.render();
+      if (route === "funcionarios" && window.EmployeesPage) window.EmployeesPage.render();
+      if (route === "categorias") window.CategoriesPage.render();
+      if (route === "estoque")    window.StockPage.render();
+    } catch (err) {
+      console.error(`Falha ao renderizar rota ${route}:`, err);
+      UI.toast("Nao foi possivel atualizar esta tela.", "warn");
+    }
 
     location.hash = "#" + route;
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1692,6 +1745,7 @@ window.Dashboard = (function () {
       document.getElementById("profileEmail").textContent = profile.email || "-";
       document.getElementById("profileRole").textContent = profile.role === "admin" ? "Administrador" : "Funcionario";
       document.getElementById("profileStatus").textContent = profile.ativo ? "Ativo" : "Inativo";
+      document.getElementById("profileInitials").textContent = UI.initialsFromName(profile.nome || profile.email || "U") || "U";
       UI.openModal("profileModal");
     } catch (err) {
       console.error("Falha ao carregar perfil:", err);
@@ -1711,34 +1765,95 @@ window.Dashboard = (function () {
 
   async function submitSecurity(event) {
     event.preventDefault();
+    const submitBtn = event.submitter;
     const atual = document.getElementById("currentPassword")?.value || "";
     const nova = document.getElementById("newPassword")?.value || "";
     const confirma = document.getElementById("confirmPassword")?.value || "";
+    if (nova.length < 6) {
+      UI.toast("A nova senha precisa ter pelo menos 6 caracteres.", "error");
+      return;
+    }
     if (nova !== confirma) {
       UI.toast("A confirmacao da senha nao confere.", "error");
       return;
     }
     try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Salvando`;
+      }
       await window.API.changePassword({ senha_atual: atual, nova_senha: nova });
       UI.closeModal("securityModal");
+      document.getElementById("securityForm")?.reset();
       UI.toast("Senha atualizada com sucesso.", "success");
     } catch (err) {
       console.error("Falha ao atualizar senha:", err);
-      UI.toast("Nao foi possivel atualizar a senha.", "error");
+      UI.toast(err.message || "Nao foi possivel atualizar a senha.", "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "Salvar senha";
+      }
     }
   }
 
   async function submitSupport(event) {
     event.preventDefault();
+    const submitBtn = event.submitter;
     const assunto = document.getElementById("supportSubject")?.value || "Suporte";
     const mensagem = document.getElementById("supportMessage")?.value || "";
     try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Enviando`;
+      }
       await window.API.sendSupport({ assunto, mensagem });
       UI.closeModal("supportModal");
-      UI.toast("Solicitacao de suporte registrada.", "success");
+      document.getElementById("supportForm")?.reset();
+      UI.toast("Solicitacao enviada para o suporte.", "success");
     } catch (err) {
       console.error("Falha ao registrar suporte:", err);
       UI.toast("Nao foi possivel registrar o suporte.", "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "Enviar";
+      }
+    }
+  }
+
+  async function submitAssociate(event) {
+    event.preventDefault();
+    const submitBtn = event.submitter;
+    const nome = document.getElementById("associateName")?.value.trim() || "";
+    const matricula = document.getElementById("associateRegistry")?.value.trim() || "";
+    const telefone = document.getElementById("associatePhone")?.value.trim() || "";
+    const is_associado = Boolean(document.getElementById("associateActiveDiscount")?.checked);
+    if (!nome) {
+      UI.toast("Informe o nome do associado.", "error");
+      return;
+    }
+    try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Salvando`;
+      }
+      const associado = await window.API.createCustomer({ nome, matricula, telefone, is_associado });
+      const index = window.DB.customers.findIndex(c => String(c.id) === String(associado.id));
+      if (index >= 0) window.DB.customers[index] = associado;
+      else window.DB.customers.push(associado);
+      window.CustomersPage.render();
+      UI.closeModal("associateModal");
+      document.getElementById("associateForm")?.reset();
+      UI.toast("Associado cadastrado.", "success");
+    } catch (err) {
+      console.error("Falha ao cadastrar associado:", err);
+      UI.toast("Nao foi possivel cadastrar o associado.", "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "Salvar associado";
+      }
     }
   }
 
@@ -1855,6 +1970,14 @@ window.Dashboard = (function () {
     document.getElementById("profileBtn")?.addEventListener("click", openProfileModal);
     document.getElementById("securityBtn")?.addEventListener("click", openSecurityModal);
     document.getElementById("supportBtn")?.addEventListener("click", openSupportModal);
+    document.getElementById("profileSecurityShortcut")?.addEventListener("click", () => {
+      UI.closeModal("profileModal");
+      openSecurityModal();
+    });
+    document.getElementById("profileSupportShortcut")?.addEventListener("click", () => {
+      UI.closeModal("profileModal");
+      openSupportModal();
+    });
     document.getElementById("markNotifRead")?.addEventListener("click", event => {
       event.preventDefault();
       window.DB.notifications = [];
@@ -1867,6 +1990,7 @@ window.Dashboard = (function () {
     });
     document.getElementById("securityForm")?.addEventListener("submit", submitSecurity);
     document.getElementById("supportForm")?.addEventListener("submit", submitSupport);
+    document.getElementById("associateForm")?.addEventListener("submit", submitAssociate);
 
     document.addEventListener("click", () => {
       notifTray.classList.add("hidden");
@@ -1930,17 +2054,27 @@ window.Dashboard = (function () {
       UI.toast("Dados do banco indisponiveis no momento.", "warn");
     }
 
+    bindGlobal();
+
+    const safeInit = (label, fn) => {
+      try {
+        fn?.();
+      } catch (err) {
+        console.error(`Falha ao iniciar ${label}:`, err);
+        UI.toast(`Nao foi possivel iniciar ${label}.`, "warn");
+      }
+    };
+
     // Init pages
-    window.Dashboard.init();
-    window.ProductsPage.init();
-    window.OrdersPage.init();
-    window.CustomersPage.init();
-    window.EmployeesPage.init();
-    window.CategoriesPage.init();
-    window.StockPage.init();
+    safeInit("dashboard", () => window.Dashboard.init());
+    safeInit("produtos", () => window.ProductsPage.init());
+    safeInit("pedidos", () => window.OrdersPage.init());
+    safeInit("associados", () => window.CustomersPage.init());
+    safeInit("funcionarios", () => window.EmployeesPage.init());
+    safeInit("categorias", () => window.CategoriesPage.init());
+    safeInit("estoque", () => window.StockPage.init());
     renderNotifications();
     updateSidebarBadges();
-    bindGlobal();
     setupMotionObserver();
 
     // Initial route via hash

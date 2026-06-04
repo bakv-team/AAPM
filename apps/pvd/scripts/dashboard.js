@@ -1617,13 +1617,44 @@ window.Dashboard = (function () {
     configuracoes: { title: "Configurações",         sub: "Preferências da loja e do painel." }
   };
 
+  function setupMotionObserver(root = document) {
+    const targets = root.querySelectorAll(".kpi, .glass, .card, .customer-card, .category-card, .report-card, .table-wrap");
+    if (!targets.length) return;
+
+    if (!("IntersectionObserver" in window)) {
+      targets.forEach(el => el.classList.add("motion-in-view"));
+      return;
+    }
+
+    if (!window.__aapmMotionObserver) {
+      window.__aapmMotionObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("motion-in-view");
+          window.__aapmMotionObserver.unobserve(entry.target);
+        });
+      }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+    }
+
+    targets.forEach(el => {
+      if (el.dataset.motionObserved) return;
+      el.dataset.motionObserved = "1";
+      el.classList.add("motion-reveal");
+      window.__aapmMotionObserver.observe(el);
+    });
+  }
+
   function navigate(route) {
     if (!ROUTE_META[route]) route = "dashboard";
 
+    document.body.classList.add("route-changing");
     document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.route === route));
     document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
     const pg = document.getElementById("page-" + route);
-    if (pg) pg.classList.add("active");
+    if (pg) {
+      pg.classList.add("active");
+      setupMotionObserver(pg);
+    }
 
     document.getElementById("pageTitle").textContent = ROUTE_META[route].title;
     document.getElementById("pageSubtitle").textContent = ROUTE_META[route].sub;
@@ -1642,6 +1673,8 @@ window.Dashboard = (function () {
     if (route === "estoque")    window.StockPage.render();
 
     location.hash = "#" + route;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.setTimeout(() => document.body.classList.remove("route-changing"), 260);
   }
 
   function renderNotifications() {
@@ -1813,6 +1846,7 @@ window.Dashboard = (function () {
     renderNotifications();
     updateSidebarBadges();
     bindGlobal();
+    setupMotionObserver();
 
     // Initial route via hash
     const route = (location.hash || "#dashboard").replace("#", "");

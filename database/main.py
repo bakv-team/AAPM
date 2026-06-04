@@ -26,6 +26,15 @@ dashboard_templates = Jinja2Templates(directory="apps/pvd/views")
 app.mount("/apps", StaticFiles(directory="apps"), name="apps")
 app.mount("/static", StaticFiles(directory="database/static"), name="static")
 
+@app.middleware("http")
+async def disable_apps_static_cache(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/apps/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 app.include_router(auth_controller.router)
 app.include_router(admin_controller.router)
 app.include_router(produto_controller.router)

@@ -134,6 +134,33 @@ let pagamentoAtual = "pix";
 let page = 1;
 const perPage = 8;
 
+function setupMotionObserver(root = document) {
+  const targets = root.querySelectorAll(".content, .cart, .card, .cart-item, .payment-option, .cart-associate");
+  if (!targets.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    targets.forEach(el => el.classList.add("motion-in-view"));
+    return;
+  }
+
+  if (!window.__aapmMotionObserver) {
+    window.__aapmMotionObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("motion-in-view");
+        window.__aapmMotionObserver.unobserve(entry.target);
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+  }
+
+  targets.forEach(el => {
+    if (el.dataset.motionObserved) return;
+    el.dataset.motionObserved = "1";
+    el.classList.add("motion-reveal");
+    window.__aapmMotionObserver.observe(el);
+  });
+}
+
 function money(value) {
   return BRL.format(Number(value) || 0);
 }
@@ -254,6 +281,7 @@ function atualizarContadoresCategorias() {
 
 function renderProdutos() {
   if (!productsGrid) return;
+  productsGrid.classList.remove("is-rendering");
 
   const rows = produtosFiltrados();
   const total = rows.length;
@@ -293,6 +321,10 @@ function renderProdutos() {
 
   productsGrid.querySelectorAll("[data-add-product]").forEach(button => {
     button.addEventListener("click", () => adicionarAoCarrinho(button.dataset.addProduct));
+  });
+  requestAnimationFrame(() => {
+    productsGrid.classList.add("is-rendering");
+    setupMotionObserver(productsGrid);
   });
 
   if (productCount) productCount.textContent = `(${total})`;
@@ -415,6 +447,7 @@ function renderCarrinho() {
     btnToggleAssociado.classList.toggle("active", ehAssociado);
     if (icon) icon.className = ehAssociado ? "fa-solid fa-circle-check" : "fa-regular fa-circle";
   }
+  setupMotionObserver(cartItemsContainer);
 }
 
 async function fecharPedido() {
@@ -643,6 +676,7 @@ function bindEventos() {
 document.addEventListener("DOMContentLoaded", async () => {
   bindEventos();
   renderCarrinho();
+  setupMotionObserver();
 
   try {
     await carregarDados();

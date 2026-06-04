@@ -13,7 +13,7 @@
             }
         } catch (error) {}
     </script>
-    <link rel="stylesheet" href="/apps/pvd/styles/login.css">
+    <link rel="stylesheet" href="/apps/pvd/styles/login.css?v=forgot-password-20260604-1">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -125,7 +125,7 @@
 
                         <i data-lucide="user"></i>
 
-                        <input type="email" name="email" placeholder="E-mail" required>
+                        <input type="email" name="email" id="loginEmailInput" placeholder="E-mail" required>
 
                     </div>
 
@@ -133,7 +133,11 @@
 
                         <i data-lucide="lock"></i>
 
-                        <input type="password" name="senha" placeholder="Senha" required>
+                        <input type="password" name="senha" id="passwordInput" placeholder="Senha" required>
+
+                        <button class="password-toggle" id="passwordToggle" type="button" aria-label="Mostrar senha" aria-pressed="false">
+                            <i data-lucide="eye"></i>
+                        </button>
 
                     </div>
 
@@ -144,11 +148,13 @@
                             Lembrar login
                         </label>
 
-                        <a href="#">
+                        <a href="#" id="forgotPasswordLink">
                             Esqueci a senha
                         </a>
 
                     </div>
+
+                    <p class="auth-feedback" id="forgotPasswordFeedback" hidden></p>
 
                     <button type="submit" class="login-btn">
 
@@ -176,7 +182,15 @@
 
     </main>
 
-    <script src="/apps/pvd/scripts/login.js"></script>
+    <div class="login-loading-overlay" id="loginLoadingOverlay" aria-hidden="true">
+        <div class="login-loading-panel" role="status" aria-live="polite">
+            <span class="loading-kicker">Autenticando</span>
+            <strong>Preparando seu painel...</strong>
+            <div class="loading-bar" aria-hidden="true"><span></span></div>
+        </div>
+    </div>
+
+    <script src="/apps/pvd/scripts/login.js?v=forgot-password-20260604-1"></script>
 
     <script>
         lucide.createIcons();

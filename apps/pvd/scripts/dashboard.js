@@ -134,9 +134,8 @@
 /* =====================================================================
  *  CAMADA DE API — ponte com FastAPI + SQLite + Alembic
  *  ---------------------------------------------------------------------
- *  Hoje as funções abaixo apenas devolvem os dados mock de window.DB.
- *  Quando o backend estiver pronto, basta substituir o conteúdo de cada
- *  função pelo bloco fetch() correspondente (já comentado em cada uma).
+ *  As funções abaixo conversam com FastAPI e mantêm window.DB apenas como
+ *  cache de tela para os componentes já existentes.
  * ===================================================================== */
 window.API = (function () {
   const BASE_URL = window.location.origin;
@@ -232,59 +231,54 @@ window.API = (function () {
 
   // ----- Clientes -----
   async function getCustomers(q = "") {
-    // TODO: conectar ao backend
-    // const qs = q ? `?q=${encodeURIComponent(q)}` : "";
-    // return apiGet(`/api/customers${qs}`);
-    return window.DB.customers;
+    const qs = q ? `?q=${encodeURIComponent(q)}` : "";
+    return apiGet(`/api/v1/pdv/customers${qs}`);
   }
   async function createCustomer(payload) {
-    // TODO: conectar ao backend
-    // return apiPost("/api/customers", payload);
-    return payload;
+    return apiPost("/api/v1/pdv/customers", payload);
   }
 
   // ----- Pedidos -----
   async function getOrders(filters = {}) {
-    // TODO: conectar ao backend
-    // const qs = new URLSearchParams();
-    // if (filters.q)      qs.set("q", filters.q);
-    // if (filters.status) qs.set("status", filters.status);
-    // return apiGet(`/api/orders?${qs.toString()}`);
-    return window.DB.orders;
+    const qs = new URLSearchParams();
+    if (filters.q) qs.set("q", filters.q);
+    if (filters.status) qs.set("status", filters.status);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiGet(`/api/v1/pdv/orders${suffix}`);
   }
   async function createOrder(payload) {
-    // TODO: conectar ao backend
-    // return apiPost("/api/orders", payload);
-    return payload;
+    return apiPost("/api/v1/pdv/sales", payload);
   }
 
   // ----- Dashboard / Métricas -----
   async function getDashboardMetrics() {
-    // TODO: conectar ao backend
-    // return apiGet("/api/dashboard/metrics");
-    return null; // o frontend já calcula a partir de window.DB.daily
+    return apiGet("/api/v1/pdv/dashboard/metrics");
   }
   async function getDailySales(range = 7) {
-    // TODO: conectar ao backend
-    // return apiGet(`/api/dashboard/daily?range=${range}`);
-    return window.DB.daily;
+    return apiGet(`/api/v1/pdv/dashboard/daily?range=${range}`);
   }
   async function getHourlySales() {
-    // TODO: conectar ao backend
-    // return apiGet("/api/dashboard/hourly");
-    return window.DB.hourly;
+    return apiGet("/api/v1/pdv/dashboard/hourly");
   }
   async function getTopProducts() {
-    // TODO: conectar ao backend
-    // return apiGet("/api/dashboard/top-products");
-    return null; // calculado localmente a partir de orders
+    return apiGet("/api/v1/pdv/dashboard/top-products");
   }
 
   // ----- Notificações -----
   async function getNotifications() {
-    // TODO: conectar ao backend
-    // return apiGet("/api/notifications");
-    return window.DB.notifications;
+    return apiGet("/api/v1/pdv/notifications");
+  }
+  async function getProfile() {
+    return apiGet("/api/v1/pdv/profile");
+  }
+  async function changePassword(payload) {
+    return apiPost("/api/v1/pdv/profile/password", payload);
+  }
+  async function sendSupport(payload) {
+    return apiPost("/api/v1/pdv/support", payload);
+  }
+  function downloadReport(kind) {
+    window.location.href = `${BASE_URL}/api/v1/pdv/reports/${encodeURIComponent(kind)}`;
   }
 
   return {
@@ -295,7 +289,7 @@ window.API = (function () {
     getCustomers, createCustomer,
     getOrders, createOrder,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts,
-    getNotifications
+    getNotifications, getProfile, changePassword, sendSupport, downloadReport
   };
 })();
 
@@ -376,21 +370,6 @@ window.API = (function () {
   }
   ORDERS.sort((a, b) => b.createdAt - a.createdAt);
 
-  let PDV_ORDERS = [];
-  try {
-    PDV_ORDERS = JSON.parse(localStorage.getItem("aapm_pdv_orders") || "[]")
-      .map(order => ({
-        ...order,
-        createdAt: new Date(order.createdAt),
-        payment: order.payment === "debito" ? "Cartão Débito"
-          : order.payment === "credito" ? "Cartão Crédito"
-          : order.payment === "dinheiro" ? "Dinheiro"
-          : "Pix"
-      }));
-  } catch {
-    PDV_ORDERS = [];
-  }
-  ORDERS.unshift(...PDV_ORDERS);
   ORDERS.sort((a, b) => b.createdAt - a.createdAt);
 
   // Vendas diárias últimos 30 dias
@@ -423,11 +402,13 @@ window.API = (function () {
   window.DB = {
     categories: CATEGORIES,
     products: PRODUCTS,
-    customers: CUSTOMERS,
-    orders: ORDERS,
-    daily: DAILY,
-    hourly: HOURLY,
-    notifications: NOTIFICATIONS,
+    customers: [],
+    orders: [],
+    daily: [],
+    hourly: [],
+    notifications: [],
+    metrics: null,
+    topProducts: [],
 
     nextProductId() {
       let n = this.products.length + 1;
@@ -574,9 +555,10 @@ window.CHARTS = (function () {
     const ctx = document.getElementById("chartSalesLine");
     if (!ctx) return;
 
-    // TODO: conectar ao backend
-    // window.API.getDailySales(range).then(data => { ... montar gráfico com data ... });
-    const data = window.DB.daily.slice(-range);
+    const data = window.DB.daily.slice(-range).map(d => ({
+      ...d,
+      date: d.date instanceof Date ? d.date : new Date(`${d.date}T00:00:00`)
+    }));
 
     const labels = data.map(d => UI.dayShort(d.date));
     const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 300);
@@ -1088,10 +1070,18 @@ window.CustomersPage = (function () {
 
   function init() {
     document.getElementById("customerSearch").addEventListener("input", e => { q = e.target.value; render(); });
-    document.getElementById("newCustomerBtn").addEventListener("click", () => {
-      // TODO: conectar ao backend
-      // window.API.createCustomer(payload).then(() => render());
-      UI.toast("Cadastro de clientes — conecte ao backend.", "info");
+    document.getElementById("newCustomerBtn").addEventListener("click", async () => {
+      const nome = window.prompt("Nome do cliente");
+      if (!nome) return;
+      try {
+        const cliente = await window.API.createCustomer({ nome });
+        window.DB.customers.push(cliente);
+        render();
+        UI.toast("Cliente cadastrado.", "success");
+      } catch (err) {
+        console.error("Falha ao cadastrar cliente:", err);
+        UI.toast("Nao foi possivel cadastrar o cliente.", "error");
+      }
     });
     render();
   }
@@ -1476,12 +1466,15 @@ window.StockPage = (function () {
 
 window.Dashboard = (function () {
   function todayMetrics() {
-    // TODO: conectar ao backend
-    // Substituir pelo retorno de: await window.API.getDashboardMetrics();
-    // Esperado: { revenue, items, orders, ticket, monthRevenue, revPct, itemsPct, ordersPct, ticketPct, monthPct }
-
+    if (window.DB.metrics) return window.DB.metrics;
+    if (!window.DB.daily.length) {
+      return {
+        revenue: 0, items: 0, orders: 0, ticket: 0, monthRevenue: 0,
+        revPct: 0, itemsPct: 0, ordersPct: 0, ticketPct: 0, monthPct: 0
+      };
+    }
     const today = window.DB.daily[window.DB.daily.length - 1];
-    const yesterday = window.DB.daily[window.DB.daily.length - 2];
+    const yesterday = window.DB.daily[window.DB.daily.length - 2] || { revenue: 0, items: 0, orders: 0 };
     const monthRevenue = window.DB.daily.reduce((s, d) => s + d.revenue, 0);
     const ticket = today.orders ? today.revenue / today.orders : 0;
     const ticketYday = yesterday.orders ? yesterday.revenue / yesterday.orders : 0;
@@ -1509,31 +1502,21 @@ window.Dashboard = (function () {
   }
 
   function renderTopProducts() {
-    // TODO: conectar ao backend
-    // window.API.getTopProducts().then(list => { ... renderiza el.innerHTML ... });
-
-    const totals = {};
-    window.DB.orders.forEach(o => {
-      if (o.status === "cancelado") return;
-      o.items.forEach(it => {
-        totals[it.productId] = (totals[it.productId] || 0) + it.qty * it.price;
-      });
-    });
-    const sorted = Object.entries(totals)
-      .map(([id, val]) => ({ p: window.DB.getProduct(id), val }))
-      .filter(x => x.p)
-      .sort((a, b) => b.val - a.val)
-      .slice(0, 5);
+    const sorted = (window.DB.topProducts || []).slice(0, 5);
 
     const el = document.getElementById("topProducts");
+    if (!sorted.length) {
+      el.innerHTML = `<li><div class="meta"><strong>Nenhuma venda registrada</strong><span>Os produtos aparecem aqui conforme as vendas do PDV.</span></div></li>`;
+      return;
+    }
     el.innerHTML = sorted.map((s, i) => {
-      const cat = window.DB.getCategory(s.p.categoryId);
+      const cat = window.DB.getCategory(s.categoryId);
       const color = UI.palette[i % UI.palette.length];
       return `
         <li>
           <div class="thumb" style="background:linear-gradient(135deg, ${color}, ${color}aa)"><i class="fa-solid ${cat?.icon || "fa-box"}"></i></div>
-          <div class="meta"><strong>${s.p.name}</strong><span>${cat?.name || "—"}</span></div>
-          <div class="val">${UI.money(s.val)}</div>
+          <div class="meta"><strong>${s.name}</strong><span>${s.categoryName || cat?.name || "Sem categoria"}</span></div>
+          <div class="val">${UI.money(s.revenue || 0)}</div>
         </li>
       `;
     }).join("");
@@ -1542,12 +1525,13 @@ window.Dashboard = (function () {
   function renderRecentOrders() {
     const body = document.getElementById("recentOrdersBody");
 
-    // TODO: conectar ao backend
-    // window.API.getOrders().then(orders => { ... pega os 5 mais recentes ... });
-
     const status = s => s === "concluido" ? `<span class="pill green">Concluído</span>`
       : s === "pendente" ? `<span class="pill yellow">Pendente</span>`
       : `<span class="pill red">Cancelado</span>`;
+    if (!window.DB.orders.length) {
+      body.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text-mute)">Nenhum pedido registrado.</td></tr>`;
+      return;
+    }
     body.innerHTML = window.DB.orders.slice(0, 5).map(o => `
       <tr>
         <td><strong>${o.number}</strong></td>
@@ -1679,10 +1663,11 @@ window.Dashboard = (function () {
 
   function renderNotifications() {
     const list = document.getElementById("notifList");
-
-    // TODO: conectar ao backend
-    // window.API.getNotifications().then(items => { ... renderiza list.innerHTML ... });
-
+    if (!list) return;
+    if (!window.DB.notifications.length) {
+      list.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
+      return;
+    }
     list.innerHTML = window.DB.notifications.map(n => `
       <li class="${n.type}">
         <i class="fa-solid ${n.icon}"></i>
@@ -1698,6 +1683,63 @@ window.Dashboard = (function () {
     const pending = window.DB.orders.filter(o => o.status === "pendente").length;
     document.getElementById("navOrdersBadge").textContent = pending;
     document.getElementById("navOrdersBadge").style.display = pending ? "" : "none";
+  }
+
+  async function openProfileModal() {
+    try {
+      const profile = await window.API.getProfile();
+      document.getElementById("profileName").textContent = profile.nome || "Usuario";
+      document.getElementById("profileEmail").textContent = profile.email || "-";
+      document.getElementById("profileRole").textContent = profile.role === "admin" ? "Administrador" : "Funcionario";
+      document.getElementById("profileStatus").textContent = profile.ativo ? "Ativo" : "Inativo";
+      UI.openModal("profileModal");
+    } catch (err) {
+      console.error("Falha ao carregar perfil:", err);
+      UI.toast("Nao foi possivel carregar o perfil.", "error");
+    }
+  }
+
+  function openSecurityModal() {
+    document.getElementById("securityForm")?.reset();
+    UI.openModal("securityModal");
+  }
+
+  function openSupportModal() {
+    document.getElementById("supportForm")?.reset();
+    UI.openModal("supportModal");
+  }
+
+  async function submitSecurity(event) {
+    event.preventDefault();
+    const atual = document.getElementById("currentPassword")?.value || "";
+    const nova = document.getElementById("newPassword")?.value || "";
+    const confirma = document.getElementById("confirmPassword")?.value || "";
+    if (nova !== confirma) {
+      UI.toast("A confirmacao da senha nao confere.", "error");
+      return;
+    }
+    try {
+      await window.API.changePassword({ senha_atual: atual, nova_senha: nova });
+      UI.closeModal("securityModal");
+      UI.toast("Senha atualizada com sucesso.", "success");
+    } catch (err) {
+      console.error("Falha ao atualizar senha:", err);
+      UI.toast("Nao foi possivel atualizar a senha.", "error");
+    }
+  }
+
+  async function submitSupport(event) {
+    event.preventDefault();
+    const assunto = document.getElementById("supportSubject")?.value || "Suporte";
+    const mensagem = document.getElementById("supportMessage")?.value || "";
+    try {
+      await window.API.sendSupport({ assunto, mensagem });
+      UI.closeModal("supportModal");
+      UI.toast("Solicitacao de suporte registrada.", "success");
+    } catch (err) {
+      console.error("Falha ao registrar suporte:", err);
+      UI.toast("Nao foi possivel registrar o suporte.", "error");
+    }
   }
 
   function bindGlobal() {
@@ -1780,25 +1822,57 @@ window.Dashboard = (function () {
     const notifTray = document.getElementById("notifTray");
     notifBtn.addEventListener("click", e => {
       e.stopPropagation();
-      notifTray.classList.toggle("hidden");
+      const isHidden = notifTray.classList.toggle("hidden");
       document.getElementById("adminTray").classList.add("hidden");
+      notifBtn.setAttribute("aria-expanded", String(!isHidden));
+      adminChip?.setAttribute("aria-expanded", "false");
+    });
+    notifTray?.addEventListener("click", e => {
+      e.stopPropagation();
     });
 
     const adminChip = document.getElementById("adminChip");
     const adminTray = document.getElementById("adminTray");
     adminChip.addEventListener("click", e => {
       e.stopPropagation();
-      adminTray.classList.toggle("hidden");
+      const isHidden = adminTray.classList.toggle("hidden");
       notifTray.classList.add("hidden");
+      adminChip.setAttribute("aria-expanded", String(!isHidden));
+      notifBtn?.setAttribute("aria-expanded", "false");
+    });
+    adminTray?.addEventListener("click", e => {
+      e.stopPropagation();
+    });
+    adminChip?.addEventListener("keydown", e => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      adminChip.click();
     });
 
     document.getElementById("logoutBtn")?.addEventListener("click", () => {
       window.location.href = "/auth/logout";
     });
+    document.getElementById("profileBtn")?.addEventListener("click", openProfileModal);
+    document.getElementById("securityBtn")?.addEventListener("click", openSecurityModal);
+    document.getElementById("supportBtn")?.addEventListener("click", openSupportModal);
+    document.getElementById("markNotifRead")?.addEventListener("click", event => {
+      event.preventDefault();
+      window.DB.notifications = [];
+      renderNotifications();
+      document.querySelector("#notifBtn .dot")?.classList.add("hidden");
+      UI.toast("Notificacoes marcadas como lidas.", "success");
+    });
+    document.querySelectorAll("[data-report]").forEach(button => {
+      button.addEventListener("click", () => window.API.downloadReport(button.dataset.report));
+    });
+    document.getElementById("securityForm")?.addEventListener("submit", submitSecurity);
+    document.getElementById("supportForm")?.addEventListener("submit", submitSupport);
 
     document.addEventListener("click", () => {
       notifTray.classList.add("hidden");
       adminTray.classList.add("hidden");
+      notifBtn?.setAttribute("aria-expanded", "false");
+      adminChip?.setAttribute("aria-expanded", "false");
     });
 
     // Cmd+K for search
@@ -1824,15 +1898,36 @@ window.Dashboard = (function () {
 
   document.addEventListener("DOMContentLoaded", async () => {
     try {
-      const [cats, prods] = await Promise.all([
+      const [cats, prods, customers, orders, daily, hourly, notifications, metrics, topProducts] = await Promise.all([
         window.API.getCategories(),
-        window.API.getProducts()
+        window.API.getProducts(),
+        window.API.getCustomers(),
+        window.API.getOrders(),
+        window.API.getDailySales(30),
+        window.API.getHourlySales(),
+        window.API.getNotifications(),
+        window.API.getDashboardMetrics(),
+        window.API.getTopProducts()
       ]);
       window.DB.categories = cats;
       window.DB.products = prods;
+      window.DB.customers = customers;
+      window.DB.orders = orders;
+      window.DB.daily = daily;
+      window.DB.hourly = hourly;
+      window.DB.notifications = notifications;
+      window.DB.metrics = metrics;
+      window.DB.topProducts = topProducts;
     } catch (err) {
       console.error("Falha ao carregar dados do backend:", err);
-      UI.toast("Produtos do banco indisponíveis. Exibindo dados temporários.", "warn");
+      window.DB.customers = [];
+      window.DB.orders = [];
+      window.DB.daily = [];
+      window.DB.hourly = [];
+      window.DB.notifications = [];
+      window.DB.metrics = null;
+      window.DB.topProducts = [];
+      UI.toast("Dados do banco indisponiveis no momento.", "warn");
     }
 
     // Init pages

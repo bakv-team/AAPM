@@ -12,7 +12,7 @@
             }
         } catch (error) {}
     </script>
-    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=motion-20260604-1">
+    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=fixed-bg-scroll-20260604-1">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +26,7 @@
 
         <aside class="sidebar" id="sidebar">
             <div class="brand">
-                <div class="brand-mark"></div>
+                <img class="brand-logo" src="/apps/pvd/assets/icones/logosemtexto.png" alt="" aria-hidden="true" />
                 <div class="brand-text">
                     <span class="brand-title">AAPM</span>
                     <span class="brand-sub">SENAI - FM</span>
@@ -47,7 +47,7 @@
 
             <div class="sidebar-footer">
                 <div>
-                    <p class="upgrade-title">2026</p>
+                    <p class="upgrade-title">© 2026 SENAI</p>
                     <p class="upgrade-sub">Todos os direitos reservados</p>
                 </div>
             </div>
@@ -62,7 +62,9 @@
                 </div>
 
                 <nav class="dashboard-nav" aria-label="Navegação entre painéis">
+                    {% if usuario.role == "admin" %}
                     <a href="/dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+                    {% endif %}
                     <a href="/pdv" class="active"><i class="fa-solid fa-cash-register"></i><span>Ponto de Venda</span></a>
                 </nav>
 
@@ -86,8 +88,8 @@
             </header>
 
             <div class="notif-tray hidden" id="pdvNotifTray">
-                <div class="notif-head"><strong>Notificações</strong><a href="#" class="muted">Marcar todas</a></div>
-                <ul>
+                <div class="notif-head"><strong>Notificações</strong><a href="#" class="muted" id="pdvMarkNotifRead">Marcar todas</a></div>
+                <ul id="pdvNotifList">
                     <li class="success"><i class="fa-solid fa-circle-check"></i><div>PDV conectado e pronto para vendas.<time>Agora</time></div></li>
                     <li class="warn"><i class="fa-solid fa-triangle-exclamation"></i><div>Produtos com estoque mínimo ficam indisponíveis para venda.<time>Sistema</time></div></li>
                 </ul>
@@ -182,7 +184,7 @@
     <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
     <div class="background-image"></div>
 
-    <script src="/apps/pvd/scripts/base.js?v=motion-20260604-1"></script>
+    <script src="/apps/pvd/scripts/base.js?v=functional-pdv-20260604-1"></script>
 </body>
 
 </html>

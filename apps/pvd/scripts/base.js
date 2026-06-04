@@ -116,6 +116,8 @@ const pageNumbers = document.getElementById("pageNumbers");
 const themeToggle = document.getElementById("themeToggle");
 const pdvNotifBtn = document.getElementById("pdvNotifBtn");
 const pdvNotifTray = document.getElementById("pdvNotifTray");
+const pdvNotifList = document.getElementById("pdvNotifList");
+const pdvMarkNotifRead = document.getElementById("pdvMarkNotifRead");
 const pdvProfileChip = document.getElementById("pdvProfileChip");
 const pdvProfileTray = document.getElementById("pdvProfileTray");
 const pdvLogoutBtn = document.getElementById("pdvLogoutBtn");
@@ -450,6 +452,25 @@ function renderCarrinho() {
   setupMotionObserver(cartItemsContainer);
 }
 
+async function carregarNotificacoes() {
+  if (!pdvNotifList) return;
+  try {
+    const itens = await apiGet("/api/v1/pdv/notifications");
+    if (!itens.length) {
+      pdvNotifList.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
+      return;
+    }
+    pdvNotifList.innerHTML = itens.map(item => `
+      <li class="${item.type}">
+        <i class="fa-solid ${item.icon}"></i>
+        <div>${item.text}<time>${item.time}</time></div>
+      </li>
+    `).join("");
+  } catch (error) {
+    pdvNotifList.innerHTML = `<li class="warn"><i class="fa-solid fa-triangle-exclamation"></i><div>Não foi possível carregar as notificações.<time>Sistema</time></div></li>`;
+  }
+}
+
 async function fecharPedido() {
   if (!carrinho.length) {
     toast("O carrinho esta vazio.", "warn");
@@ -457,14 +478,6 @@ async function fecharPedido() {
   }
 
   const customerName = customerNameInput?.value.trim() || "Cliente balcão";
-  const orderTotals = totaisCarrinho();
-  const orderItems = carrinho.map(item => ({
-    productId: item.id,
-    name: item.name,
-    qty: item.quantidade,
-    price: item.price
-  }));
-
   btnFecharPedido.disabled = true;
   btnFecharPedido.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processando`;
 
@@ -494,26 +507,12 @@ async function fecharPedido() {
       venda = await apiPost("/api/v1/pdv/sales", fallbackPayload);
     }
 
-    const storedOrders = JSON.parse(localStorage.getItem("aapm_pdv_orders") || "[]");
-    storedOrders.unshift({
-      id: `pdv-${Date.now()}`,
-      number: venda.number || `#${String(Date.now()).slice(-4)}`,
-      customerId: null,
-      customerName,
-      items: orderItems,
-      subtotal: orderTotals.totalBruto,
-      total: orderTotals.totalLiquido,
-      payment: pagamentoAtual,
-      status: "concluido",
-      createdAt: new Date().toISOString()
-    });
-    localStorage.setItem("aapm_pdv_orders", JSON.stringify(storedOrders.slice(0, 50)));
-
     carrinho = [];
     ehAssociado = false;
     if (customerNameInput) customerNameInput.value = "";
     salvarCarrinho();
     await carregarDados();
+    await carregarNotificacoes();
     renderCarrinho();
     toast(`Venda ${venda.number} finalizada com sucesso.`, "success");
   } catch (error) {
@@ -610,6 +609,14 @@ function bindEventos() {
   pdvNotifTray?.addEventListener("click", event => {
     event.stopPropagation();
   });
+  pdvMarkNotifRead?.addEventListener("click", event => {
+    event.preventDefault();
+    if (pdvNotifList) {
+      pdvNotifList.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
+    }
+    pdvNotifBtn?.querySelector(".dot")?.classList.add("hidden");
+    toast("Notificacoes marcadas como lidas.", "success");
+  });
 
   pdvProfileChip?.addEventListener("click", event => {
     event.stopPropagation();
@@ -680,6 +687,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     await carregarDados();
+    await carregarNotificacoes();
   } catch (error) {
     toast("Nao foi possivel carregar o ponto de venda.", "error");
   }

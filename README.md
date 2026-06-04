@@ -322,9 +322,10 @@ DATABASE_URL=sqlite:///./banco.db
 SECRET_KEY=sua_chave_secreta_muito_segura_aqui
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-```
+
 
 > ⚠️ **Nunca versione o arquivo `.env`** — ele já está no `.gitignore`.
+> Para Gmail, use uma senha de app; a senha normal da conta não funciona para SMTP.
 
 **Passo 5 — Criar banco de dados**
 
@@ -625,7 +626,7 @@ cliente    → Site: catálogo, carrinho
 SECRET_KEY=chave_jwt_segura_min_32_caracteres
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-```
+
 
 ---
 
@@ -824,6 +825,14 @@ git push origin feat/descricao-da-feature
 | `SECRET_KEY` | `47b2822e0c...` | Chave para assinatura JWT |
 | `ALGORITHM` | `HS256` | Algoritmo JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Tempo de expiração do token |
+| `APP_BASE_URL` | `http://localhost:8000` | URL usada para montar o link de redefinição de senha |
+| `SMTP_HOST` | `smtp.gmail.com` | Servidor SMTP para envio do e-mail de recuperação |
+| `SMTP_PORT` | `587` | Porta SMTP; use `465` para SSL direto |
+| `SMTP_USER` | `conta@gmail.com` | Usuário para autenticação SMTP |
+| `SMTP_PASSWORD` | `senha_de_app` | Senha/app password do servidor SMTP |
+| `SMTP_FROM` | `conta@gmail.com` | Remetente exibido no e-mail |
+| `SMTP_TLS` | `true` | Ativa STARTTLS, normalmente usado na porta `587` |
+| `SMTP_SSL` | `false` | Ativa SSL direto, normalmente usado na porta `465` |
 
 ---
 

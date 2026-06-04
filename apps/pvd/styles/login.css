@@ -1625,3 +1625,386 @@ canvas{
 [data-theme="dark"] .signup-link a {
   color: #8fb2ff;
 }
+
+/* ================= LOGIN MOTION + LOADING ================= */
+html {
+  scroll-behavior: smooth;
+}
+
+.container,
+.background-image,
+canvas,
+.blur {
+  transition: filter 0.28s ease, opacity 0.28s ease, transform 0.28s ease;
+}
+
+.mini-card,
+.input-box,
+.login-btn,
+.options a,
+.options label,
+.security,
+.signup-link a {
+  transition-duration: 0.22s;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.input-box:hover,
+.mini-card:hover {
+  transform: translateY(-2px);
+}
+
+.options a:hover,
+.signup-link a:hover {
+  transform: translateY(-1px);
+}
+
+.login-btn:hover {
+  transform: translateY(-3px);
+  filter: brightness(1.04);
+}
+
+.login-btn:active,
+.mini-card:active,
+.options a:active,
+.signup-link a:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.login-btn[disabled] {
+  cursor: wait;
+  opacity: 0.88;
+  transform: none;
+}
+
+.login-btn .lucide-loader-circle {
+  animation: login-spin 0.9s linear infinite;
+}
+
+body.login-loading .container,
+body.login-loading .background-image,
+body.login-loading canvas,
+body.login-loading .blur {
+  filter: blur(7px) saturate(0.94);
+}
+
+body.login-loading .container {
+  transform: scale(0.992);
+}
+
+.login-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 11, 34, 0.10);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, background 0.28s ease;
+}
+
+body.login-loading .login-loading-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.login-loading-slow .login-loading-overlay {
+  background: rgba(6, 11, 34, 0.24);
+}
+
+.login-loading-panel {
+  width: min(360px, 100%);
+  padding: 20px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  box-shadow: 0 24px 70px rgba(10, 23, 56, 0.18);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  color: var(--dark);
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.login-loading-slow .login-loading-panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.loading-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--orange);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.login-loading-panel strong {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 1rem;
+}
+
+.loading-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(56, 88, 214, 0.12);
+}
+
+.loading-bar span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--orange), #f7a930, var(--blue));
+  animation: login-progress 1.1s ease-in-out infinite;
+}
+
+[data-theme="dark"] .login-loading-panel {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #ecf0ff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+[data-theme="dark"] .loading-bar {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+@keyframes login-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  52% {
+    transform: translateX(72%);
+  }
+
+  100% {
+    transform: translateX(245%);
+  }
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  body.login-loading .container,
+  body.login-loading .background-image,
+  body.login-loading canvas,
+  body.login-loading .blur {
+    filter: blur(4px);
+  }
+
+  .login-loading-panel {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ============ FINAL LOGIN POLISH ============ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(241, 124, 32, 0.62) rgba(255, 255, 255, 0.12);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(241, 124, 32, 0.88), rgba(247, 167, 48, 0.78));
+  border: 2px solid rgba(255, 255, 255, 0.20);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(255, 139, 35, 0.96), rgba(255, 184, 65, 0.90));
+}
+
+.input-box {
+  position: relative;
+  gap: 12px;
+  overflow: hidden;
+  transition-property: transform, background, border-color, box-shadow;
+}
+
+.input-box:hover {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(241, 124, 32, 0.26);
+  box-shadow: 0 16px 34px rgba(10, 23, 56, 0.10);
+}
+
+.input-box:focus-within {
+  transform: translateY(-1px);
+}
+
+.input-box input {
+  min-width: 0;
+  flex: 1 1 auto;
+  line-height: 1.2;
+  appearance: none;
+}
+
+.password-toggle {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: rgba(58, 92, 233, 0.08);
+  color: #647096;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.password-toggle:hover,
+.password-toggle[aria-pressed="true"] {
+  background: rgba(241, 124, 32, 0.14);
+  border-color: rgba(241, 124, 32, 0.20);
+  color: var(--orange);
+  transform: translateY(-1px);
+}
+
+.password-toggle:active {
+  transform: translateY(1px) scale(0.96);
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.input-box input:-webkit-autofill,
+.input-box input:-webkit-autofill:hover,
+.input-box input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--dark);
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.02) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+[data-theme="dark"] * {
+  scrollbar-color: rgba(241, 124, 32, 0.74) rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  border-color: rgba(12, 21, 52, 0.76);
+}
+
+[data-theme="dark"] .input-box:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(241, 124, 32, 0.34);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme="dark"] .password-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  color: #aab5dc;
+}
+
+[data-theme="dark"] .password-toggle:hover,
+[data-theme="dark"] .password-toggle[aria-pressed="true"] {
+  background: rgba(241, 124, 32, 0.16);
+  color: #fff;
+}
+
+[data-theme="dark"] .input-box input:-webkit-autofill,
+[data-theme="dark"] .input-box input:-webkit-autofill:hover,
+[data-theme="dark"] .input-box input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ecf0ff;
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.02) inset;
+}
+
+/* ============ PASSWORD RECOVERY ============ */
+.auth-feedback {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
+  border: 1px solid transparent;
+}
+
+.auth-feedback[hidden] {
+  display: none;
+}
+
+.auth-feedback.success {
+  color: #107a4f;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+.auth-feedback.error {
+  color: #c2414b;
+  background: rgba(255, 71, 102, 0.12);
+  border-color: rgba(255, 71, 102, 0.22);
+}
+
+.reset-container {
+  justify-content: center;
+}
+
+.reset-side {
+  width: min(460px, 100%);
+  max-width: 460px;
+}
+
+.reset-card {
+  max-width: 460px;
+}
+
+.reset-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  margin-top: 18px;
+}
+
+[data-theme="dark"] .auth-feedback.success {
+  color: #8ef0bd;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
+[data-theme="dark"] .auth-feedback.error {
+  color: #ff9aaa;
+  background: rgba(255, 71, 102, 0.14);
+  border-color: rgba(255, 71, 102, 0.24);
+}

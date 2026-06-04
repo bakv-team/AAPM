@@ -1,8 +1,10 @@
 const canvas = document.getElementById("particles");
-const ctx = canvas.getContext("2d");
+const ctx = canvas?.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+if(canvas){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
 
 let particles = [];
 
@@ -59,6 +61,9 @@ class Particle{
 }
 
 function init(){
+  if(!canvas){
+    return;
+  }
 
   particles = [];
 
@@ -73,6 +78,9 @@ function init(){
 }
 
 function connect(){
+  if(!ctx){
+    return;
+  }
 
   for(let a = 0; a < particles.length; a++){
 
@@ -119,6 +127,9 @@ function connect(){
 }
 
 function animate(){
+  if(!canvas || !ctx){
+    return;
+  }
 
   ctx.clearRect(
     0,
@@ -141,6 +152,9 @@ function animate(){
 }
 
 window.addEventListener("resize",()=>{
+  if(!canvas){
+    return;
+  }
 
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -154,16 +168,160 @@ animate();
 
 const form =
 document.getElementById("loginForm");
+const loadingOverlay =
+document.getElementById("loginLoadingOverlay");
+const passwordInput =
+document.getElementById("passwordInput");
+const passwordToggle =
+document.getElementById("passwordToggle");
+const forgotPasswordLink =
+document.getElementById("forgotPasswordLink");
+const forgotPasswordFeedback =
+document.getElementById("forgotPasswordFeedback");
+const loginEmailInput =
+document.getElementById("loginEmailInput");
+const resetPasswordInput =
+document.getElementById("resetPasswordInput");
+const resetPasswordToggle =
+document.getElementById("resetPasswordToggle");
+const resetConfirmInput =
+document.getElementById("resetConfirmInput");
 
-form.addEventListener("submit",(e)=>{
+let loadingTimer = null;
+
+function refreshIcons(){
+  if(window.lucide){
+    window.lucide.createIcons();
+  }
+}
+
+function resetLoginLoading(){
+  window.clearTimeout(loadingTimer);
+  document.body.classList.remove("login-loading","login-loading-slow");
+  loadingOverlay?.setAttribute("aria-hidden","true");
+
   const btn =
-  document.querySelector(".login-btn");
+  form?.querySelector(".login-btn");
 
-  btn.disabled = true;
-  btn.innerHTML = `
-    <span>Entrando...</span>
-  `;
+  if(btn){
+    btn.disabled = false;
+    btn.innerHTML = `
+      <span>Entrar</span>
+      <i data-lucide="arrow-right"></i>
+    `;
+    refreshIcons();
+  }
+}
 
+function startLoginLoading(){
+  document.body.classList.add("login-loading");
+  loadingOverlay?.setAttribute("aria-hidden","false");
+
+  loadingTimer = window.setTimeout(()=>{
+    document.body.classList.add("login-loading-slow");
+  },650);
+}
+
+form?.addEventListener("submit",(e)=>{
+  const btn =
+  form.querySelector(".login-btn");
+
+  startLoginLoading();
+
+  if(btn){
+    btn.disabled = true;
+    btn.innerHTML = `
+      <span>Entrando...</span>
+      <i data-lucide="loader-circle"></i>
+    `;
+    refreshIcons();
+  }
+
+});
+
+passwordToggle?.addEventListener("click",()=>{
+  if(!passwordInput){
+    return;
+  }
+
+  const isVisible = passwordInput.type === "text";
+
+  passwordInput.type = isVisible ? "password" : "text";
+  passwordToggle.setAttribute("aria-pressed", String(!isVisible));
+  passwordToggle.setAttribute("aria-label", isVisible ? "Mostrar senha" : "Ocultar senha");
+  passwordToggle.innerHTML = `<i data-lucide="${isVisible ? "eye" : "eye-off"}"></i>`;
+  refreshIcons();
+  passwordInput.focus();
+});
+
+resetPasswordToggle?.addEventListener("click",()=>{
+  if(!resetPasswordInput){
+    return;
+  }
+
+  const isVisible = resetPasswordInput.type === "text";
+  resetPasswordInput.type = isVisible ? "password" : "text";
+  if(resetConfirmInput){
+    resetConfirmInput.type = isVisible ? "password" : "text";
+  }
+  resetPasswordToggle.setAttribute("aria-pressed", String(!isVisible));
+  resetPasswordToggle.setAttribute("aria-label", isVisible ? "Mostrar senha" : "Ocultar senha");
+  resetPasswordToggle.innerHTML = `<i data-lucide="${isVisible ? "eye" : "eye-off"}"></i>`;
+  refreshIcons();
+  resetPasswordInput.focus();
+});
+
+forgotPasswordLink?.addEventListener("click", async event => {
+  event.preventDefault();
+  const email = loginEmailInput?.value.trim();
+
+  if(!email){
+    loginEmailInput?.focus();
+    if(forgotPasswordFeedback){
+      forgotPasswordFeedback.hidden = false;
+      forgotPasswordFeedback.className = "auth-feedback error";
+      forgotPasswordFeedback.textContent = "Digite seu e-mail antes de solicitar a recuperação.";
+    }
+    return;
+  }
+
+  const originalText = forgotPasswordLink.textContent;
+  forgotPasswordLink.textContent = "Enviando...";
+  forgotPasswordLink.style.pointerEvents = "none";
+
+  try{
+    const formData = new FormData();
+    formData.append("email", email);
+    const response = await fetch("/auth/forgot-password", {
+      method: "POST",
+      body: formData,
+      credentials: "same-origin"
+    });
+    const data = await response.json();
+    if(!response.ok){
+      throw new Error(data.detail || "Nao foi possivel solicitar a recuperacao.");
+    }
+    if(forgotPasswordFeedback){
+      forgotPasswordFeedback.hidden = false;
+      forgotPasswordFeedback.className = "auth-feedback success";
+      forgotPasswordFeedback.textContent = data.message || "Se o e-mail estiver cadastrado, enviaremos o link de recuperação.";
+    }
+  }catch(error){
+    if(forgotPasswordFeedback){
+      forgotPasswordFeedback.hidden = false;
+      forgotPasswordFeedback.className = "auth-feedback error";
+      forgotPasswordFeedback.textContent = error.message || "Nao foi possivel solicitar a recuperacao.";
+    }
+  }finally{
+    forgotPasswordLink.textContent = originalText;
+    forgotPasswordLink.style.pointerEvents = "";
+  }
+});
+
+window.addEventListener("pageshow",(event)=>{
+  if(event.persisted){
+    resetLoginLoading();
+  }
 });
 
 document.addEventListener('DOMContentLoaded', () => {

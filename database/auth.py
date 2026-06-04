@@ -41,6 +41,22 @@ def criar_token(data:dict):
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token
 
+
+def criar_token_recuperacao_senha(email: str, minutos: int = 30):
+    payload = {
+        "sub": email,
+        "purpose": "password_reset",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=minutos),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decodificar_token_recuperacao_senha(token: str):
+    payload = decodificar_token(token)
+    if payload.get("purpose") != "password_reset" or not payload.get("sub"):
+        raise JWTError("Token de recuperação inválido")
+    return payload
+
 def decodificar_token(token: str):
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     return payload

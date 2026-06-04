@@ -56,7 +56,8 @@ def tela_home(
             "login.html",
             {"request": request})
     
-    return RedirectResponse(url="/dashboard", status_code=302)
+    destino = "/dashboard" if usuario.get("role") == "admin" else "/pdv"
+    return RedirectResponse(url=destino, status_code=302)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -65,9 +66,11 @@ def tela_dashboard(
     usuario = Depends(get_usuario_logado),
     db: Session = Depends(get_db)
 ):
+    if usuario.get("role") != "admin":
+        return RedirectResponse(url="/pdv", status_code=302)
+
     usuarios = []
-    if usuario.get("role") == "admin":
-        usuarios = db.query(Usuario).order_by(Usuario.nome).all()
+    usuarios = db.query(Usuario).order_by(Usuario.nome).all()
 
     return dashboard_templates.TemplateResponse(
         request,

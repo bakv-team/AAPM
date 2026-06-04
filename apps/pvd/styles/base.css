@@ -3840,3 +3840,250 @@ a:active,
         transform: none;
     }
 }
+
+/* ============ FINAL POLISH: BRAND, SCROLLBARS AND PDV NAV ============ */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(241, 124, 32, 0.62) rgba(255, 255, 255, 0.10);
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(241, 124, 32, 0.88), rgba(247, 167, 48, 0.78));
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(255, 139, 35, 0.96), rgba(255, 184, 65, 0.90));
+}
+
+[data-theme="dark"] * {
+    scrollbar-color: rgba(241, 124, 32, 0.74) rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-thumb {
+    border-color: rgba(12, 21, 52, 0.76);
+}
+
+.brand-logo {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    object-fit: contain;
+    margin-left: 0;
+    opacity: 0.96;
+    filter: drop-shadow(0 10px 18px rgba(10, 23, 56, 0.16));
+    transition: opacity 0.2s ease, transform 0.2s ease, width 0.2s ease;
+}
+
+[data-theme="dark"] .brand-logo {
+    filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.34));
+}
+
+.brand:hover .brand-logo {
+    transform: translateY(-1px) scale(1.03);
+}
+
+.brand .sidebar-toggle {
+    margin-left: auto;
+}
+
+.app-shell.sidebar-collapsed .brand-logo,
+.layout.sidebar-collapsed .brand-logo {
+    width: 0;
+    height: 0;
+    flex-basis: 0;
+    opacity: 0;
+    margin-left: 0;
+    overflow: hidden;
+}
+
+@media (max-width: 992px) {
+    .app-shell.sidebar-collapsed .brand-logo,
+    .layout.sidebar-collapsed .brand-logo {
+        width: 44px;
+        height: 44px;
+        flex-basis: 44px;
+        opacity: 0.96;
+        margin-left: 0;
+    }
+}
+
+.sidebar .nav,
+.sidebar nav.categoria-content {
+    flex: 0 0 auto !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    width: 100%;
+}
+
+.sidebar .categoria-content {
+    margin-top: 0 !important;
+    margin-bottom: 24px;
+}
+
+.sidebar .nav-label {
+    text-align: left;
+}
+
+.categoria-content .nav-item,
+#categoryButtons .nav-item {
+    justify-content: flex-start !important;
+    text-align: left !important;
+    width: 100%;
+}
+
+.categoria-content .nav-item span,
+#categoryButtons .nav-item span {
+    flex: 1 1 auto;
+    text-align: left;
+}
+
+.pdv-main .dashboard-nav a.active,
+.pdv-main .dashboard-nav a.active i,
+.pdv-main .dashboard-nav a.active span {
+    color: #fff !important;
+}
+
+.app-shell.sidebar-collapsed .categoria-content .nav-item,
+.layout.sidebar-collapsed .categoria-content .nav-item {
+    justify-content: flex-start;
+    text-align: left;
+}
+
+@media (max-width: 992px) {
+    .app-shell.sidebar-collapsed .categoria-content .nav-item,
+    .layout.sidebar-collapsed .categoria-content .nav-item {
+        justify-content: flex-start;
+        text-align: left;
+    }
+}
+
+/* ============ FIXED BACKGROUND + INTERNAL SCROLL ============ */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    min-height: 100vh;
+}
+
+body > canvas,
+#particles {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.background-image {
+    position: fixed;
+    inset: 0;
+    background-image: url("../assets/fundos/fundo4.png");
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    opacity: 0.82;
+    z-index: 0;
+    pointer-events: none;
+}
+
+[data-theme="dark"] .background-image {
+    background-image: url("../assets/fundos/fundo5.png");
+    opacity: 0.78;
+}
+
+body::before {
+    z-index: 2;
+}
+
+body::after {
+    z-index: 3;
+}
+
+.app-shell {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    z-index: 4;
+}
+
+.pdv-main {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.pdv-main > header.topbar {
+    flex: 0 0 auto;
+}
+
+.pdv-workspace {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.content,
+.cart {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+.content {
+    max-height: 100%;
+}
+
+.cart {
+    top: 0;
+    height: 100%;
+    max-height: 100%;
+}
+
+@media (max-width: 1200px) {
+    .pdv-workspace {
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+    }
+
+    .content,
+    .cart {
+        max-height: none;
+        height: auto;
+        overflow: visible;
+    }
+}
+
+@media (max-width: 992px) {
+    html,
+    body {
+        overflow: hidden;
+    }
+}

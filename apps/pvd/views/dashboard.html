@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=motion-20260604-1" />
+    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=fixed-bg-scroll-20260604-1" />
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
   </head>
   <body>
@@ -33,7 +33,7 @@
       <!-- =============== SIDEBAR =============== -->
       <aside class="sidebar" id="sidebar">
         <div class="brand">
-          <div class="brand-mark"></div>
+          <img class="brand-logo" src="/apps/pvd/assets/icones/logosemtexto.png" alt="" aria-hidden="true" />
           <div class="brand-text">
             <span class="brand-title">AAPM</span>
             <span class="brand-sub">SENAI - FM</span>
@@ -65,7 +65,7 @@
 
         <div class="sidebar-footer">
             <div>
-              <p class="upgrade-title">2026</p>
+              <p class="upgrade-title">© 2026 SENAI</p>
               <p class="upgrade-sub">Todos os direitos reservados</p>
             </div>
         </div>
@@ -93,8 +93,8 @@
               <kbd>⌘K</kbd>
             </div>
             <button class="icon-btn" id="themeToggle" aria-label="Alternar tema"><i class="fa-solid fa-moon"></i></button>
-            <button class="icon-btn notif" id="notifBtn" aria-label="Notificações"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
-            <div class="admin-chip" id="adminChip">
+            <button class="icon-btn notif" id="notifBtn" aria-label="Notificações" aria-expanded="false" aria-controls="notifTray"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
+            <div class="admin-chip" id="adminChip" role="button" tabindex="0" aria-label="Abrir perfil" aria-expanded="false" aria-controls="adminTray">
               <div class="avatar">{{ (usuario.nome or usuario.sub or "U")[:2]|upper }}</div>
               <div class="who"><span class="who-name">{{ usuario.nome or usuario.sub }}</span><span class="who-role">{{ "Administrador" if usuario.role == "admin" else "Funcionário" }}</span></div>
               <i class="fa-solid fa-chevron-down"></i>
@@ -103,7 +103,7 @@
         </header>
 
         <div class="notif-tray hidden" id="notifTray">
-          <div class="notif-head"><strong>Notificações</strong><a href="#" class="muted">Marcar todas</a></div>
+          <div class="notif-head"><strong>Notificações</strong><a href="#" class="muted" id="markNotifRead">Marcar todas</a></div>
           <ul id="notifList"></ul>
         </div>
 
@@ -113,9 +113,9 @@
             <div><strong>{{ usuario.nome or usuario.sub }}</strong><p class="muted">{{ usuario.sub }}</p></div>
           </div>
           <ul>
-            <li><i class="fa-solid fa-user"></i> Meu perfil</li>
-            <li><i class="fa-solid fa-key"></i> Segurança</li>
-            <li><i class="fa-solid fa-life-ring"></i> Suporte</li>
+            <li id="profileBtn"><i class="fa-solid fa-user"></i> Meu perfil</li>
+            <li id="securityBtn"><i class="fa-solid fa-key"></i> Segurança</li>
+            <li id="supportBtn"><i class="fa-solid fa-life-ring"></i> Suporte</li>
             <li class="danger" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Sair</li>
           </ul>
         </div>
@@ -336,12 +336,12 @@
           <div class="card glass">
             <div class="card-head"><div><h3>Relatórios</h3><p class="muted">Exporte e analise dados de vendas e operações</p></div></div>
             <div class="report-grid">
-              <button class="report-card"><i class="fa-solid fa-file-csv"></i><span>Vendas (CSV)</span></button>
-              <button class="report-card"><i class="fa-solid fa-file-pdf"></i><span>Resumo Diário (PDF)</span></button>
-              <button class="report-card"><i class="fa-solid fa-file-lines"></i><span>Estoque atual</span></button>
-              <button class="report-card"><i class="fa-solid fa-chart-line"></i><span>Curva ABC</span></button>
-              <button class="report-card"><i class="fa-solid fa-people-group"></i><span>Clientes ativos</span></button>
-              <button class="report-card"><i class="fa-solid fa-tags"></i><span>Por categoria</span></button>
+              <button class="report-card" data-report="sales"><i class="fa-solid fa-file-csv"></i><span>Vendas (CSV)</span></button>
+              <button class="report-card" data-report="daily"><i class="fa-solid fa-file-pdf"></i><span>Resumo Diário (PDF)</span></button>
+              <button class="report-card" data-report="stock"><i class="fa-solid fa-file-lines"></i><span>Estoque atual</span></button>
+              <button class="report-card" data-report="abc"><i class="fa-solid fa-chart-line"></i><span>Curva ABC</span></button>
+              <button class="report-card" data-report="customers"><i class="fa-solid fa-people-group"></i><span>Clientes ativos</span></button>
+              <button class="report-card" data-report="categories"><i class="fa-solid fa-tags"></i><span>Por categoria</span></button>
             </div>
           </div>
         </section>
@@ -459,6 +459,59 @@
       </div>
     </div>
 
+    <!-- ====================== MODAL: PERFIL ====================== -->
+    <div class="modal-backdrop hidden" id="profileModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3>Meu perfil</h3>
+          <button class="icon-btn ghost" data-close-modal="profileModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="form-grid">
+          <label>Nome <strong id="profileName">-</strong></label>
+          <label>E-mail <strong id="profileEmail">-</strong></label>
+          <label>Perfil <strong id="profileRole">-</strong></label>
+          <label>Status <strong id="profileStatus">-</strong></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: SEGURANCA ====================== -->
+    <div class="modal-backdrop hidden" id="securityModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3>Segurança</h3>
+          <button class="icon-btn ghost" data-close-modal="securityModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="securityForm" class="form-grid">
+          <label>Senha atual <input type="password" id="currentPassword" required autocomplete="current-password"></label>
+          <label>Nova senha <input type="password" id="newPassword" required minlength="6" autocomplete="new-password"></label>
+          <label>Confirmar senha <input type="password" id="confirmPassword" required minlength="6" autocomplete="new-password"></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="securityModal">Cancelar</button>
+            <button class="primary-btn" type="submit">Salvar senha</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: SUPORTE ====================== -->
+    <div class="modal-backdrop hidden" id="supportModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3>Suporte</h3>
+          <button class="icon-btn ghost" data-close-modal="supportModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="supportForm" class="form-grid">
+          <label>Assunto <input type="text" id="supportSubject" value="Suporte" required></label>
+          <label class="span-2">Mensagem <textarea id="supportMessage" rows="4" required placeholder="Descreva o que aconteceu"></textarea></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="supportModal">Cancelar</button>
+            <button class="primary-btn" type="submit">Enviar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- ====================== CONFIRM ====================== -->
     <div class="modal-backdrop hidden" id="confirmModal">
       <div class="modal glass small">
@@ -477,7 +530,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- App -->
-    <script src="/apps/pvd/scripts/dashboard.js?v=motion-20260604-1"></script>
+    <script src="/apps/pvd/scripts/dashboard.js?v=functional-dashboard-20260604-1"></script>
   </body>
 </html>
 

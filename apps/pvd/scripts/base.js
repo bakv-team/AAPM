@@ -2,26 +2,33 @@ const canvas = document.getElementById("particles");
 const ctx = canvas?.getContext("2d");
 
 if (canvas && ctx) {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
   let particles = [];
+  let animationFrame = null;
+
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 
   class Particle {
     constructor() {
-      this.x = Math.random() * canvas.width;
-      this.y = Math.random() * canvas.height;
+      this.x = Math.random() * canvas.clientWidth;
+      this.y = Math.random() * canvas.clientHeight;
       this.size = Math.random() * 3 + 1;
       this.speedX = (Math.random() - 0.5) * 0.4;
       this.speedY = (Math.random() - 0.5) * 0.4;
-      this.color = Math.random() > 0.5 ? "rgba(58,92,233,.25)" : "rgba(245,138,31,.25)";
+      this.color = Math.random() > 0.5 ? "rgba(58,92,233,.35)" : "rgba(245,138,31,.35)";
     }
 
     update() {
       this.x += this.speedX;
       this.y += this.speedY;
-      if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
-      if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+      if (this.x > canvas.clientWidth || this.x < 0) this.speedX *= -1;
+      if (this.y > canvas.clientHeight || this.y < 0) this.speedY *= -1;
     }
 
     draw() {
@@ -33,25 +40,55 @@ if (canvas && ctx) {
   }
 
   function initParticles() {
-    particles = Array.from({ length: 60 }, () => new Particle());
+    particles = Array.from({ length: 75 }, () => new Particle());
+  }
+
+  function connectParticles() {
+    for (let a = 0; a < particles.length; a++) {
+      for (let b = a; b < particles.length; b++) {
+        const dx = particles[a].x - particles[b].x;
+        const dy = particles[a].y - particles[b].y;
+        const distance = dx * dx + dy * dy;
+
+        if (distance < 10000) {
+          ctx.beginPath();
+          ctx.strokeStyle = "rgba(120,120,160,.07)";
+          ctx.lineWidth = 1;
+          ctx.moveTo(particles[a].x, particles[a].y);
+          ctx.lineTo(particles[b].x, particles[b].y);
+          ctx.stroke();
+        }
+      }
+    }
   }
 
   function animateParticles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     particles.forEach(particle => {
       particle.update();
       particle.draw();
     });
-    requestAnimationFrame(animateParticles);
+    connectParticles();
+    animationFrame = requestAnimationFrame(animateParticles);
   }
 
-  window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+  function restartParticles() {
+    resizeCanvas();
     initParticles();
+  }
+
+  window.addEventListener("resize", restartParticles);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && animationFrame) {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+    } else if (!document.hidden && !animationFrame) {
+      animateParticles();
+    }
   });
 
-  initParticles();
+  restartParticles();
   animateParticles();
 }
 
@@ -69,12 +106,23 @@ const searchInput = document.getElementById("searchInput");
 const btnToggleAssociado = document.getElementById("btnToggleAssociado");
 const btnFecharPedido = document.getElementById("btnFecharPedido");
 const paymentOptions = document.getElementById("paymentOptions");
+const customerNameInput = document.getElementById("customerNameInput");
 const categoryTitle = document.getElementById("categoryName");
 const productCount = document.querySelector(".product-count");
 const resultCount = document.getElementById("resultCount");
 const prevPage = document.getElementById("prevPage");
 const nextPage = document.getElementById("nextPage");
 const pageNumbers = document.getElementById("pageNumbers");
+const themeToggle = document.getElementById("themeToggle");
+const pdvNotifBtn = document.getElementById("pdvNotifBtn");
+const pdvNotifTray = document.getElementById("pdvNotifTray");
+const pdvProfileChip = document.getElementById("pdvProfileChip");
+const pdvProfileTray = document.getElementById("pdvProfileTray");
+const pdvLogoutBtn = document.getElementById("pdvLogoutBtn");
+const pdvShell = document.getElementById("pdvShell");
+const sidebar = document.getElementById("sidebar");
+const sidebarCollapse = document.getElementById("sidebarCollapse");
+const mobileSidebarToggle = document.getElementById("toggleSidebar");
 
 let produtos = [];
 let categorias = [];
@@ -125,7 +173,8 @@ async function apiPost(path, body) {
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || `POST ${path} -> ${response.status}`);
+    const detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || {});
+    throw new Error(`POST ${path} -> ${response.status}${detail && detail !== "{}" ? `: ${detail}` : ""}`);
   }
   return response.json();
 }
@@ -171,7 +220,7 @@ function renderCategorias() {
   if (!categoryButtons) return;
 
   categoryButtons.innerHTML = categorias.map(categoria => `
-    <button class="cat-btn" data-category="${categoria.id}">
+    <button class="nav-item cat-btn" data-category="${categoria.id}">
       <i class="fa-solid ${categoria.icon || "fa-box"}"></i>
       <span>${categoria.name} <em class="cat-count" data-category="${categoria.id}">(0)</em></span>
     </button>
@@ -179,8 +228,8 @@ function renderCategorias() {
 
   document.querySelectorAll(".cat-btn").forEach(button => {
     button.addEventListener("click", () => {
-      document.querySelectorAll(".cat-btn").forEach(item => item.classList.remove("cat-active"));
-      button.classList.add("cat-active");
+      document.querySelectorAll(".cat-btn").forEach(item => item.classList.remove("active", "cat-active"));
+      button.classList.add("active", "cat-active");
       categoriaAtual = button.dataset.category;
       page = 1;
       categoryTitle.textContent = categoriaAtual === "todos" ? "Todos os Produtos" : button.querySelector("span").childNodes[0].textContent.trim();
@@ -374,21 +423,62 @@ async function fecharPedido() {
     return;
   }
 
+  const customerName = customerNameInput?.value.trim() || "Cliente balcão";
+  const orderTotals = totaisCarrinho();
+  const orderItems = carrinho.map(item => ({
+    productId: item.id,
+    name: item.name,
+    qty: item.quantidade,
+    price: item.price
+  }));
+
   btnFecharPedido.disabled = true;
   btnFecharPedido.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processando`;
 
   try {
-    const venda = await apiPost("/api/v1/pdv/sales", {
+    const salePayload = {
       pagamento: pagamentoAtual,
       associado: ehAssociado,
+      cliente_nome: customerName,
+      customerName,
+      observacao: customerName ? `Cliente: ${customerName}` : null,
       itens: carrinho.map(item => ({
         produto_id: Number(item.id),
         quantidade: item.quantidade
       }))
+    };
+    const fallbackPayload = {
+      pagamento: salePayload.pagamento,
+      associado: salePayload.associado,
+      itens: salePayload.itens
+    };
+    let venda;
+    try {
+      venda = await apiPost("/api/v1/pdv/sales", salePayload);
+    } catch (error) {
+      const canRetryWithoutCustomerFields = String(error.message || "").includes("422");
+      if (!canRetryWithoutCustomerFields) throw error;
+      venda = await apiPost("/api/v1/pdv/sales", fallbackPayload);
+    }
+
+    const storedOrders = JSON.parse(localStorage.getItem("aapm_pdv_orders") || "[]");
+    storedOrders.unshift({
+      id: `pdv-${Date.now()}`,
+      number: venda.number || `#${String(Date.now()).slice(-4)}`,
+      customerId: null,
+      customerName,
+      items: orderItems,
+      subtotal: orderTotals.totalBruto,
+      total: orderTotals.totalLiquido,
+      payment: pagamentoAtual,
+      status: "concluido",
+      createdAt: new Date().toISOString()
     });
+    localStorage.setItem("aapm_pdv_orders", JSON.stringify(storedOrders.slice(0, 50)));
 
     carrinho = [];
     ehAssociado = false;
+    if (customerNameInput) customerNameInput.value = "";
     salvarCarrinho();
     await carregarDados();
     renderCarrinho();
@@ -414,10 +504,114 @@ async function carregarDados() {
 }
 
 function bindEventos() {
+  function applySavedTheme() {
+    const storedTheme = localStorage.getItem("aapm_theme");
+    if (storedTheme === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+      return;
+    }
+    document.documentElement.removeAttribute("data-theme");
+  }
+
+  function setStoredTheme(theme) {
+    localStorage.setItem("aapm_theme", theme);
+  }
+
+  function syncThemeIcon() {
+    const icon = themeToggle?.querySelector("i");
+    if (!icon) return;
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    icon.className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
+    themeToggle?.setAttribute("aria-pressed", String(isDark));
+    themeToggle?.setAttribute("title", isDark ? "Alternar para tema claro" : "Alternar para tema escuro");
+  }
+
+  function setSidebarCollapsed(collapsed, persist = true) {
+    if (!pdvShell || !sidebarCollapse) return;
+    pdvShell.classList.toggle("sidebar-collapsed", collapsed);
+    document.body.classList.toggle("pdv-sidebar-collapsed", collapsed);
+    sidebarCollapse.setAttribute("aria-expanded", String(!collapsed));
+    sidebarCollapse.setAttribute("aria-label", collapsed ? "Expandir menu" : "Recolher menu");
+    const icon = sidebarCollapse.querySelector("i");
+    if (icon) icon.className = collapsed ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+    if (persist) localStorage.setItem("aapm_pdv_sidebar_collapsed", collapsed ? "1" : "0");
+  }
+
+  setSidebarCollapsed(localStorage.getItem("aapm_pdv_sidebar_collapsed") === "1", false);
+  applySavedTheme();
+  syncThemeIcon();
+
+  mobileSidebarToggle?.addEventListener("click", () => {
+    sidebar?.classList.toggle("open");
+  });
+
+  sidebarCollapse?.addEventListener("click", () => {
+    if (window.matchMedia("(max-width: 992px)").matches) {
+      sidebar?.classList.remove("open");
+      return;
+    }
+
+    setSidebarCollapsed(!pdvShell?.classList.contains("sidebar-collapsed"));
+  });
+
+  themeToggle?.addEventListener("click", () => {
+    const willUseDark = document.documentElement.getAttribute("data-theme") !== "dark";
+    if (willUseDark) {
+      document.documentElement.setAttribute("data-theme", "dark");
+      setStoredTheme("dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      setStoredTheme("light");
+    }
+    syncThemeIcon();
+  });
+
+  pdvNotifBtn?.addEventListener("click", event => {
+    event.stopPropagation();
+    const isHidden = pdvNotifTray?.classList.toggle("hidden");
+    pdvProfileTray?.classList.add("hidden");
+    pdvProfileChip?.setAttribute("aria-expanded", "false");
+    pdvNotifBtn.setAttribute("aria-expanded", String(!isHidden));
+  });
+
+  pdvNotifTray?.addEventListener("click", event => {
+    event.stopPropagation();
+  });
+
+  pdvProfileChip?.addEventListener("click", event => {
+    event.stopPropagation();
+    const isHidden = pdvProfileTray?.classList.toggle("hidden");
+    pdvNotifTray?.classList.add("hidden");
+    pdvNotifBtn?.setAttribute("aria-expanded", "false");
+    pdvProfileChip.setAttribute("aria-expanded", String(!isHidden));
+  });
+
+  pdvProfileTray?.addEventListener("click", event => {
+    event.stopPropagation();
+  });
+
+  pdvLogoutBtn?.addEventListener("click", () => {
+    window.location.href = "/auth/logout";
+  });
+
+  document.addEventListener("click", () => {
+    pdvProfileTray?.classList.add("hidden");
+    pdvProfileChip?.setAttribute("aria-expanded", "false");
+    pdvNotifTray?.classList.add("hidden");
+    pdvNotifBtn?.setAttribute("aria-expanded", "false");
+  });
+
   searchInput?.addEventListener("input", event => {
     termoBusca = event.target.value.trim();
     page = 1;
     renderProdutos();
+  });
+
+  document.addEventListener("keydown", event => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      searchInput?.focus();
+    }
   });
 
   prevPage?.addEventListener("click", () => {

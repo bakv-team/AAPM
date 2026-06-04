@@ -5,114 +5,178 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AAPM - Ponto de Venda</title>
+    <script>
+        try {
+            if (localStorage.getItem("aapm_theme") === "dark") {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        } catch (error) {}
+    </script>
     <link rel="stylesheet" href="/apps/pvd/styles/base.css">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <canvas id="particles"></canvas>
+    <div class="app-shell" id="pdvShell">
+        <canvas id="particles"></canvas>
 
-    <header class="topbar">
-        <div class="logo">
-            <img src="/apps/pvd/assets/icones/banner_aapm.png" alt="AAPM">
-            <div class="topbar-title">
-                <strong>Ponto de Venda</strong>
-                <span>{{ usuario.nome or usuario.sub }}</span>
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <div class="brand-mark"></div>
+                <div class="brand-text">
+                    <span class="brand-title">AAPM</span>
+                    <span class="brand-sub">SENAI - FM</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebarCollapse" type="button" aria-label="Recolher menu" aria-expanded="true">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
             </div>
-        </div>
 
-        <nav class="top-nav" aria-label="Navegacao principal">
-            <ul>
-                <li><a href="/dashboard"><i class="fa-solid fa-gauge-high"></i> Dashboard</a></li>
-                <li><a href="/pdv" class="active"><i class="fa-solid fa-cash-register"></i> Ponto de Venda</a></li>
-            </ul>
-        </nav>
+            <nav class="nav categoria-content" aria-label="Categorias do ponto de venda">
+                <p class="nav-label">Categorias</p>
+                <button class="nav-item cat-btn active cat-active" data-category="todos">
+                    <i class="fa-solid fa-list"></i>
+                    <span>Todos <em class="cat-count" data-category="todos">(0)</em></span>
+                </button>
+                <div id="categoryButtons"></div>
+            </nav>
 
-        <div class="topbar-actions">
-            <a class="topbar-link" href="/auth/logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</a>
-        </div>
-    </header>
-
-    <div class="layout">
-        <aside class="sidebar">
-            <div class="categoria">
-                <div class="categoria-content">
-                    <h2 class="categoria-title">Categorias</h2>
-                    <button class="cat-btn cat-active" data-category="todos">
-                        <i class="fa-solid fa-list"></i>
-                        <span>Todos <em class="cat-count" data-category="todos">(0)</em></span>
-                    </button>
-                    <div id="categoryButtons"></div>
+            <div class="sidebar-footer">
+                <div>
+                    <p class="upgrade-title">2026</p>
+                    <p class="upgrade-sub">Todos os direitos reservados</p>
                 </div>
             </div>
         </aside>
 
-        <main class="content">
-            <div class="breadcrumb">
-                <i class="fa-solid fa-cash-register"></i>
-                <span>Venda em andamento</span>
-            </div>
+        <main class="main pdv-main">
+            <header class="topbar">
+                <button class="icon-btn ghost only-mobile" id="toggleSidebar" type="button" aria-label="Abrir menu"><i class="fa-solid fa-bars"></i></button>
+                <div class="page-title">
+                    <h1>Ponto de Venda</h1>
+                    <p class="muted">Venda em andamento e carrinho ativo.</p>
+                </div>
 
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass search-left"></i>
-                <input type="text" id="searchInput" placeholder="Buscar produto por nome ou categoria...">
-            </div>
+                <nav class="dashboard-nav" aria-label="Navegação entre painéis">
+                    <a href="/dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+                    <a href="/pdv" class="active"><i class="fa-solid fa-cash-register"></i><span>Ponto de Venda</span></a>
+                </nav>
 
-            <h1 class="section-title">
-                <span id="categoryName">Todos os Produtos</span>
-                <span class="product-count">(0)</span>
-            </h1>
-
-            <section id="productsGrid" class="products-grid"></section>
-
-            <div class="pagination">
-                <span class="result-count" id="resultCount">0-0 de 0 resultados</span>
-                <div class="pages">
-                    <button class="page-nav" id="prevPage" disabled>
-                        <i class="fa-solid fa-chevron-left"></i>
-                    </button>
-                    <div id="pageNumbers"></div>
-                    <button class="page-nav" id="nextPage" disabled>
-                        <i class="fa-solid fa-chevron-right"></i>
+                <div class="topbar-actions">
+                    <div class="search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="searchInput" placeholder="Buscar produto ou categoria..." />
+                        <kbd>⌘K</kbd>
+                    </div>
+                    <button class="icon-btn" id="themeToggle" type="button" aria-label="Alternar tema"><i class="fa-solid fa-moon"></i></button>
+                    <button class="icon-btn notif" id="pdvNotifBtn" type="button" aria-label="Notificações"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
+                    <button class="admin-chip" id="pdvProfileChip" type="button" aria-label="Abrir perfil" aria-expanded="false">
+                        <span class="avatar">{{ (usuario.nome or usuario.sub or "U")[:2]|upper }}</span>
+                        <span class="who">
+                            <span class="who-name">{{ usuario.nome or usuario.sub }}</span>
+                            <span class="who-role">{{ "Administrador" if usuario.role == "admin" else "Funcionário" }}</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down"></i>
                     </button>
                 </div>
+            </header>
+
+            <div class="notif-tray hidden" id="pdvNotifTray">
+                <div class="notif-head"><strong>Notificações</strong><a href="#" class="muted">Marcar todas</a></div>
+                <ul>
+                    <li class="success"><i class="fa-solid fa-circle-check"></i><div>PDV conectado e pronto para vendas.<time>Agora</time></div></li>
+                    <li class="warn"><i class="fa-solid fa-triangle-exclamation"></i><div>Produtos com estoque mínimo ficam indisponíveis para venda.<time>Sistema</time></div></li>
+                </ul>
+            </div>
+
+            <div class="profile-tray hidden" id="pdvProfileTray">
+                <div class="profile-tray-head">
+                    <span class="avatar lg">{{ (usuario.nome or usuario.sub or "U")[:2]|upper }}</span>
+                    <div>
+                        <strong>{{ usuario.nome or usuario.sub }}</strong>
+                        <p>{{ usuario.sub }}</p>
+                    </div>
+                </div>
+                <button type="button" id="pdvLogoutBtn" class="profile-logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Sair</span>
+                </button>
+            </div>
+
+            <div class="pdv-workspace">
+                <section class="content">
+                    <div class="breadcrumb">
+                        <i class="fa-solid fa-cash-register"></i>
+                        <span>Venda em andamento</span>
+                    </div>
+
+                    <h1 class="section-title">
+                        <span id="categoryName">Todos os Produtos</span>
+                        <span class="product-count">(0)</span>
+                    </h1>
+
+                    <section id="productsGrid" class="products-grid"></section>
+
+                    <div class="pagination">
+                        <span class="result-count" id="resultCount">0-0 de 0 resultados</span>
+                        <div class="pages">
+                            <button class="page-nav" id="prevPage" disabled>
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <div id="pageNumbers"></div>
+                            <button class="page-nav" id="nextPage" disabled>
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="cart">
+                    <h2 class="cart-title">
+                        Carrinho
+                        <i class="fa-solid fa-cart-shopping cart-icon"></i>
+                    </h2>
+
+                    <div id="cartItems" class="cart-items"></div>
+
+                    <div class="cart-customer">
+                        <label for="customerNameInput">Cliente</label>
+                        <div class="cart-customer-field">
+                            <i class="fa-solid fa-user"></i>
+                            <input type="text" id="customerNameInput" placeholder="Nome do cliente" autocomplete="name">
+                        </div>
+                    </div>
+
+                    <button type="button" id="btnToggleAssociado" class="cart-associate">
+                        <i class="fa-regular fa-circle"></i>
+                        <span>Associado AAPM (10%)</span>
+                    </button>
+
+                    <div class="payment-box">
+                        <span class="payment-title">Pagamento</span>
+                        <div class="payment-options" id="paymentOptions">
+                            <button type="button" class="payment-option active" data-payment="pix"><i class="fa-brands fa-pix"></i> Pix</button>
+                            <button type="button" class="payment-option" data-payment="debito"><i class="fa-solid fa-credit-card"></i> Debito</button>
+                            <button type="button" class="payment-option" data-payment="credito"><i class="fa-regular fa-credit-card"></i> Credito</button>
+                            <button type="button" class="payment-option" data-payment="dinheiro"><i class="fa-solid fa-money-bill-wave"></i> Dinheiro</button>
+                        </div>
+                    </div>
+
+                    <div class="cart-total">
+                        <span class="total-label">Total Geral: <strong id="cartTotal">R$ 0,00</strong></span>
+                        <span class="total-discount" id="cartDiscount">-R$ 0,00</span>
+                    </div>
+
+                    <button type="button" id="btnFecharPedido" class="btn-close-order">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> Fechar Pedido
+                    </button>
+                </aside>
             </div>
         </main>
-
-        <aside class="cart">
-            <h2 class="cart-title">
-                Carrinho
-                <i class="fa-solid fa-cart-shopping cart-icon"></i>
-            </h2>
-
-            <div id="cartItems" class="cart-items"></div>
-
-            <button type="button" id="btnToggleAssociado" class="cart-associate">
-                <i class="fa-regular fa-circle"></i>
-                <span>Associado AAPM (10%)</span>
-            </button>
-
-            <div class="payment-box">
-                <span class="payment-title">Pagamento</span>
-                <div class="payment-options" id="paymentOptions">
-                    <button type="button" class="payment-option active" data-payment="pix"><i class="fa-brands fa-pix"></i> Pix</button>
-                    <button type="button" class="payment-option" data-payment="debito"><i class="fa-solid fa-credit-card"></i> Debito</button>
-                    <button type="button" class="payment-option" data-payment="credito"><i class="fa-regular fa-credit-card"></i> Credito</button>
-                    <button type="button" class="payment-option" data-payment="dinheiro"><i class="fa-solid fa-money-bill-wave"></i> Dinheiro</button>
-                </div>
-            </div>
-
-            <div class="cart-total">
-                <span class="total-label">Total Geral: <strong id="cartTotal">R$ 0,00</strong></span>
-                <span class="total-discount" id="cartDiscount">-R$ 0,00</span>
-            </div>
-
-            <button type="button" id="btnFecharPedido" class="btn-close-order">
-                <i class="fa-solid fa-file-invoice-dollar"></i> Fechar Pedido
-            </button>
-        </aside>
     </div>
 
     <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>

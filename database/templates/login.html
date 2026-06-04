@@ -6,6 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - AAPM</title>
 
+    <script>
+        try {
+            if (localStorage.getItem("aapm_theme") === "dark") {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        } catch (error) {}
+    </script>
     <link rel="stylesheet" href="/apps/pvd/styles/login.css">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
 

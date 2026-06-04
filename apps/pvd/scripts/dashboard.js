@@ -1,4 +1,112 @@
 
+/* =====================================================================
+ *  BACKGROUND DO DASHBOARD — mesmo canvas da tela de login, atrás do app shell
+ * ===================================================================== */
+(function () {
+  const canvas = document.getElementById("particles");
+  const shell = document.getElementById("appShell");
+  const ctx = canvas?.getContext("2d");
+
+  if (!canvas || !shell || !ctx) return;
+
+  let particles = [];
+  let animationFrame = null;
+
+  function resizeCanvas() {
+    const rect = shell.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.clientWidth;
+      this.y = Math.random() * canvas.clientHeight;
+      this.size = Math.random() * 3 + 1;
+      this.speedX = (Math.random() - 0.5) * 0.4;
+      this.speedY = (Math.random() - 0.5) * 0.4;
+      this.color = Math.random() > 0.5 ? "rgba(58,92,233,.35)" : "rgba(245,138,31,.35)";
+    }
+
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+
+      if (this.x > canvas.clientWidth || this.x < 0) this.speedX *= -1;
+      if (this.y > canvas.clientHeight || this.y < 0) this.speedY *= -1;
+    }
+
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.fill();
+    }
+  }
+
+  function initParticles() {
+    particles = Array.from({ length: 75 }, () => new Particle());
+  }
+
+  function connectParticles() {
+    for (let a = 0; a < particles.length; a++) {
+      for (let b = a; b < particles.length; b++) {
+        const dx = particles[a].x - particles[b].x;
+        const dy = particles[a].y - particles[b].y;
+        const distance = dx * dx + dy * dy;
+
+        if (distance < 10000) {
+          ctx.beginPath();
+          ctx.strokeStyle = "rgba(120,120,160,.07)";
+          ctx.lineWidth = 1;
+          ctx.moveTo(particles[a].x, particles[a].y);
+          ctx.lineTo(particles[b].x, particles[b].y);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function animateParticles() {
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    particles.forEach(particle => {
+      particle.update();
+      particle.draw();
+    });
+    connectParticles();
+    animationFrame = requestAnimationFrame(animateParticles);
+  }
+
+  function restartParticles() {
+    resizeCanvas();
+    initParticles();
+  }
+
+  restartParticles();
+  animateParticles();
+
+  window.addEventListener("resize", restartParticles);
+
+  if ("ResizeObserver" in window) {
+    const observer = new ResizeObserver(restartParticles);
+    observer.observe(shell);
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && animationFrame) {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+    } else if (!document.hidden && !animationFrame) {
+      animateParticles();
+    }
+  });
+})();
+
 //  *  Como conectar ao banco depois:
 //  *    1. Suba o backend (FastAPI) em http://localhost:8000
 //  *    2. Procure pelos comentários "// TODO: conectar ao backend"
@@ -266,6 +374,23 @@ window.API = (function () {
       createdAt: date
     });
   }
+  ORDERS.sort((a, b) => b.createdAt - a.createdAt);
+
+  let PDV_ORDERS = [];
+  try {
+    PDV_ORDERS = JSON.parse(localStorage.getItem("aapm_pdv_orders") || "[]")
+      .map(order => ({
+        ...order,
+        createdAt: new Date(order.createdAt),
+        payment: order.payment === "debito" ? "Cartão Débito"
+          : order.payment === "credito" ? "Cartão Crédito"
+          : order.payment === "dinheiro" ? "Dinheiro"
+          : "Pix"
+      }));
+  } catch {
+    PDV_ORDERS = [];
+  }
+  ORDERS.unshift(...PDV_ORDERS);
   ORDERS.sort((a, b) => b.createdAt - a.createdAt);
 
   // Vendas diárias últimos 30 dias
@@ -1543,6 +1668,25 @@ window.Dashboard = (function () {
   }
 
   function bindGlobal() {
+    const appShell = document.getElementById("appShell");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarCollapse = document.getElementById("sidebarCollapse");
+    const mobileSidebarToggle = document.getElementById("toggleSidebar");
+    const mobileQuery = window.matchMedia("(max-width: 880px)");
+
+    function setSidebarCollapsed(collapsed, persist = true) {
+      if (!appShell || !sidebarCollapse) return;
+
+      appShell.classList.toggle("sidebar-collapsed", collapsed);
+      sidebarCollapse.setAttribute("aria-expanded", String(!collapsed));
+      sidebarCollapse.setAttribute("aria-label", collapsed ? "Expandir menu" : "Recolher menu");
+      sidebarCollapse.querySelector("i").className = collapsed ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+
+      if (persist) localStorage.setItem("aapm_sidebar_collapsed", collapsed ? "1" : "0");
+    }
+
+    setSidebarCollapsed(localStorage.getItem("aapm_sidebar_collapsed") === "1", false);
+
     document.querySelectorAll(".nav-item[data-route]").forEach(b => {
       b.addEventListener("click", () => navigate(b.dataset.route));
     });
@@ -1550,15 +1694,52 @@ window.Dashboard = (function () {
       b.addEventListener("click", () => navigate(b.dataset.routeLink));
     });
 
-    document.getElementById("toggleSidebar")?.addEventListener("click", () => {
-      document.getElementById("sidebar").classList.toggle("open");
+    mobileSidebarToggle?.addEventListener("click", () => {
+      sidebar?.classList.toggle("open");
     });
 
-    document.getElementById("themeToggle").addEventListener("click", () => {
-      const cur = document.documentElement.getAttribute("data-theme") === "dark" ? "" : "dark";
-      if (cur) document.documentElement.setAttribute("data-theme", "dark");
-      else document.documentElement.removeAttribute("data-theme");
-      document.querySelector("#themeToggle i").className = cur ? "fa-solid fa-sun" : "fa-solid fa-moon";
+    sidebarCollapse?.addEventListener("click", () => {
+      if (mobileQuery.matches) {
+        sidebar?.classList.remove("open");
+        return;
+      }
+
+      setSidebarCollapsed(!appShell.classList.contains("sidebar-collapsed"));
+    });
+
+    const themeToggle = document.getElementById("themeToggle");
+    const applySavedTheme = () => {
+      const storedTheme = localStorage.getItem("aapm_theme");
+      if (storedTheme === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        return;
+      }
+      document.documentElement.removeAttribute("data-theme");
+    };
+    const setStoredTheme = theme => {
+      localStorage.setItem("aapm_theme", theme);
+    };
+    const syncThemeIcon = () => {
+      const icon = themeToggle?.querySelector("i");
+      if (!icon) return;
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      icon.className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
+      themeToggle?.setAttribute("aria-pressed", String(isDark));
+      themeToggle?.setAttribute("title", isDark ? "Alternar para tema claro" : "Alternar para tema escuro");
+    };
+    applySavedTheme();
+    syncThemeIcon();
+
+    themeToggle?.addEventListener("click", () => {
+      const willUseDark = document.documentElement.getAttribute("data-theme") !== "dark";
+      if (willUseDark) {
+        document.documentElement.setAttribute("data-theme", "dark");
+        setStoredTheme("dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+        setStoredTheme("light");
+      }
+      syncThemeIcon();
       window.CHARTS.refreshAll();
     });
 
@@ -1576,6 +1757,10 @@ window.Dashboard = (function () {
       e.stopPropagation();
       adminTray.classList.toggle("hidden");
       notifTray.classList.add("hidden");
+    });
+
+    document.getElementById("logoutBtn")?.addEventListener("click", () => {
+      window.location.href = "/auth/logout";
     });
 
     document.addEventListener("click", () => {

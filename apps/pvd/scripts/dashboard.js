@@ -107,30 +107,6 @@
   });
 })();
 
-//  *  Como conectar ao banco depois:
-//  *    1. Suba o backend (FastAPI) em http://localhost:8000
-//  *    2. Procure pelos comentários "// TODO: conectar ao backend"
-//  *       espalhados pelo arquivo — em cada um há um bloco fetch() pronto,
-//  *       comentado. Basta descomentar (e remover o trecho mock equivalente)
-//  *       para passar a usar dados reais do SQLite.
-//  *    3. Ajuste API.BASE_URL se o backend rodar em outra porta.
-//  *
-//  *  Endpoints esperados (sugeridos para sua FastAPI):
-//  *    GET    /api/categories
-//  *    POST   /api/categories
-//  *    GET    /api/products            ?q=&category_id=&stock=
-//  *    POST   /api/products
-//  *    PUT    /api/products/{id}
-//  *    DELETE /api/products/{id}
-//  *    GET    /api/customers           ?q=
-//  *    POST   /api/customers
-//  *    GET    /api/orders              ?q=&status=
-//  *    POST   /api/orders
-//  *    GET    /api/dashboard/metrics
-//  *    GET    /api/dashboard/daily     ?range=7
-//  *    GET    /api/dashboard/hourly
-//  *    GET    /api/dashboard/top-products
-//  *    GET    /api/notifications
 /* =====================================================================
  *  CAMADA DE API — ponte com FastAPI + SQLite + Alembic
  *  ---------------------------------------------------------------------
@@ -140,7 +116,6 @@
 window.API = (function () {
   const BASE_URL = window.location.origin;
 
-  // Helpers HTTP genéricos — já prontos para uso futuro
   async function apiGet(path) {
     const res = await fetch(`${BASE_URL}${path}`, { credentials: "same-origin" });
     if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
@@ -303,113 +278,12 @@ window.API = (function () {
 
 
 /* =====================================================================
- *  SEED LOCAL (mock) — substituir por chamadas API.getXxx() ao conectar
+ *  CACHE DE TELA — preenchido exclusivamente pela API real.
  * ===================================================================== */
 (function () {
-  const today = new Date();
-
-  const CATEGORIES = [
-    { id: "c1", name: "Bebidas",     icon: "fa-mug-saucer",     color: "#FF6B35" },
-    { id: "c2", name: "Lanches",     icon: "fa-burger",         color: "#2D7BFF" },
-    { id: "c3", name: "Sobremesas",  icon: "fa-ice-cream",      color: "#7C5CFF" },
-    { id: "c4", name: "Padaria",     icon: "fa-bread-slice",    color: "#F5A623" },
-    { id: "c5", name: "Mercearia",   icon: "fa-basket-shopping",color: "#16C784" },
-    { id: "c6", name: "Hortifruti",  icon: "fa-apple-whole",    color: "#FF4D6D" }
-  ];
-
-  const PRODUCTS = [
-    { id: "p1",  name: "Café Espresso Premium",  sku: "BBE-001", categoryId: "c1", price: 8.50,  cost: 3.20, stock: 124, description: "Grão 100% arábica torrado na hora." },
-    { id: "p2",  name: "Cappuccino Italiano",    sku: "BBE-002", categoryId: "c1", price: 12.00, cost: 4.50, stock: 78 },
-    { id: "p3",  name: "Suco Verde Detox 300ml", sku: "BBE-003", categoryId: "c1", price: 14.90, cost: 5.10, stock: 8 },
-    { id: "p4",  name: "X-Tudo Artesanal",       sku: "LAN-001", categoryId: "c2", price: 28.90, cost: 11.50, stock: 42 },
-    { id: "p5",  name: "Hot Dog Gourmet",        sku: "LAN-002", categoryId: "c2", price: 18.50, cost: 6.20, stock: 31 },
-    { id: "p6",  name: "Wrap de Frango",         sku: "LAN-003", categoryId: "c2", price: 22.00, cost: 9.10, stock: 0 },
-    { id: "p7",  name: "Brownie de Chocolate",   sku: "SOB-001", categoryId: "c3", price: 11.00, cost: 3.80, stock: 56 },
-    { id: "p8",  name: "Cheesecake de Frutas",   sku: "SOB-002", categoryId: "c3", price: 15.90, cost: 5.40, stock: 14 },
-    { id: "p9",  name: "Pão Italiano 500g",      sku: "PAD-001", categoryId: "c4", price: 9.50,  cost: 3.10, stock: 88 },
-    { id: "p10", name: "Croissant de Manteiga",  sku: "PAD-002", categoryId: "c4", price: 7.20,  cost: 2.40, stock: 64 },
-    { id: "p11", name: "Arroz Branco 5kg",       sku: "MER-001", categoryId: "c5", price: 32.90, cost: 21.00, stock: 27 },
-    { id: "p12", name: "Azeite Extra Virgem",    sku: "MER-002", categoryId: "c5", price: 38.50, cost: 22.00, stock: 19 },
-    { id: "p13", name: "Maçã Fuji (kg)",         sku: "HOR-001", categoryId: "c6", price: 9.80,  cost: 5.00, stock: 102 },
-    { id: "p14", name: "Banana Prata (kg)",      sku: "HOR-002", categoryId: "c6", price: 6.50,  cost: 2.80, stock: 5 },
-    { id: "p15", name: "Salada Mix 200g",        sku: "HOR-003", categoryId: "c6", price: 12.00, cost: 4.50, stock: 36 }
-  ];
-
-  const CUSTOMERS = [
-    { id: "u1", name: "Mariana Costa",   email: "mariana@email.com", phone: "(11) 98765-4321", totalSpent: 1248.50, orders: 14, lastOrder: "Hoje" },
-    { id: "u2", name: "Lucas Pereira",   email: "lucas@email.com",   phone: "(11) 99887-7766", totalSpent: 856.20,  orders: 9,  lastOrder: "Ontem" },
-    { id: "u3", name: "Ana Beatriz",     email: "ana.b@email.com",   phone: "(11) 98654-1122", totalSpent: 2104.80, orders: 22, lastOrder: "Hoje" },
-    { id: "u4", name: "Rafael Souza",    email: "rafa@email.com",    phone: "(21) 99332-1010", totalSpent: 412.00,  orders: 5,  lastOrder: "3 dias atrás" },
-    { id: "u5", name: "Carla Mendes",    email: "carla@email.com",   phone: "(11) 91234-5678", totalSpent: 1689.40, orders: 17, lastOrder: "Ontem" },
-    { id: "u6", name: "Felipe Oliveira", email: "felipe@email.com",  phone: "(11) 98444-2233", totalSpent: 308.10,  orders: 4,  lastOrder: "Semana passada" }
-  ];
-
-  // Helper para gerar pedidos plausíveis
-  function pad(n) { return String(n).padStart(4, "0"); }
-  function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-  const STATUSES = ["concluido", "pendente", "concluido", "concluido", "cancelado", "concluido"];
-  const PAYS = ["Pix", "Cartão Crédito", "Cartão Débito", "Dinheiro", "Pix"];
-
-  const ORDERS = [];
-  for (let i = 0; i < 28; i++) {
-    const cust = CUSTOMERS[rand(0, CUSTOMERS.length - 1)];
-    const nItems = rand(1, 4);
-    const items = [];
-    let subtotal = 0;
-    for (let j = 0; j < nItems; j++) {
-      const p = PRODUCTS[rand(0, PRODUCTS.length - 1)];
-      const qty = rand(1, 3);
-      subtotal += p.price * qty;
-      items.push({ productId: p.id, name: p.name, qty, price: p.price });
-    }
-    const date = new Date(today.getTime() - rand(0, 6) * 86400000 - rand(0, 23) * 3600000);
-    ORDERS.push({
-      id: "o" + (i + 1),
-      number: "#" + pad(1000 + i),
-      customerId: cust.id,
-      customerName: cust.name,
-      items,
-      subtotal,
-      total: subtotal,
-      payment: PAYS[rand(0, PAYS.length - 1)],
-      status: STATUSES[rand(0, STATUSES.length - 1)],
-      createdAt: date
-    });
-  }
-  ORDERS.sort((a, b) => b.createdAt - a.createdAt);
-
-  ORDERS.sort((a, b) => b.createdAt - a.createdAt);
-
-  // Vendas diárias últimos 30 dias
-  const DAILY = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today.getTime() - i * 86400000);
-    const revenue = rand(1800, 6800) + Math.sin(i / 3) * 600;
-    DAILY.push({
-      date: d,
-      revenue: Math.round(revenue),
-      items: rand(40, 180),
-      orders: rand(18, 60)
-    });
-  }
-
-  // Vendas por hora (hoje)
-  const HOURLY = [];
-  for (let h = 8; h <= 22; h++) {
-    HOURLY.push({ hour: h, revenue: rand(80, 720), orders: rand(2, 22) });
-  }
-
-  // Notificações
-  const NOTIFICATIONS = [
-    { id: 1, type: "warn",    icon: "fa-triangle-exclamation", text: "3 produtos com estoque abaixo do mínimo.", time: "há 5 min" },
-    { id: 2, type: "success", icon: "fa-circle-check",         text: "Pedido #1027 concluído por Mariana Costa.", time: "há 12 min" },
-    { id: 3, type: "info",    icon: "fa-bell",                  text: "Relatório diário disponível para download.", time: "há 1 h" },
-    { id: 4, type: "info",    icon: "fa-user-plus",             text: "Novo associado cadastrado: Felipe Oliveira.", time: "há 2 h" }
-  ];
-
   window.DB = {
-    categories: CATEGORIES,
-    products: PRODUCTS,
+    categories: [],
+    products: [],
     customers: [],
     orders: [],
     daily: [],
@@ -419,11 +293,6 @@ window.API = (function () {
     topProducts: [],
     stockMovements: [],
 
-    nextProductId() {
-      let n = this.products.length + 1;
-      while (this.products.find(p => p.id === "p" + n)) n++;
-      return "p" + n;
-    },
     getCategory(id) { return this.categories.find(c => c.id === id); },
     getProduct(id) { return this.products.find(p => p.id === id); }
   };
@@ -714,9 +583,6 @@ window.CHARTS = (function () {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
-    // TODO: conectar ao backend
-    // window.API.getHourlySales().then(data => { ... montar gráfico com data ... });
-
     const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 280);
     grad.addColorStop(0, "rgba(45,123,255,0.35)");
     grad.addColorStop(1, "rgba(45,123,255,0)");
@@ -762,9 +628,6 @@ window.ProductsPage = (function () {
   let filters = { q: "", category: "", stock: "" };
 
   function getFiltered() {
-    // TODO: conectar ao backend
-    // Quando o backend estiver pronto, troque o filtro local por:
-    // return window.API.getProducts(filters);   // o backend já aplica os filtros via querystring
     return window.DB.products.filter(p => {
       const cat = window.DB.getCategory(p.categoryId);
       if (filters.q && !(`${p.name} ${p.sku || ""} ${cat?.name || ""}`.toLowerCase().includes(filters.q.toLowerCase()))) return false;
@@ -943,11 +806,6 @@ window.ProductsPage = (function () {
   function init() {
     const sel = document.getElementById("productCategoryFilter");
 
-    // TODO: conectar ao backend
-    // window.API.getCategories().then(cats => {
-    //   sel.innerHTML = `<option value="">Todas categorias</option>` +
-    //     cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-    // });
     sel.innerHTML = `<option value="">Todas categorias</option>` +
       window.DB.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 
@@ -1056,8 +914,6 @@ window.CustomersPage = (function () {
     const grid = document.getElementById("customersGrid");
     if (!grid) return;
 
-    // TODO: conectar ao backend
-    // window.API.getCustomers(q).then(rows => { ... atualiza grid.innerHTML ... });
     const rows = window.DB.customers.filter(c =>
       !q || `${c.name} ${c.email || ""} ${c.matricula || ""} ${c.phone || ""}`.toLowerCase().includes(q.toLowerCase())
     );
@@ -1096,49 +952,6 @@ window.CustomersPage = (function () {
 
   return { init, render };
 })();
-
-
-
-
-window.CategoriesPage = (function () {
-  function render() {
-    const grid = document.getElementById("categoriesGrid");
-    if (!grid) return;
-
-    // TODO: conectar ao backend
-    // window.API.getCategories().then(cats => { ... renderiza cards com cats ... });
-
-    const agg = window.CHARTS.aggregateByCategory();
-    grid.innerHTML = window.DB.categories.map(c => {
-      const a = agg.find(x => x.id === c.id) || { value: 0, color: c.color };
-      const productCount = window.DB.products.filter(p => p.categoryId === c.id).length;
-      return `
-        <article class="category-card">
-          <div class="cat-ic" style="background:linear-gradient(135deg, ${a.color}, ${a.color}aa)"><i class="fa-solid ${c.icon}"></i></div>
-          <div style="flex:1">
-            <h4>${c.name}</h4>
-            <p>${productCount} produto${productCount === 1 ? "" : "s"}</p>
-          </div>
-          <div class="cat-rev">
-            <strong>${UI.money(a.value)}</strong>
-            <span><i class="fa-solid fa-arrow-trend-up"></i> ${(Math.random() * 12 + 2).toFixed(1)}%</span>
-          </div>
-        </article>
-      `;
-    }).join("");
-  }
-  function init() {
-    document.getElementById("newCategoryBtn").addEventListener("click", () => {
-      // TODO: conectar ao backend
-      // window.API.createCategory(payload).then(() => render());
-      UI.toast("Nova categoria — conecte ao backend para persistir.", "info");
-    });
-    render();
-  }
-  return { init, render };
-})();
-
-
 
 window.CategoriesPage = (function () {
   function syncProductCategoryFilter() {

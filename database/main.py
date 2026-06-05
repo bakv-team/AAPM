@@ -6,9 +6,6 @@ from sqlalchemy.orm import Session
 
 from database.controllers import auth_controller
 from database.controllers import admin_controller
-from database.controllers import produto_controller
-from database.controllers import categoria_controller
-from database.controllers import movimentacao_controller
 from api.v1 import pvd
 from database.database import get_db
 from database.models.usuario import Usuario
@@ -37,9 +34,6 @@ async def disable_apps_static_cache(request: Request, call_next):
 
 app.include_router(auth_controller.router)
 app.include_router(admin_controller.router)
-app.include_router(produto_controller.router)
-app.include_router(categoria_controller.router)
-app.include_router(movimentacao_controller.router)
 app.include_router(pvd.router)
 
 

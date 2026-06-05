@@ -2,7 +2,7 @@
 
 > **Versão:** 1.0  
 > **Data:** Abril de 2026  
-> **Descrição:** Sistema integrado de Ponto de Venda (PDV) e Site Público
+> **Descrição:** Sistema administrativo de Ponto de Venda (PDV)
 
 ---
 
@@ -28,12 +28,11 @@
 
 ## 1. Visão Geral
 
-O projeto **AAPM** é composto por duas aplicações distintas que compartilham a mesma base de código, banco de dados e lógica de negócio:
+O projeto **AAPM** é composto por uma aplicação administrativa de PDV, com backend FastAPI, banco SQLite/SQLAlchemy e telas internas para operação e gestão.
 
 | Aplicação | Público-alvo | Acesso |
 |-----------|-------------|--------|
-| **PDV (Ponto de Venda)** | Administradores | Presencial / Interno |
-| **Site** | Público geral | Internet |
+| **PDV (Ponto de Venda)** | Administradores e operadores | Presencial / Interno |
 
 A arquitetura segue o princípio de **separação de responsabilidades**: cada camada tem uma função bem definida, evitando que lógica de negócio, apresentação e dados fiquem misturados.
 
@@ -49,8 +48,7 @@ AAPM/
 ├── requirements.txt          # Dependências Python
 │
 ├── apps/                     # Aplicações da interface
-│   ├── pdv/                  # Ponto de Venda (administrativo)
-│   └── site/                 # Site público
+│   └── pdv/                  # Ponto de Venda (administrativo)
 │
 ├── core/                     # Núcleo compartilhado da aplicação
 │   ├── config.py
@@ -64,8 +62,7 @@ AAPM/
 │
 ├── api/                      # Endpoints e rotas da API
 │   ├── v1/
-│   │   ├── pdv.py
-│   │   └── site.py
+│   │   └── pdv.py
 │   └── middleware.py
 │
 ├── database/                 # Banco de dados e modelos
@@ -92,13 +89,13 @@ AAPM/
 
 ### 3.1 `apps/`
 
-**Responsabilidade:** Contém as duas aplicações de interface do sistema, organizadas como módulos independentes.
+**Responsabilidade:** Contém a interface administrativa do sistema.
 
-Cada sub-pasta representa uma aplicação completa com suas próprias views, components e estilos. Isso garante que alterações em uma aplicação não afetem a outra.
+As views, scripts, assets e estilos do PDV ficam agrupados em `apps/pvd/`, mantendo a interface separada do backend.
 
 ---
 
-#### `apps/pdv/` — Ponto de Venda
+#### `apps/pvd/` — Ponto de Venda
 
 **Para quem é:** Administradores e operadores internos, com acesso presencial.
 
@@ -118,30 +115,6 @@ Cada sub-pasta representa uma aplicação completa com suas próprias views, com
 - Cadastro de produtos
 - Relatórios e histórico de transações
 
----
-
-#### `apps/site/` — Site Público
-
-**Para quem é:** Clientes e visitantes com acesso pela internet.
-
-**O que contém:**
-
-| Arquivo / Pasta | Função |
-|-----------------|--------|
-| `__init__.py` | Inicializa o módulo Python |
-| `routes.py` | Define as rotas públicas do site |
-| `views/` | Páginas públicas (home, produto, contato, etc.) |
-| `components/` | Componentes reutilizáveis do site (header, footer, cards) |
-| `styles/` | Estilos visuais específicos do site público |
-
-**Exemplos de funcionalidades aqui presentes:**
-- Página inicial com vitrine de produtos
-- Página de detalhes de produto
-- Formulário de contato
-- Página sobre a empresa
-
----
-
 ### 3.2 `core/`
 
 **Responsabilidade:** Núcleo central da aplicação. Contém configurações, segurança e tratamento de erros que são **compartilhados por todas as partes do sistema**.
@@ -156,7 +129,7 @@ Nada de lógica de negócio aqui — apenas a estrutura que sustenta a aplicaç�
 | `exceptions.py` | Classes de erros customizados do sistema (ex: `ProdutoNaoEncontradoError`, `PermissaoNegadaError`) |
 
 **Por que separar aqui?**  
-Porque tanto o PDV quanto o site precisam de configuração e segurança. Colocar isso em `core/` evita duplicação e garante consistência.
+Porque o PDV precisa de configuração e segurança consistentes. Colocar isso em `core/` evita duplicação quando esses módulos existirem/forem extraídos.
 
 ---
 
@@ -188,15 +161,13 @@ api/
 ├── __init__.py
 ├── middleware.py       # Interceptações globais (autenticação, logs, CORS)
 └── v1/
-    ├── pdv.py          # Endpoints exclusivos do PDV
-    └── site.py         # Endpoints públicos do site
+    └── pdv.py          # Endpoints do PDV
 ```
 
 | Arquivo | Função |
 |---------|--------|
 | `middleware.py` | Código executado em toda requisição (ex: verificar token, registrar log, tratar CORS) |
-| `v1/pdv.py` | Rotas do painel administrativo (ex: `POST /api/v1/venda`, `GET /api/v1/produtos`) |
-| `v1/site.py` | Rotas públicas (ex: `GET /api/v1/catalogo`, `POST /api/v1/contato`) |
+| `v1/pdv.py` | Rotas do painel administrativo (ex: `POST /api/v1/pdv/sales`, `GET /api/v1/pdv/products`) |
 
 **Por que versionar a API?**  
 Se no futuro for necessário mudar o comportamento de um endpoint sem quebrar clientes existentes, basta criar um `/v2/` com as novas regras.
@@ -231,7 +202,7 @@ Permitem que a equipe evolua o banco de dados de forma controlada e rastreável,
 
 ### 3.6 `assets/`
 
-**Responsabilidade:** Arquivos estáticos **globais** que são compartilhados entre o PDV e o site.
+**Responsabilidade:** Arquivos estáticos **globais** compartilhados pela aplicação.
 
 ```
 assets/
@@ -239,7 +210,7 @@ assets/
 └── fonts/      # Fontes utilizadas nas interfaces
 ```
 
-> **Atenção:** Imagens e estilos específicos de cada aplicação devem ficar dentro de `apps/pdv/` ou `apps/site/`. Esta pasta é apenas para recursos verdadeiramente compartilhados.
+> **Atenção:** Imagens e estilos específicos da aplicação devem ficar dentro de `apps/pvd/`. Esta pasta é apenas para recursos verdadeiramente compartilhados.
 
 ---
 
@@ -270,7 +241,7 @@ docs/
 └── api.md              # Documentação dos endpoints da API (futura)
 ```
 
-Qualquer texto explicativo, guia, decisão técnica ou especificação deve ser registrado aqui. Nunca deixar arquivos `funcionalidade_*.txt` espalhados pelas pastas de código.
+Qualquer texto explicativo, guia, decisão técnica ou especificação deve ser registrado aqui. Evite deixar arquivos temporários espalhados pelas pastas de código.
 
 ---
 

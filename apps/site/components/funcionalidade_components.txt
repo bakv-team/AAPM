@@ -1,2 +1,0 @@
-Arquivos java script
-(ex: Button.js, Header.js)

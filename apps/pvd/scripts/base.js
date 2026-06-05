@@ -255,7 +255,7 @@ async function apiPost(path, body) {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     const detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || {});
-    throw new Error(`POST ${path} -> ${response.status}${detail && detail !== "{}" ? `: ${detail}` : ""}`);
+    throw new Error(detail && detail !== "{}" ? detail : `POST ${path} -> ${response.status}`);
   }
   return response.json();
 }
@@ -353,12 +353,12 @@ function renderProdutos() {
       const disabled = disponivel <= 0 ? "disabled" : "";
       const estoqueLabel = disponivel > 0 ? `${disponivel} disponiveis` : "Indisponivel";
       return `
-        <article class="card">
+        <article class="card product-card">
           <div class="card-image">
-            <img src="${produtoImagem(produto)}" alt="${produto.name}">
+            <img src="${produtoImagem(produto)}" alt="${produto.name}" loading="lazy">
           </div>
           <div class="card-content">
-            <div>
+            <div class="product-card-main">
               <span class="card-category">${categoriaNome(produto.categoryId)}</span>
               <h3 class="card-title">${produto.name}</h3>
             </div>
@@ -457,7 +457,7 @@ function totaisCarrinho() {
 }
 
 function buildSalePayload() {
-  const customerName = customerNameInput?.value.trim() || "Cliente balcão";
+  const customerName = getCustomerName();
   return {
     pagamento: pagamentoAtual,
     associado: ehAssociado,
@@ -588,12 +588,45 @@ function setAssociateStatus(message, state = "muted") {
   associateStatus.dataset.state = state;
 }
 
+function getCustomerName() {
+  return customerNameInput?.value.trim() || "";
+}
+
+function isPlaceholderCustomerName(name) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase() === "cliente balcao";
+}
+
+function setCustomerFieldInvalid(invalid) {
+  const field = customerNameInput?.closest(".cart-customer-field");
+  field?.classList.toggle("is-invalid", invalid);
+  customerNameInput?.setAttribute("aria-invalid", String(invalid));
+}
+
+function validateCustomerName({ focus = false } = {}) {
+  const customerName = getCustomerName();
+  const invalid = !customerName || isPlaceholderCustomerName(customerName);
+  setCustomerFieldInvalid(invalid);
+
+  if (invalid) {
+    setAssociateStatus("Informe o nome do cliente para fechar o pedido.", "error");
+    toast("Informe o nome do cliente antes de fechar o pedido.", "warn");
+    if (focus) customerNameInput?.focus();
+    return false;
+  }
+
+  return true;
+}
+
 async function validarAssociado() {
-  const termo = customerNameInput?.value.trim() || "";
+  const termo = getCustomerName();
   associadoValidado = null;
   ehAssociado = false;
 
   if (!termo) {
+    setCustomerFieldInvalid(false);
     setAssociateStatus("Se o cliente for associado, o desconto será aplicado automaticamente.", "muted");
     renderCarrinho();
     return;
@@ -643,7 +676,7 @@ function renderCheckoutReview() {
   const items = carrinho.filter(Boolean);
   const itemCount = items.reduce((sum, item) => sum + cartItemQuantity(item), 0);
   const totals = totaisCarrinho();
-  const customerName = customerNameInput?.value.trim() || "Cliente balcão";
+  const customerName = getCustomerName();
 
   if (checkoutItemsCount) checkoutItemsCount.textContent = `${itemCount} ${itemCount === 1 ? "item" : "itens"}`;
   if (checkoutCustomer) checkoutCustomer.textContent = customerName;
@@ -692,9 +725,8 @@ async function abrirCheckout() {
     return;
   }
 
-  if (customerNameInput?.value.trim()) {
-    await validarAssociado();
-  }
+  if (!validateCustomerName({ focus: true })) return;
+  await validarAssociado();
 
   renderCheckoutReview();
   checkoutScreen?.classList.remove("hidden");
@@ -717,11 +749,22 @@ function fecharCheckout() {
 }
 
 function abrirConfirmacaoCompra() {
-  confirmPurchaseModal?.classList.remove("hidden");
+  if (!validateCustomerName({ focus: true })) return;
+
+  if (confirmPurchaseModal?._closeTimer) window.clearTimeout(confirmPurchaseModal._closeTimer);
+  confirmPurchaseModal?.classList.remove("hidden", "modal-closing");
 }
 
 function fecharConfirmacaoCompra() {
-  confirmPurchaseModal?.classList.add("hidden");
+  if (!confirmPurchaseModal || confirmPurchaseModal.classList.contains("hidden")) return;
+
+  confirmPurchaseModal.classList.add("modal-closing");
+  if (confirmPurchaseModal._closeTimer) window.clearTimeout(confirmPurchaseModal._closeTimer);
+  confirmPurchaseModal._closeTimer = window.setTimeout(() => {
+    confirmPurchaseModal.classList.add("hidden");
+    confirmPurchaseModal.classList.remove("modal-closing");
+    confirmPurchaseModal._closeTimer = null;
+  }, 180);
 }
 
 function emitirNotaPreview() {
@@ -729,9 +772,41 @@ function emitirNotaPreview() {
   window.print();
 }
 
+function abrirPopover(popover, trigger) {
+  if (!popover) return;
+  if (popover._closeTimer) window.clearTimeout(popover._closeTimer);
+  popover.classList.remove("hidden", "popover-closing");
+  trigger?.setAttribute("aria-expanded", "true");
+}
+
+function fecharPopover(popover, trigger) {
+  if (!popover || popover.classList.contains("hidden")) {
+    trigger?.setAttribute("aria-expanded", "false");
+    return;
+  }
+
+  popover.classList.add("popover-closing");
+  trigger?.setAttribute("aria-expanded", "false");
+  if (popover._closeTimer) window.clearTimeout(popover._closeTimer);
+  popover._closeTimer = window.setTimeout(() => {
+    popover.classList.add("hidden");
+    popover.classList.remove("popover-closing");
+    popover._closeTimer = null;
+  }, 180);
+}
+
+function alternarPopover(popover, trigger, otherPopover, otherTrigger) {
+  const willOpen = popover?.classList.contains("hidden") || popover?.classList.contains("popover-closing");
+  fecharPopover(otherPopover, otherTrigger);
+
+  if (willOpen) abrirPopover(popover, trigger);
+  else fecharPopover(popover, trigger);
+}
+
 function mostrarCompraFinalizada(venda, customerName = "Cliente balcão") {
   const comprador = venda?.customerName || customerName || "Cliente balcão";
   confirmPurchaseModal?.classList.add("hidden");
+  confirmPurchaseModal?.classList.remove("modal-closing");
   checkoutSuccess?.classList.add("hidden");
   document.body.classList.add("checkout-returning");
   checkoutScreen?.classList.add("checkout-complete-closing");
@@ -752,6 +827,11 @@ async function confirmarPedido() {
     return;
   }
 
+  if (!validateCustomerName({ focus: true })) {
+    fecharConfirmacaoCompra();
+    return;
+  }
+
   btnFecharPedido.disabled = true;
   btnFecharPedido.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Processando</span>`;
   if (checkoutConfirmBtn) checkoutConfirmBtn.disabled = true;
@@ -762,20 +842,8 @@ async function confirmarPedido() {
 
   try {
     const salePayload = buildSalePayload();
-    const customerName = salePayload.customerName || "Cliente balcão";
-    const fallbackPayload = {
-      pagamento: salePayload.pagamento,
-      associado: salePayload.associado,
-      itens: salePayload.itens
-    };
-    let venda;
-    try {
-      venda = await apiPost("/api/v1/pdv/sales", salePayload);
-    } catch (error) {
-      const canRetryWithoutCustomerFields = String(error.message || "").includes("422");
-      if (!canRetryWithoutCustomerFields) throw error;
-      venda = await apiPost("/api/v1/pdv/sales", fallbackPayload);
-    }
+    const customerName = salePayload.customerName;
+    const venda = await apiPost("/api/v1/pdv/sales", salePayload);
 
     carrinho = [];
     ehAssociado = false;
@@ -878,10 +946,7 @@ function bindEventos() {
 
   pdvNotifBtn?.addEventListener("click", event => {
     event.stopPropagation();
-    const isHidden = pdvNotifTray?.classList.toggle("hidden");
-    pdvProfileTray?.classList.add("hidden");
-    pdvProfileChip?.setAttribute("aria-expanded", "false");
-    pdvNotifBtn.setAttribute("aria-expanded", String(!isHidden));
+    alternarPopover(pdvNotifTray, pdvNotifBtn, pdvProfileTray, pdvProfileChip);
   });
 
   pdvNotifTray?.addEventListener("click", event => {
@@ -898,10 +963,7 @@ function bindEventos() {
 
   pdvProfileChip?.addEventListener("click", event => {
     event.stopPropagation();
-    const isHidden = pdvProfileTray?.classList.toggle("hidden");
-    pdvNotifTray?.classList.add("hidden");
-    pdvNotifBtn?.setAttribute("aria-expanded", "false");
-    pdvProfileChip.setAttribute("aria-expanded", String(!isHidden));
+    alternarPopover(pdvProfileTray, pdvProfileChip, pdvNotifTray, pdvNotifBtn);
   });
 
   pdvProfileTray?.addEventListener("click", event => {
@@ -913,10 +975,8 @@ function bindEventos() {
   });
 
   document.addEventListener("click", () => {
-    pdvProfileTray?.classList.add("hidden");
-    pdvProfileChip?.setAttribute("aria-expanded", "false");
-    pdvNotifTray?.classList.add("hidden");
-    pdvNotifBtn?.setAttribute("aria-expanded", "false");
+    fecharPopover(pdvProfileTray, pdvProfileChip);
+    fecharPopover(pdvNotifTray, pdvNotifBtn);
   });
 
   searchInput?.addEventListener("input", event => {
@@ -944,6 +1004,7 @@ function bindEventos() {
 
   customerNameInput?.addEventListener("input", () => {
     window.clearTimeout(associateLookupTimer);
+    setCustomerFieldInvalid(false);
     associateLookupTimer = window.setTimeout(validarAssociado, 450);
   });
 

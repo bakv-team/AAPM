@@ -1949,6 +1949,151 @@ body.login-loading-slow .login-loading-panel {
   -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.02) inset;
 }
 
+/* ============ LOGIN HOVER FEEDBACK ============ */
+.login-card,
+.logo-box,
+.mini-card,
+.input-box,
+.password-toggle,
+.options label,
+.options a,
+.login-btn,
+.security {
+  will-change: transform;
+}
+
+.login-card {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease;
+}
+
+.logo-box,
+.mini-card,
+.options label,
+.options a,
+.security {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), color 0.22s ease, background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.input-box::after {
+  content: "";
+  position: absolute;
+  inset: auto 18px 8px 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue), var(--orange));
+  opacity: 0;
+  transform: scaleX(0.18);
+  transform-origin: left;
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.input-box:focus-within::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.input-box:hover svg,
+.input-box:focus-within svg {
+  color: var(--orange);
+}
+
+.options label {
+  align-items: center;
+  cursor: pointer;
+}
+
+.options input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--orange);
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), filter 0.18s ease;
+}
+
+.options label:hover input[type="checkbox"] {
+  transform: scale(1.08);
+  filter: drop-shadow(0 4px 10px rgba(241, 124, 32, 0.24));
+}
+
+.options a,
+.signup-link a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.login-btn i {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-btn:hover i {
+  transform: translateX(3px);
+}
+
+.login-btn:focus-visible,
+.password-toggle:focus-visible,
+.options a:focus-visible,
+.signup-link a:focus-visible,
+.options input[type="checkbox"]:focus-visible {
+  outline: 3px solid rgba(241, 124, 32, 0.32);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .login-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 30px 64px rgba(10, 23, 56, 0.14);
+  }
+
+  .logo-box:hover,
+  .mini-card:hover,
+  .security:hover {
+    transform: translateY(-3px);
+  }
+
+  .mini-card:hover {
+    border-color: rgba(241, 124, 32, 0.26);
+    box-shadow: 0 18px 36px rgba(10, 23, 56, 0.11);
+  }
+
+  .options label:hover,
+  .options a:hover,
+  .signup-link a:hover {
+    transform: translateY(-1px);
+  }
+
+  .options label:hover {
+    color: var(--dark);
+  }
+}
+
+[data-theme="dark"] .login-card:hover {
+  border-color: rgba(241, 124, 32, 0.30);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.50);
+}
+
+[data-theme="dark"] .mini-card:hover {
+  border-color: rgba(241, 124, 32, 0.28);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="dark"] .input-box:hover svg,
+[data-theme="dark"] .input-box:focus-within svg {
+  color: #ffad5c;
+}
+
+[data-theme="dark"] .options label:hover {
+  color: #ecf0ff;
+}
+
+[data-theme="dark"] .options input[type="checkbox"] {
+  accent-color: #ff9f3f;
+}
+
 /* ============ PASSWORD RECOVERY ============ */
 .auth-feedback {
   margin: 12px 0 0;

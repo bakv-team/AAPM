@@ -220,6 +220,9 @@ window.API = (function () {
   async function createCustomer(payload) {
     return apiPost("/api/v1/pdv/customers", payload);
   }
+  async function deleteCustomer(id) {
+    return apiDelete(`/api/v1/pdv/customers/${id}`);
+  }
 
   // ----- Pedidos -----
   async function getOrders(filters = {}) {
@@ -269,7 +272,7 @@ window.API = (function () {
     apiGet, apiPost, apiPut, apiDelete,
     getCategories, createCategory, updateCategory, deleteCategory,
     getProducts, createProduct, updateProduct, addProductStock, getStockMovements, deleteProduct,
-    getCustomers, createCustomer,
+    getCustomers, createCustomer, deleteCustomer,
     getOrders, createOrder,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts,
     getNotifications, getProfile, changePassword, sendSupport, downloadReport
@@ -614,10 +617,18 @@ window.CHARTS = (function () {
     hourly();
   }
 
+  function resizeAll() {
+    Object.values(instances).forEach(chart => {
+      const canvas = chart?.canvas;
+      if (!canvas || !canvas.offsetParent) return;
+      chart.resize();
+    });
+  }
+
   let currentRange = 7;
   function setRange(r) { currentRange = r; salesLine(r); }
 
-  return { salesLine, categoryPie, categoryBar, hourly, refreshAll, setRange, aggregateByCategory };
+  return { salesLine, categoryPie, categoryBar, hourly, refreshAll, resizeAll, setRange, aggregateByCategory };
 })();
 
 
@@ -910,6 +921,29 @@ window.OrdersPage = (function () {
 window.CustomersPage = (function () {
   let q = "";
 
+  async function deleteCustomer(id) {
+    const customer = window.DB.customers.find(c => String(c.id) === String(id));
+    if (!customer) return;
+
+    const ok = await UI.confirmDialog({
+      title: "Excluir associado",
+      text: `Tem certeza que deseja excluir "${customer.name}"? O histórico de vendas será preservado.`,
+      okLabel: "Excluir"
+    });
+    if (!ok) return;
+
+    try {
+      await window.API.deleteCustomer(id);
+      window.DB.customers = window.DB.customers.filter(c => String(c.id) !== String(id));
+      UI.toast(`Associado "${customer.name}" excluído.`, "success");
+      render();
+      if (window.Dashboard) window.Dashboard.refresh();
+    } catch (err) {
+      console.error("Falha ao excluir associado:", err);
+      UI.toast("Não foi possível excluir o associado.", "error");
+    }
+  }
+
   function render() {
     const grid = document.getElementById("customersGrid");
     if (!grid) return;
@@ -925,7 +959,12 @@ window.CustomersPage = (function () {
 
     grid.innerHTML = rows.map(c => `
       <article class="customer-card">
-        <div class="avatar lg">${UI.initialsFromName(c.name)}</div>
+        <div class="customer-card-head">
+          <div class="avatar lg">${UI.initialsFromName(c.name)}</div>
+          <button class="customer-delete-btn" type="button" data-delete-customer="${c.id}" aria-label="Excluir ${c.name}" title="Excluir associado">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
         <h4>${c.name}</h4>
         <p><i class="fa-solid fa-id-card"></i> ${c.matricula || "Sem matrícula"}</p>
         <p><i class="fa-solid fa-phone"></i> ${c.phone || "Sem telefone"}</p>
@@ -937,6 +976,16 @@ window.CustomersPage = (function () {
         </div>
       </article>
     `).join("");
+    bindActions();
+  }
+
+  function bindActions() {
+    document.querySelectorAll("[data-delete-customer]").forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        deleteCustomer(button.dataset.deleteCustomer);
+      });
+    });
   }
 
   function init() {
@@ -1223,49 +1272,13 @@ window.StockPage = (function () {
       UI.toast(`+${quantity} unidades adicionadas a ${product.name}.`, "success");
       UI.closeModal("stockModal");
       render();
+      if (window.StockMovementsPage) window.StockMovementsPage.render();
       if (window.ProductsPage) window.ProductsPage.render();
       if (window.Dashboard) window.Dashboard.refresh();
     } catch (err) {
       console.error("Falha ao repor estoque:", err);
       UI.toast("Não foi possível atualizar o estoque.", "error");
     }
-  }
-
-  async function refreshMovements() {
-    try {
-      window.DB.stockMovements = await window.API.getStockMovements({ limit: 80 });
-    } catch (err) {
-      console.error("Falha ao carregar movimentações de estoque:", err);
-      window.DB.stockMovements = [];
-    }
-  }
-
-  function renderMovements() {
-    const body = document.getElementById("stockMovementsBody");
-    if (!body) return;
-
-    const movements = window.DB.stockMovements || [];
-    body.innerHTML = movements.length ? movements.map(m => {
-      const isEntrada = m.type === "entrada";
-      const pill = isEntrada ? "green" : "red";
-      const icon = isEntrada ? "fa-arrow-trend-up" : "fa-arrow-trend-down";
-      const sign = isEntrada ? "+" : "-";
-      return `
-        <tr>
-          <td>${m.createdAt ? UI.dateBR(m.createdAt) : "—"}</td>
-          <td><strong>${m.productName || "Produto"}</strong></td>
-          <td><span class="pill ${pill}"><i class="fa-solid ${icon}"></i> ${m.typeLabel || (isEntrada ? "Entrada" : "Saída")}</span></td>
-          <td><strong>${sign}${UI.num(m.quantity || 0)}</strong></td>
-          <td>${UI.money(m.total || 0)}</td>
-          <td>${m.userName || "Usuário"}</td>
-          <td class="muted">${m.note || "—"}</td>
-        </tr>
-      `;
-    }).join("") : `
-      <tr>
-        <td colspan="7" class="empty-cell">Nenhuma movimentação registrada ainda.</td>
-      </tr>
-    `;
   }
 
   async function render() {
@@ -1308,8 +1321,6 @@ window.StockPage = (function () {
       });
     });
 
-    await refreshMovements();
-    renderMovements();
   }
 
   function init() {
@@ -1321,6 +1332,58 @@ window.StockPage = (function () {
   }
 
   return { render, init };
+})();
+
+
+window.StockMovementsPage = (function () {
+  async function refreshMovements() {
+    try {
+      window.DB.stockMovements = await window.API.getStockMovements({ limit: 80 });
+    } catch (err) {
+      console.error("Falha ao carregar movimentações de estoque:", err);
+      window.DB.stockMovements = [];
+      UI.toast("Não foi possível carregar as movimentações.", "warn");
+    }
+  }
+
+  function renderRows() {
+    const body = document.getElementById("stockMovementsBody");
+    if (!body) return;
+
+    const movements = window.DB.stockMovements || [];
+    body.innerHTML = movements.length ? movements.map(m => {
+      const isEntrada = m.type === "entrada";
+      const pill = isEntrada ? "green" : "red";
+      const icon = isEntrada ? "fa-arrow-trend-up" : "fa-arrow-trend-down";
+      const sign = isEntrada ? "+" : "-";
+      return `
+        <tr>
+          <td>${m.createdAt ? UI.dateBR(m.createdAt) : "—"}</td>
+          <td><strong>${m.productName || "Produto"}</strong></td>
+          <td><span class="pill ${pill}"><i class="fa-solid ${icon}"></i> ${m.typeLabel || (isEntrada ? "Entrada" : "Saída")}</span></td>
+          <td><strong>${sign}${UI.num(m.quantity || 0)}</strong></td>
+          <td>${UI.money(m.total || 0)}</td>
+          <td>${m.userName || "Usuário"}</td>
+          <td class="muted">${m.note || "—"}</td>
+        </tr>
+      `;
+    }).join("") : `
+      <tr>
+        <td colspan="7" class="empty-cell">Nenhuma movimentação registrada ainda.</td>
+      </tr>
+    `;
+  }
+
+  async function render() {
+    await refreshMovements();
+    renderRows();
+  }
+
+  function init() {
+    render();
+  }
+
+  return { init, render };
 })();
 
 
@@ -1450,6 +1513,7 @@ window.Dashboard = (function () {
 
 (function () {
   const ROUTE_META = {
+    smart:         { title: "AAPM Smart",            sub: "Inteligencia artificial para previsoes e recomendacoes da AAPM." },
     dashboard:     { title: "Dashboard",             sub: "Visão geral das vendas e operações." },
     admin:         { title: "Painel Administrativo", sub: "Gerencie os produtos da sua loja." },
     grafico:       { title: "Painel Gráfico",        sub: "Indicadores e gráficos em tempo real." },
@@ -1458,6 +1522,7 @@ window.Dashboard = (function () {
     funcionarios:  { title: "Funcionários",          sub: "Cadastre acessos e acompanhe permissões da equipe." },
     categorias:    { title: "Categorias",            sub: "Organize seus produtos por categoria." },
     estoque:       { title: "Estoque",               sub: "Controle de SKUs, mínimos e reposições." },
+    movimentacoes: { title: "Movimentações",         sub: "Acompanhe entradas, saídas e ajustes do estoque." },
     relatorios:    { title: "Relatórios",            sub: "Exportações e análises detalhadas." },
     configuracoes: { title: "Configurações",         sub: "Preferências da loja e do painel." }
   };
@@ -1517,6 +1582,7 @@ window.Dashboard = (function () {
       if (route === "funcionarios" && window.EmployeesPage) window.EmployeesPage.render();
       if (route === "categorias") window.CategoriesPage.render();
       if (route === "estoque")    window.StockPage.render();
+      if (route === "movimentacoes") window.StockMovementsPage.render();
     } catch (err) {
       console.error(`Falha ao renderizar rota ${route}:`, err);
       UI.toast("Nao foi possivel atualizar esta tela.", "warn");
@@ -1524,6 +1590,7 @@ window.Dashboard = (function () {
 
     location.hash = "#" + route;
     window.scrollTo({ top: 0, behavior: "smooth" });
+    requestAnimationFrame(() => window.CHARTS?.resizeAll?.());
     window.setTimeout(() => document.body.classList.remove("route-changing"), 260);
   }
 
@@ -1677,6 +1744,12 @@ window.Dashboard = (function () {
     const mobileSidebarToggle = document.getElementById("toggleSidebar");
     const mobileQuery = window.matchMedia("(max-width: 880px)");
 
+    function syncChartsAfterLayoutChange() {
+      requestAnimationFrame(() => window.CHARTS?.resizeAll?.());
+      window.setTimeout(() => window.CHARTS?.resizeAll?.(), 120);
+      window.setTimeout(() => window.CHARTS?.resizeAll?.(), 340);
+    }
+
     function setSidebarCollapsed(collapsed, persist = true) {
       if (!appShell || !sidebarCollapse) return;
 
@@ -1686,6 +1759,7 @@ window.Dashboard = (function () {
       sidebarCollapse.querySelector("i").className = collapsed ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
 
       if (persist) localStorage.setItem("aapm_sidebar_collapsed", collapsed ? "1" : "0");
+      syncChartsAfterLayoutChange();
     }
 
     setSidebarCollapsed(localStorage.getItem("aapm_sidebar_collapsed") === "1", false);
@@ -1708,6 +1782,12 @@ window.Dashboard = (function () {
       }
 
       setSidebarCollapsed(!appShell.classList.contains("sidebar-collapsed"));
+    });
+
+    appShell?.addEventListener("transitionend", event => {
+      if (event.target === appShell && event.propertyName === "grid-template-columns") {
+        window.CHARTS?.resizeAll?.();
+      }
     });
 
     const themeToggle = document.getElementById("themeToggle");
@@ -1781,6 +1861,7 @@ window.Dashboard = (function () {
       window.location.href = "/auth/logout";
     });
     document.getElementById("profileBtn")?.addEventListener("click", openProfileModal);
+    document.getElementById("settingsBtn")?.addEventListener("click", () => navigate("configuracoes"));
     document.getElementById("securityBtn")?.addEventListener("click", openSecurityModal);
     document.getElementById("supportBtn")?.addEventListener("click", openSupportModal);
     document.getElementById("profileSecurityShortcut")?.addEventListener("click", () => {
@@ -1886,6 +1967,7 @@ window.Dashboard = (function () {
     safeInit("funcionarios", () => window.EmployeesPage.init());
     safeInit("categorias", () => window.CategoriesPage.init());
     safeInit("estoque", () => window.StockPage.init());
+    safeInit("movimentacoes", () => window.StockMovementsPage.init());
     renderNotifications();
     updateSidebarBadges();
     setupMotionObserver();

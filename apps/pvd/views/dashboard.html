@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=stock-movements-20260604-1" />
+    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-smart-nav-20260605-1" />
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
   </head>
   <body>
@@ -45,6 +45,7 @@
 
         <nav class="nav" aria-label="Navegação principal">
           <p class="nav-label">Principal</p>
+          <button class="nav-item smart-nav" data-route="smart"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AAPM Smart</span></button>
           <button class="nav-item active" data-route="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></button>
           <button class="nav-item" data-route="admin"><i class="fa-solid fa-table-cells-large"></i><span>Painel Administrativo</span></button>
           <button class="nav-item" data-route="grafico"><i class="fa-solid fa-chart-column"></i><span>Painel Gráfico</span></button>
@@ -57,10 +58,10 @@
           {% endif %}
           <button class="nav-item" data-route="categorias"><i class="fa-solid fa-tags"></i><span>Categorias</span></button>
           <button class="nav-item" data-route="estoque"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque</span><span class="badge-warn" id="navLowStock">0</span></button>
+          <button class="nav-item" data-route="movimentacoes"><i class="fa-solid fa-arrow-right-arrow-left"></i><span>Movimentações</span></button>
 
           <p class="nav-label">Análise</p>
           <button class="nav-item" data-route="relatorios"><i class="fa-solid fa-file-invoice"></i><span>Relatórios</span></button>
-          <button class="nav-item" data-route="configuracoes"><i class="fa-solid fa-sliders"></i><span>Configurações</span></button>
         </nav>
 
         <div class="sidebar-footer">
@@ -114,11 +115,41 @@
           </div>
           <ul>
             <li id="profileBtn"><i class="fa-solid fa-user"></i> Meu perfil</li>
+            <li id="settingsBtn"><i class="fa-solid fa-sliders"></i> Configurações</li>
             <li id="securityBtn"><i class="fa-solid fa-key"></i> Segurança</li>
             <li id="supportBtn"><i class="fa-solid fa-life-ring"></i> Suporte</li>
             <li class="danger" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Sair</li>
           </ul>
         </div>
+
+        <!-- ============================= PAGE: AAPM SMART ============================= -->
+        <section class="page" id="page-smart">
+          <div class="smart-hero glass">
+            <div>
+              <span class="smart-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> Inteligência operacional</span>
+              <h2>AAPM Smart</h2>
+              <p>Um espaço reservado para previsões, recomendações e análises inteligentes do PDV.</p>
+            </div>
+            <div class="smart-orbit" aria-hidden="true">
+              <i class="fa-solid fa-brain"></i>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass">
+              <div class="card-head">
+                <div><h3>Previsões em breve</h3><p class="muted">Estoque, demanda e horários de pico.</p></div>
+              </div>
+              <p class="muted">Depois definimos juntos quais previsões fazem mais sentido para a AAPM e quais dados devem alimentar essa inteligência.</p>
+            </div>
+            <div class="card glass">
+              <div class="card-head">
+                <div><h3>Recomendações inteligentes</h3><p class="muted">Ações sugeridas com base nas vendas.</p></div>
+              </div>
+              <p class="muted">A ideia é transformar o histórico do dashboard em decisões práticas: reposição, combos, alertas e oportunidades.</p>
+            </div>
+          </div>
+        </section>
 
         <!-- ============================= PAGE: DASHBOARD ============================= -->
         <section class="page active" id="page-dashboard">
@@ -329,6 +360,10 @@
           <div class="card glass no-pad"><div class="table-wrap">
             <table class="data-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Status</th><th class="right">Ação</th></tr></thead><tbody id="stockBody"></tbody></table>
           </div></div>
+        </section>
+
+        <!-- ============================= PAGE: MOVIMENTACOES ============================= -->
+        <section class="page" id="page-movimentacoes">
           <div class="card glass no-pad">
             <div class="card-head padded">
               <div><h3>Histórico de movimentações</h3><p class="muted">Entradas por reposição e saídas geradas pelas vendas</p></div>
@@ -553,7 +588,7 @@
 
     <!-- ====================== CONFIRM ====================== -->
     <div class="modal-backdrop hidden" id="confirmModal">
-      <div class="modal glass small">
+      <div class="modal glass small confirm-dialog">
         <div class="modal-head"><h3 id="confirmTitle">Confirmar</h3></div>
         <p id="confirmText" style="padding:0 24px 8px;color:var(--text-mute)"></p>
         <div class="modal-foot" style="padding:16px 24px 24px">
@@ -569,7 +604,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- App -->
-    <script src="/apps/pvd/scripts/dashboard.js?v=stock-movements-20260604-1"></script>
+    <script src="/apps/pvd/scripts/dashboard.js?v=chart-resize-20260605-1"></script>
   </body>
 </html>
 

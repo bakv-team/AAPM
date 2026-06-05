@@ -458,6 +458,10 @@ def criar_venda_api(
     if pagamento not in ("pix", "debito", "credito", "dinheiro"):
         raise HTTPException(status_code=400, detail="Forma de pagamento invalida.")
 
+    cliente_nome = (payload.cliente_nome or payload.customerName or "").strip()
+    if not cliente_nome or cliente_nome.lower() in ("cliente balcao", "cliente balcão"):
+        raise HTTPException(status_code=400, detail="Informe o nome do cliente para fechar o pedido.")
+
     quantidades: dict[int, int] = {}
     for item in payload.itens:
         if item.quantidade <= 0:
@@ -484,34 +488,32 @@ def criar_venda_api(
             )
 
     try:
-        cliente_nome = (payload.cliente_nome or payload.customerName or "").strip()
         cliente = None
-        if cliente_nome and cliente_nome.lower() not in ("cliente balcao", "cliente balcão"):
-            like_cliente = f"%{cliente_nome}%"
-            cliente = (
-                db.query(Cliente)
-                .filter(
-                    Cliente.ativo == True,
-                    or_(
-                        Cliente.nome.ilike(cliente_nome),
-                        Cliente.matricula.ilike(cliente_nome),
-                        Cliente.telefone.ilike(cliente_nome),
-                        Cliente.nome.ilike(like_cliente),
-                        Cliente.matricula.ilike(like_cliente),
-                        Cliente.telefone.ilike(like_cliente),
-                    ),
-                )
-                .order_by(Cliente.is_associado.desc(), Cliente.nome)
-                .first()
+        like_cliente = f"%{cliente_nome}%"
+        cliente = (
+            db.query(Cliente)
+            .filter(
+                Cliente.ativo == True,
+                or_(
+                    Cliente.nome.ilike(cliente_nome),
+                    Cliente.matricula.ilike(cliente_nome),
+                    Cliente.telefone.ilike(cliente_nome),
+                    Cliente.nome.ilike(like_cliente),
+                    Cliente.matricula.ilike(like_cliente),
+                    Cliente.telefone.ilike(like_cliente),
+                ),
             )
-            if not cliente:
-                cliente = Cliente(
-                    nome=cliente_nome,
-                    is_associado=False,
-                    ativo=True,
-                )
-                db.add(cliente)
-                db.flush()
+            .order_by(Cliente.is_associado.desc(), Cliente.nome)
+            .first()
+        )
+        if not cliente:
+            cliente = Cliente(
+                nome=cliente_nome,
+                is_associado=False,
+                ativo=True,
+            )
+            db.add(cliente)
+            db.flush()
 
         associado_confirmado = bool(cliente and cliente.is_associado)
         desconto_percentual = 10.0 if associado_confirmado else 0.0
@@ -651,6 +653,22 @@ def criar_cliente_api(
     db.commit()
     db.refresh(cliente)
     return _cliente_json(cliente)
+
+
+@router.delete("/customers/{cliente_id}")
+def remover_cliente_api(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    admin=Depends(get_admin),
+):
+    cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.ativo == True).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Associado nao encontrado.")
+
+    cliente.ativo = False
+    db.commit()
+
+    return {"ok": True}
 
 
 @router.get("/orders")

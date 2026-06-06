@@ -1,8 +1,11 @@
 from datetime import date, datetime, time, timedelta
 import csv
 import io
+import json
 import os
 import smtplib
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
@@ -64,6 +67,12 @@ class SenhaPayload(BaseModel):
 class SuportePayload(BaseModel):
     assunto: str | None = "Suporte"
     mensagem: str
+
+
+class SmartAssistantPayload(BaseModel):
+    message: str
+    meta_diaria: int | None = 30
+    lucro_unidade: float | None = 3.5
 
 
 def _categoria_json(categoria: Categoria) -> dict:
@@ -812,6 +821,200 @@ def produtos_mais_vendidos_api(
             "categoryName": categoria.nome if categoria else "Sem categoria",
         })
     return resposta
+
+
+@router.get("/smart/insights")
+def aapm_smart_insights_api(
+    meta_diaria: int = Query(30, ge=1, le=1000),
+    lucro_unidade: float = Query(3.5, ge=0, le=10000),
+    db: Session = Depends(get_db),
+    admin=Depends(get_admin),
+):
+    try:
+        meta_diaria = int(meta_diaria)
+    except (TypeError, ValueError):
+        meta_diaria = 30
+    try:
+        lucro_unidade = float(lucro_unidade)
+    except (TypeError, ValueError):
+        lucro_unidade = 3.5
+
+    hoje = date.today()
+    historico = vendas_por_dia_api(dias=30, db=db, admin=admin)
+    ultimos_validos = [row for row in historico if row["orders"] or row["items"] or row["revenue"]]
+    janela = ultimos_validos[-7:] if ultimos_validos else historico[-7:]
+    divisor = max(1, len(janela))
+
+    media_receita = sum(row["revenue"] for row in janela) / divisor
+    media_itens = sum(row["items"] for row in janela) / divisor
+    media_pedidos = sum(row["orders"] for row in janela) / divisor
+    hoje_row = historico[-1] if historico else {"revenue": 0, "items": 0, "orders": 0}
+
+    fator_dia = 1.08 if hoje.weekday() in (0, 1, 2, 3) else 0.92
+    receita_prevista = max(float(hoje_row["revenue"]), media_receita * fator_dia)
+    itens_previstos = max(int(round(media_itens * fator_dia)), int(hoje_row["items"] or 0))
+    pedidos_previstos = max(int(round(media_pedidos * fator_dia)), int(hoje_row["orders"] or 0))
+    confianca = min(92, max(48, 54 + len(ultimos_validos) * 2 + (10 if media_itens else 0)))
+
+    produtos = db.query(Produto).filter(Produto.ativo == True).order_by(Produto.nome).all()
+    top_produtos = produtos_mais_vendidos_api(db=db, admin=admin)
+    top_por_id = {int(item["productId"]): item for item in top_produtos if item.get("productId")}
+    baixo_estoque = [p for p in produtos if (p.estoque_atual or 0) <= 5]
+
+    riscos = []
+    reposicao = []
+    for produto in produtos:
+        vendido = top_por_id.get(produto.id, {}).get("qty", 0)
+        giro_estimado = max(1, int(round(vendido / 7))) if vendido else 1
+        estoque = int(produto.estoque_atual or 0)
+        if estoque <= max(2, giro_estimado):
+            riscos.append(produto)
+        if estoque <= 5 or produto in riscos:
+            reposicao.append({
+                "name": produto.nome,
+                "quantity": max(5, giro_estimado * 3 - estoque),
+                "reason": "Estoque critico" if produto in riscos else "Estoque baixo",
+            })
+
+    reposicao = reposicao[:3]
+    while len(reposicao) < 3:
+      indice = len(reposicao) + 1
+      reposicao.append({
+          "name": f"Produto de giro {indice}",
+          "quantity": max(3, 12 - indice * 3),
+          "reason": "Sugestao preventiva",
+      })
+
+    faltam = max(0, meta_diaria - itens_previstos)
+    lucro_hoje = itens_previstos * lucro_unidade
+    demanda = "Alta" if itens_previstos >= meta_diaria else "Moderada" if itens_previstos >= meta_diaria * 0.72 else "Baixa"
+
+    if faltam == 0:
+        estrategia = "Meta atingida pela previsao. Mantenha estoque dos itens de maior giro e priorize atendimento rapido nos horarios de pico."
+    elif faltam <= 5:
+        estrategia = f"A meta esta perto: faltam {faltam} vendas. Crie um combo simples com o produto mais vendido e destaque no intervalo."
+    elif faltam <= 12:
+        estrategia = f"A meta exige acao: faltam {faltam} vendas. Antecipe produtos de giro rapido, revise fila do PDV e use uma oferta curta no pico."
+    else:
+        estrategia = f"A meta esta distante: faltam {faltam} vendas. Reavalie a meta de hoje, use combo promocional e reduza reposicao de itens parados."
+
+    oportunidades = [
+        {"icon": "fa-tags", "text": "Criar combo de baixa saida"},
+        {"icon": "fa-cash-register", "text": "Preparar produtos do pico"},
+        {"icon": "fa-clipboard-check", "text": "Revisar estoque minimo"},
+    ]
+    if top_produtos:
+        oportunidades[0]["text"] = f"Destacar {top_produtos[0]['name']} no proximo intervalo"
+    if baixo_estoque:
+        oportunidades[2]["text"] = f"Repor {baixo_estoque[0].nome} antes do pico"
+
+    return {
+        "forecast": {
+            "revenueToday": round(receita_prevista, 2),
+            "itemsToday": itens_previstos,
+            "ordersToday": pedidos_previstos,
+            "stockRiskCount": len(riscos),
+            "confidence": int(confianca),
+            "demand": demanda,
+            "peakHint": "Maior saida entre 09h e 10h",
+        },
+        "goals": {
+            "dailyGoal": meta_diaria,
+            "profitPerItem": lucro_unidade,
+            "profitToday": round(lucro_hoje, 2),
+            "profitMonth": round(lucro_hoje * 30, 2),
+            "profitYear": round(lucro_hoje * 364, 2),
+            "missing": faltam,
+            "strategy": estrategia,
+        },
+        "restock": reposicao,
+        "opportunities": oportunidades,
+        "summary": {
+            "title": f"Demanda {demanda.lower()}",
+            "text": "A previsao combina historico recente, estoque atual e produtos com maior giro para sugerir a melhor acao do dia.",
+        },
+    }
+
+
+def _aapm_smart_fallback_answer(message: str, insights: dict) -> str:
+    forecast = insights.get("forecast", {})
+    goals = insights.get("goals", {})
+    restock = insights.get("restock", [])
+    restock_text = ", ".join(f"{item['name']} (+{item['quantity']} un.)" for item in restock[:3]) or "sem reposicao critica"
+    return (
+        "Estou no modo IA local porque a chave externa ainda nao foi configurada. "
+        f"Pela previsao atual, a demanda esta {str(forecast.get('demand', 'em analise')).lower()}, "
+        f"com {forecast.get('itemsToday', 0)} itens previstos e {forecast.get('stockRiskCount', 0)} produto(s) em risco. "
+        f"Meta: faltam {goals.get('missing', 0)} venda(s). "
+        f"Reposicao sugerida: {restock_text}. "
+        f"Estrategia: {goals.get('strategy', 'revise estoque, atendimento e produtos de maior giro.')}"
+    )
+
+
+def _call_external_ai(message: str, insights: dict) -> str | None:
+    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AAPM_AI_API_KEY")
+    if not api_key:
+        return None
+
+    model = os.getenv("AAPM_AI_MODEL", "gpt-4o-mini")
+    endpoint = os.getenv("AAPM_AI_ENDPOINT", "https://api.openai.com/v1/chat/completions")
+    system_prompt = (
+        "Voce e a AAPM Smart, uma inteligencia artificial de gestao de cantina/PDV escolar. "
+        "Responda em portugues do Brasil, com tom objetivo, profissional e pratico. "
+        "Use apenas os dados fornecidos no contexto. Nao invente valores. "
+        "Dê recomendações curtas, acionaveis e orientadas a venda, estoque e metas."
+    )
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Contexto operacional em JSON:\n{json.dumps(insights, ensure_ascii=False)}\n\nPergunta do usuario: {message}"},
+        ],
+        "temperature": 0.35,
+        "max_tokens": 380,
+    }
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=18) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError):
+        return None
+
+    choices = data.get("choices") or []
+    if not choices:
+        return None
+    return (choices[0].get("message") or {}).get("content")
+
+
+@router.post("/smart/assistant")
+def aapm_smart_assistant_api(
+    payload: SmartAssistantPayload,
+    db: Session = Depends(get_db),
+    admin=Depends(get_admin),
+):
+    message = (payload.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Mensagem vazia.")
+
+    insights = aapm_smart_insights_api(
+        meta_diaria=payload.meta_diaria or 30,
+        lucro_unidade=payload.lucro_unidade or 3.5,
+        db=db,
+        admin=admin,
+    )
+    external_answer = _call_external_ai(message, insights)
+    if external_answer:
+        return {"mode": "external", "answer": external_answer, "insights": insights}
+
+    return {"mode": "local", "answer": _aapm_smart_fallback_answer(message, insights), "insights": insights}
 
 
 @router.get("/notifications")

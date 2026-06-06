@@ -249,6 +249,16 @@ window.API = (function () {
   async function getTopProducts() {
     return apiGet("/api/v1/pdv/dashboard/top-products");
   }
+  async function getSmartInsights(options = {}) {
+    const qs = new URLSearchParams();
+    if (options.dailyGoal) qs.set("meta_diaria", options.dailyGoal);
+    if (options.profitPerItem) qs.set("lucro_unidade", options.profitPerItem);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiGet(`/api/v1/pdv/smart/insights${suffix}`);
+  }
+  async function askSmartAssistant(payload) {
+    return apiPost("/api/v1/pdv/smart/assistant", payload);
+  }
 
   // ----- Notificações -----
   async function getNotifications() {
@@ -274,7 +284,7 @@ window.API = (function () {
     getProducts, createProduct, updateProduct, addProductStock, getStockMovements, deleteProduct,
     getCustomers, createCustomer, deleteCustomer,
     getOrders, createOrder,
-    getDashboardMetrics, getDailySales, getHourlySales, getTopProducts,
+    getDashboardMetrics, getDailySales, getHourlySales, getTopProducts, getSmartInsights, askSmartAssistant,
     getNotifications, getProfile, changePassword, sendSupport, downloadReport
   };
 })();
@@ -293,6 +303,7 @@ window.API = (function () {
     hourly: [],
     notifications: [],
     metrics: null,
+    smart: null,
     topProducts: [],
     stockMovements: [],
 
@@ -1594,6 +1605,281 @@ window.Dashboard = (function () {
     window.setTimeout(() => document.body.classList.remove("route-changing"), 260);
   }
 
+  const SmartGoals = (() => {
+    const YEAR_DAYS = 364;
+    const MONTH_DAYS = 30;
+
+    function numberFromInput(id, fallback = 0) {
+      const value = Number.parseFloat(document.getElementById(id)?.value);
+      return Number.isFinite(value) && value >= 0 ? value : fallback;
+    }
+
+    function setText(id, value) {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    }
+
+    function buildStrategy(quantity, goal, missing, todayProfit) {
+      if (window.DB.smart?.goals?.strategy && goal === Number(window.DB.smart.goals.dailyGoal)) {
+        return window.DB.smart.goals.strategy;
+      }
+      if (quantity >= goal) {
+        return `Meta atingida. Se esse ritmo continuar, priorize manter estoque dos produtos de maior giro e acompanhe o caixa para sustentar aproximadamente ${UI.money(todayProfit * MONTH_DAYS)} no mes.`;
+      }
+
+      if (missing <= 5) {
+        return `A meta ficou perto: faltam ${missing} vendas. Para amanha, tente um combo simples com os produtos mais comprados e deixe esses itens prontos antes do intervalo.`;
+      }
+
+      if (missing <= 12) {
+        return `A meta nao foi atingida: faltam ${missing} vendas. Para o proximo dia, reduza a friccao do atendimento, destaque produtos de giro rapido e crie uma oferta curta no horario de pico.`;
+      }
+
+      return `A meta ficou distante: faltam ${missing} vendas. Para amanha, revise a meta, confira estoque antes da abertura e use uma estrategia mais agressiva: combo promocional, produto destaque e reposicao antecipada.`;
+    }
+
+    function render() {
+      const quantity = Math.round(numberFromInput("smartQtyToday", 0));
+      const profitPerItem = numberFromInput("smartProfitPerItem", 0);
+      const goal = Math.max(1, Math.round(numberFromInput("smartDailyGoal", 1)));
+      const todayProfit = quantity * profitPerItem;
+      const progress = Math.min(100, Math.round((quantity / goal) * 100));
+      const missing = Math.max(0, goal - quantity);
+      const reached = quantity >= goal;
+      const status = document.getElementById("smartGoalStatus");
+      const meter = document.getElementById("smartGoalMeter");
+      const strategy = document.getElementById("smartGoalStrategy");
+
+      setText("smartProfitToday", UI.money(todayProfit));
+      setText("smartProfitMonth", UI.money(todayProfit * MONTH_DAYS));
+      setText("smartProfitYear", UI.money(todayProfit * YEAR_DAYS));
+
+      if (meter) meter.style.width = `${progress}%`;
+
+      if (status) {
+        status.textContent = reached ? `Meta atingida: ${progress}%` : `Faltam ${missing} vendas`;
+        status.classList.toggle("reached", reached);
+        status.classList.toggle("missed", !reached);
+      }
+
+      const strategyText = strategy?.querySelector("p");
+      if (strategyText) {
+        strategyText.textContent = buildStrategy(quantity, goal, missing, todayProfit);
+      }
+    }
+
+    function renderSmartData(data) {
+      if (!data) return;
+      const forecast = data.forecast || {};
+      const goals = data.goals || {};
+      setText("smartRevenueToday", UI.money(forecast.revenueToday || 0));
+      setText("smartItemsToday", UI.num(forecast.itemsToday || 0));
+      setText("smartRiskCount", `${UI.num(forecast.stockRiskCount || 0)} produtos`);
+      setText("smartConfidence", `${forecast.confidence || 0}%`);
+      setText("smartPeakHint", forecast.peakHint || "Maior saída entre 09h e 10h");
+      setText("smartDemandTitle", data.summary?.title || `Demanda ${String(forecast.demand || "em análise").toLowerCase()}`);
+      setText("smartSummaryText", data.summary?.text || "A AAPM Smart está lendo histórico recente, estoque e giro dos produtos.");
+      setText("smartStockAlert", `${UI.num(forecast.stockRiskCount || 0)} produto(s) perto do limite mínimo.`);
+      const revenueHint = document.getElementById("smartRevenueHint");
+      if (revenueHint) revenueHint.innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> Previsão gerada pela AAPM Smart`;
+      const confidenceMeter = document.getElementById("smartConfidenceMeter");
+      if (confidenceMeter) confidenceMeter.style.width = `${Math.min(100, Math.max(0, forecast.confidence || 0))}%`;
+
+      const qty = document.getElementById("smartQtyToday");
+      const profit = document.getElementById("smartProfitPerItem");
+      const goal = document.getElementById("smartDailyGoal");
+      if (qty && forecast.itemsToday !== undefined) qty.value = forecast.itemsToday;
+      if (profit && goals.profitPerItem !== undefined) profit.value = goals.profitPerItem;
+      if (goal && goals.dailyGoal !== undefined) goal.value = goals.dailyGoal;
+
+      const restock = document.getElementById("smartRestockList");
+      if (restock && Array.isArray(data.restock)) {
+        restock.innerHTML = data.restock.map(item => `
+          <div><span>${item.name}</span><strong>+${UI.num(item.quantity)} un.</strong></div>
+        `).join("");
+      }
+
+      const opportunities = document.getElementById("smartOpportunitiesList");
+      if (opportunities && Array.isArray(data.opportunities)) {
+        opportunities.innerHTML = data.opportunities.map(item => `
+          <button type="button"><i class="fa-solid ${item.icon || "fa-lightbulb"}"></i><span>${item.text}</span></button>
+        `).join("");
+      }
+
+      render();
+    }
+
+    function init() {
+      const form = document.getElementById("smartGoalForm");
+      if (!form) return;
+      form.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", render);
+      });
+      renderSmartData(window.DB.smart);
+      render();
+    }
+
+    return { init, render, renderSmartData };
+  })();
+
+  const SmartExperience = (() => {
+    const scrollTargetsSelector = [
+      ".smart-hero",
+      ".smart-kpi",
+      ".smart-neural-band",
+      ".smart-panel",
+      ".smart-restock-list div",
+      ".smart-opportunities button",
+      ".smart-goals",
+      ".smart-goal-form label",
+      ".smart-goal-results div",
+      ".smart-goal-progress",
+      ".smart-strategy",
+      ".smart-assistant",
+      ".smart-chat-message",
+      ".smart-chat-form"
+    ].join(", ");
+
+    function bindTilt(card) {
+      if (!card || card.dataset.smartTiltReady) return;
+      card.dataset.smartTiltReady = "1";
+
+      card.addEventListener("pointermove", event => {
+        if (window.matchMedia("(max-width: 768px)").matches) return;
+        const rect = card.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+        const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+        card.style.setProperty("--smart-tilt-x", `${(-y * 5).toFixed(2)}deg`);
+        card.style.setProperty("--smart-tilt-y", `${(x * 5).toFixed(2)}deg`);
+      });
+
+      card.addEventListener("pointerleave", () => {
+        card.style.removeProperty("--smart-tilt-x");
+        card.style.removeProperty("--smart-tilt-y");
+      });
+    }
+
+    function bindScrollAnimations() {
+      const items = Array.from(document.querySelectorAll(`#page-smart ${scrollTargetsSelector}`));
+      if (!items.length) return;
+
+      items.forEach((item, index) => {
+        item.classList.add("smart-scroll-item");
+        item.classList.remove("smart-scroll-in");
+        item.style.setProperty("--smart-scroll-delay", `${Math.min(index % 5, 4) * 22}ms`);
+      });
+
+      if (window.__aapmSmartScrollObserver) {
+        window.__aapmSmartScrollObserver.disconnect();
+      }
+
+      const updateScrollState = () => {
+        const vh = window.innerHeight || document.documentElement.clientHeight || 1;
+        items.forEach(item => {
+          const rect = item.getBoundingClientRect();
+          const shouldShow = rect.top < vh * 0.86 && rect.bottom > vh * 0.14;
+          if (shouldShow) item.classList.add("smart-scroll-in");
+        });
+      };
+
+      let ticking = false;
+      const requestUpdate = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          updateScrollState();
+          ticking = false;
+        });
+      };
+
+      window.removeEventListener("scroll", window.__aapmSmartScrollHandler);
+      window.removeEventListener("resize", window.__aapmSmartScrollHandler);
+      window.__aapmSmartScrollHandler = requestUpdate;
+      window.addEventListener("scroll", requestUpdate, { passive: true });
+      window.addEventListener("resize", requestUpdate);
+
+      if ("IntersectionObserver" in window) {
+        window.__aapmSmartScrollObserver = new IntersectionObserver(() => requestUpdate(), {
+          rootMargin: "-12% 0px -12% 0px",
+          threshold: [0, 0.08, 0.18, 0.38]
+        });
+        items.forEach(item => window.__aapmSmartScrollObserver.observe(item));
+      }
+
+      updateScrollState();
+    }
+
+    function init() {
+      document.querySelectorAll("#page-smart .smart-depth-card").forEach(bindTilt);
+      bindScrollAnimations();
+    }
+
+    return { init };
+  })();
+
+  const SmartAssistant = (() => {
+    function appendMessage(type, text) {
+      const log = document.getElementById("smartChatLog");
+      if (!log) return;
+      const icon = type === "user" ? "fa-user" : "fa-brain";
+      const message = document.createElement("div");
+      message.className = `smart-chat-message ${type}`;
+      message.innerHTML = `<i class="fa-solid ${icon}"></i><p></p>`;
+      message.querySelector("p").textContent = text;
+      log.appendChild(message);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function setStatus(text, mode = "") {
+      const status = document.getElementById("smartAiStatus");
+      if (!status) return;
+      status.textContent = text;
+      status.classList.toggle("external", mode === "external");
+      status.classList.toggle("local", mode === "local");
+    }
+
+    async function submit(event) {
+      event.preventDefault();
+      const input = document.getElementById("smartChatInput");
+      const form = document.getElementById("smartChatForm");
+      const message = input?.value.trim();
+      if (!message) return;
+
+      appendMessage("user", message);
+      input.value = "";
+      setStatus("Pensando...");
+      form?.querySelector("button")?.setAttribute("disabled", "true");
+
+      try {
+        const payload = {
+          message,
+          meta_diaria: Number(document.getElementById("smartDailyGoal")?.value) || 30,
+          lucro_unidade: Number(document.getElementById("smartProfitPerItem")?.value) || 3.5
+        };
+        const response = await window.API.askSmartAssistant(payload);
+        if (response?.insights) {
+          window.DB.smart = response.insights;
+          SmartGoals.renderSmartData(response.insights);
+        }
+        appendMessage("ai", response?.answer || "Nao consegui gerar uma resposta agora.");
+        setStatus(response?.mode === "external" ? "IA externa ativa" : "IA local ativa", response?.mode || "local");
+      } catch (error) {
+        console.error("Falha na AAPM Smart externa:", error);
+        appendMessage("ai", "Nao consegui acessar a IA agora. Verifique a conexao ou a chave configurada.");
+        setStatus("IA indisponivel", "local");
+      } finally {
+        form?.querySelector("button")?.removeAttribute("disabled");
+        input?.focus();
+      }
+    }
+
+    function init() {
+      document.getElementById("smartChatForm")?.addEventListener("submit", submit);
+    }
+
+    return { init };
+  })();
+
   function renderNotifications() {
     const list = document.getElementById("notifList");
     if (!list) return;
@@ -1916,7 +2202,7 @@ window.Dashboard = (function () {
 
   document.addEventListener("DOMContentLoaded", async () => {
     try {
-      const [cats, prods, customers, orders, daily, hourly, notifications, metrics, topProducts] = await Promise.all([
+      const [cats, prods, customers, orders, daily, hourly, notifications, metrics, topProducts, smart] = await Promise.all([
         window.API.getCategories(),
         window.API.getProducts(),
         window.API.getCustomers(),
@@ -1925,7 +2211,8 @@ window.Dashboard = (function () {
         window.API.getHourlySales(),
         window.API.getNotifications(),
         window.API.getDashboardMetrics(),
-        window.API.getTopProducts()
+        window.API.getTopProducts(),
+        window.API.getSmartInsights()
       ]);
       window.DB.categories = cats;
       window.DB.products = prods;
@@ -1936,6 +2223,7 @@ window.Dashboard = (function () {
       window.DB.notifications = notifications;
       window.DB.metrics = metrics;
       window.DB.topProducts = topProducts;
+      window.DB.smart = smart;
     } catch (err) {
       console.error("Falha ao carregar dados do backend:", err);
       window.DB.customers = [];
@@ -1945,6 +2233,7 @@ window.Dashboard = (function () {
       window.DB.notifications = [];
       window.DB.metrics = null;
       window.DB.topProducts = [];
+      window.DB.smart = null;
       UI.toast("Dados do banco indisponiveis no momento.", "warn");
     }
 
@@ -1968,6 +2257,9 @@ window.Dashboard = (function () {
     safeInit("categorias", () => window.CategoriesPage.init());
     safeInit("estoque", () => window.StockPage.init());
     safeInit("movimentacoes", () => window.StockMovementsPage.init());
+    safeInit("AAPM Smart", () => SmartGoals.init());
+    safeInit("experiencia AAPM Smart", () => SmartExperience.init());
+    safeInit("assistente AAPM Smart", () => SmartAssistant.init());
     renderNotifications();
     updateSidebarBadges();
     setupMotionObserver();

@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-smart-nav-20260605-1" />
+    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-smart-external-ai-20260605-1" />
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
   </head>
   <body>
@@ -43,9 +43,12 @@
           </button>
         </div>
 
+        <div class="smart-nav-wrap">
+          <button class="nav-item smart-nav" data-route="smart"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AAPM Smart</span></button>
+        </div>
+
         <nav class="nav" aria-label="Navegação principal">
           <p class="nav-label">Principal</p>
-          <button class="nav-item smart-nav" data-route="smart"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AAPM Smart</span></button>
           <button class="nav-item active" data-route="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></button>
           <button class="nav-item" data-route="admin"><i class="fa-solid fa-table-cells-large"></i><span>Painel Administrativo</span></button>
           <button class="nav-item" data-route="grafico"><i class="fa-solid fa-chart-column"></i><span>Painel Gráfico</span></button>
@@ -123,32 +126,208 @@
         </div>
 
         <!-- ============================= PAGE: AAPM SMART ============================= -->
-        <section class="page" id="page-smart">
-          <div class="smart-hero glass">
+        <section class="page smart-experience" id="page-smart">
+          <div class="smart-hero smart-hero-3d glass">
             <div>
-              <span class="smart-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> Inteligência operacional</span>
+              <span class="smart-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> Modelo local v1</span>
               <h2>AAPM Smart</h2>
-              <p>Um espaço reservado para previsões, recomendações e análises inteligentes do PDV.</p>
+              <p>Copiloto de previsões para antecipar demanda, evitar falta de estoque e sugerir decisões rápidas para o PDV.</p>
+              <div class="smart-hero-actions" aria-label="Status da inteligencia">
+                <span><i class="fa-solid fa-circle-check"></i> Painel ativo</span>
+                <span><i class="fa-solid fa-clock"></i> Atualização simulada</span>
+              </div>
             </div>
-            <div class="smart-orbit" aria-hidden="true">
-              <i class="fa-solid fa-brain"></i>
+            <div class="smart-3d-stage" aria-hidden="true">
+              <div class="smart-holo-ring ring-one"></div>
+              <div class="smart-holo-ring ring-two"></div>
+              <div class="smart-holo-core">
+                <span class="core-face face-front"><i class="fa-solid fa-brain"></i></span>
+                <span class="core-face face-back"><i class="fa-solid fa-bolt"></i></span>
+                <span class="core-face face-left"><i class="fa-solid fa-chart-line"></i></span>
+                <span class="core-face face-right"><i class="fa-solid fa-bullseye"></i></span>
+                <span class="core-face face-top"><i class="fa-solid fa-eye"></i></span>
+                <span class="core-face face-bottom"><i class="fa-solid fa-database"></i></span>
+              </div>
+              <span class="smart-node node-a"></span>
+              <span class="smart-node node-b"></span>
+              <span class="smart-node node-c"></span>
             </div>
           </div>
 
-          <div class="grid-2">
-            <div class="card glass">
-              <div class="card-head">
-                <div><h3>Previsões em breve</h3><p class="muted">Estoque, demanda e horários de pico.</p></div>
+          <div class="smart-kpis">
+            <article class="smart-kpi smart-depth-card glass">
+              <span class="smart-kpi-label">Previsão de receita hoje</span>
+              <strong id="smartRevenueToday">R$ 0,00</strong>
+              <small class="smart-good" id="smartRevenueHint"><i class="fa-solid fa-arrow-trend-up"></i> Analisando histórico</small>
+            </article>
+            <article class="smart-kpi smart-depth-card glass">
+              <span class="smart-kpi-label">Itens previstos</span>
+              <strong id="smartItemsToday">0</strong>
+              <small id="smartPeakHint">Calculando horário de pico</small>
+            </article>
+            <article class="smart-kpi smart-depth-card glass">
+              <span class="smart-kpi-label">Risco de ruptura</span>
+              <strong id="smartRiskCount">0 produtos</strong>
+              <small class="smart-warn"><i class="fa-solid fa-triangle-exclamation"></i> Reposição recomendada</small>
+            </article>
+            <article class="smart-kpi smart-depth-card glass">
+              <span class="smart-kpi-label">Confiança da previsão</span>
+              <strong id="smartConfidence">0%</strong>
+              <div class="smart-meter" aria-label="Confiança de 82%">
+                <span id="smartConfidenceMeter" style="width: 0%"></span>
               </div>
-              <p class="muted">Depois definimos juntos quais previsões fazem mais sentido para a AAPM e quais dados devem alimentar essa inteligência.</p>
-            </div>
-            <div class="card glass">
-              <div class="card-head">
-                <div><h3>Recomendações inteligentes</h3><p class="muted">Ações sugeridas com base nas vendas.</p></div>
-              </div>
-              <p class="muted">A ideia é transformar o histórico do dashboard em decisões práticas: reposição, combos, alertas e oportunidades.</p>
-            </div>
+            </article>
           </div>
+
+          <div class="smart-neural-band glass" aria-hidden="true">
+            <span>PDV</span>
+            <i></i>
+            <span>Estoque</span>
+            <i></i>
+            <span>Metas</span>
+            <i></i>
+            <span>Previsão</span>
+          </div>
+
+          <div class="smart-layout">
+            <article class="smart-panel smart-panel-large smart-depth-card glass">
+              <div class="card-head">
+                <div><h3>Resumo inteligente do dia</h3><p class="muted">Leitura operacional gerada a partir do comportamento esperado.</p></div>
+              </div>
+              <div class="smart-forecast">
+                <div>
+                  <span>Demanda esperada</span>
+                  <strong id="smartDemandTitle">Analisando</strong>
+                  <p id="smartSummaryText">A AAPM Smart está lendo histórico recente, estoque e giro dos produtos.</p>
+                </div>
+                <div class="smart-pulse" aria-hidden="true"><i class="fa-solid fa-bolt"></i></div>
+              </div>
+              <ul class="smart-insights">
+                <li><i class="fa-solid fa-check"></i> Separar os itens mais vendidos antes do pico reduz filas no PDV.</li>
+                <li><i class="fa-solid fa-check"></i> Conferir estoque baixo antes da primeira venda evita cancelamentos.</li>
+                <li><i class="fa-solid fa-check"></i> Produtos com baixa saída podem virar combo promocional.</li>
+              </ul>
+            </article>
+
+            <article class="smart-panel smart-depth-card glass">
+              <div class="card-head">
+                <div><h3>Alertas prioritários</h3><p class="muted">O que merece atenção agora.</p></div>
+              </div>
+              <div class="smart-alert-list">
+                <div class="smart-alert danger">
+                  <i class="fa-solid fa-box-open"></i>
+                <div><strong>Estoque crítico</strong><span id="smartStockAlert">Produtos perto do limite mínimo.</span></div>
+                </div>
+                <div class="smart-alert warn">
+                  <i class="fa-solid fa-hourglass-half"></i>
+                  <div><strong>Pico próximo</strong><span>Prepare atendimento para o próximo intervalo.</span></div>
+                </div>
+                <div class="smart-alert info">
+                  <i class="fa-solid fa-chart-line"></i>
+                  <div><strong>Venda em alta</strong><span>Itens rápidos devem puxar a receita hoje.</span></div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="smart-layout bottom">
+            <article class="smart-panel smart-depth-card glass">
+              <div class="card-head">
+                <div><h3>Reposição sugerida</h3><p class="muted">Lista inicial para validar com dados reais na Etapa 2.</p></div>
+              </div>
+              <div class="smart-restock-list" id="smartRestockList">
+                <div><span>Produto mais vendido</span><strong>+12 un.</strong></div>
+                <div><span>Produto com estoque baixo</span><strong>+8 un.</strong></div>
+                <div><span>Produto de giro médio</span><strong>+5 un.</strong></div>
+              </div>
+            </article>
+
+            <article class="smart-panel smart-depth-card glass">
+              <div class="card-head">
+                <div><h3>Oportunidades</h3><p class="muted">Ações simples para aumentar eficiência.</p></div>
+              </div>
+              <div class="smart-opportunities" id="smartOpportunitiesList">
+                <button type="button"><i class="fa-solid fa-tags"></i><span>Criar combo de baixa saída</span></button>
+                <button type="button"><i class="fa-solid fa-cash-register"></i><span>Preparar produtos do pico</span></button>
+                <button type="button"><i class="fa-solid fa-clipboard-check"></i><span>Revisar estoque mínimo</span></button>
+              </div>
+            </article>
+          </div>
+
+          <article class="smart-goals smart-depth-card glass" id="smartGoals">
+            <div class="smart-goals-head">
+              <div>
+                <span class="smart-eyebrow"><i class="fa-solid fa-bullseye"></i> Aba de metas</span>
+                <h3>Metas, lucro previsto e estratégia automática</h3>
+                <p class="muted">Simule uma meta diária e veja quanto ela pode gerar hoje, no mês e em 364 dias.</p>
+              </div>
+              <div class="smart-goal-orb">
+                <span class="smart-goal-status" id="smartGoalStatus">Meta em análise</span>
+              </div>
+            </div>
+
+            <div class="smart-goals-grid">
+              <form class="smart-goal-form" id="smartGoalForm">
+                <label>
+                  Quantidade prevista hoje
+                  <input type="number" id="smartQtyToday" min="0" step="1" value="24" />
+                </label>
+                <label>
+                  Lucro por unidade
+                  <input type="number" id="smartProfitPerItem" min="0" step="0.01" value="3.50" />
+                </label>
+                <label>
+                  Meta diária de vendas
+                  <input type="number" id="smartDailyGoal" min="1" step="1" value="30" />
+                </label>
+              </form>
+
+              <div class="smart-goal-results">
+                <div>
+                  <span>Lucro se vender hoje</span>
+                  <strong id="smartProfitToday">R$ 0,00</strong>
+                </div>
+                <div>
+                  <span>Projeção mensal</span>
+                  <strong id="smartProfitMonth">R$ 0,00</strong>
+                </div>
+                <div>
+                  <span>Projeção em 364 dias</span>
+                  <strong id="smartProfitYear">R$ 0,00</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="smart-goal-progress" aria-label="Progresso da meta">
+              <span id="smartGoalMeter"></span>
+            </div>
+
+            <div class="smart-strategy" id="smartGoalStrategy">
+              <i class="fa-solid fa-lightbulb"></i>
+              <p>Preencha os valores para a AAPM Smart sugerir a melhor estratégia.</p>
+            </div>
+          </article>
+
+          <article class="smart-assistant smart-depth-card glass">
+            <div class="smart-assistant-head">
+              <div>
+                <span class="smart-eyebrow"><i class="fa-solid fa-robot"></i> IA externa</span>
+                <h3>Assistente AAPM Smart</h3>
+                <p class="muted">Converse com a IA para transformar previsões, metas e estoque em ações práticas.</p>
+              </div>
+              <span class="smart-ai-status" id="smartAiStatus">Aguardando pergunta</span>
+            </div>
+            <div class="smart-chat" id="smartChatLog" aria-live="polite">
+              <div class="smart-chat-message ai">
+                <i class="fa-solid fa-brain"></i>
+                <p>Me pergunte algo como: "O que devo comprar para amanhã?" ou "Como bater a meta de hoje?"</p>
+              </div>
+            </div>
+            <form class="smart-chat-form" id="smartChatForm">
+              <input id="smartChatInput" type="text" maxlength="500" placeholder="Pergunte para a AAPM Smart..." autocomplete="off" />
+              <button type="submit"><i class="fa-solid fa-paper-plane"></i><span>Enviar</span></button>
+            </form>
+          </article>
         </section>
 
         <!-- ============================= PAGE: DASHBOARD ============================= -->
@@ -604,7 +783,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- App -->
-    <script src="/apps/pvd/scripts/dashboard.js?v=chart-resize-20260605-1"></script>
+    <script src="/apps/pvd/scripts/dashboard.js?v=aapm-smart-external-ai-20260605-1"></script>
   </body>
 </html>
 

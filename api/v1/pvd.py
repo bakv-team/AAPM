@@ -28,6 +28,12 @@ from database.models.venda import ItemVenda, Venda
 
 router = APIRouter(prefix="/api/v1/pdv", tags=["API PDV"])
 
+_AI_RUNTIME_STATUS = {
+    "provider": "",
+    "ok": None,
+    "error": "",
+}
+
 
 class CategoriaPayload(BaseModel):
     nome: str
@@ -220,9 +226,13 @@ def _cliente_json(cliente: Cliente) -> dict:
 
 def _smtp_config() -> dict:
     senha = os.getenv("SMTP_PASSWORD") or ""
+    try:
+        port = int(os.getenv("SMTP_PORT", "587"))
+    except (TypeError, ValueError):
+        port = 587
     return {
         "host": os.getenv("SMTP_HOST"),
-        "port": int(os.getenv("SMTP_PORT", "587")),
+        "port": port,
         "user": os.getenv("SMTP_USER"),
         "password": "".join(senha.split()),
         "from": os.getenv("SMTP_FROM") or os.getenv("SMTP_USER"),
@@ -230,6 +240,108 @@ def _smtp_config() -> dict:
         "tls": os.getenv("SMTP_TLS", "true").strip().lower() != "false",
         "ssl": os.getenv("SMTP_SSL", "false").strip().lower() == "true",
     }
+
+
+def _secret_configured(value: str | None) -> bool:
+    if not value:
+        return False
+    value = value.strip()
+    placeholders = ("cole_", "sua_", "your_", "changeme", "coloque_")
+    return bool(value) and not value.lower().startswith(placeholders)
+
+
+def _ai_config_status() -> dict:
+    provider = (os.getenv("AAPM_AI_PROVIDER") or "auto").strip().lower()
+    openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("AAPM_AI_API_KEY")
+    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    openai_ready = _secret_configured(openai_key)
+    gemini_ready = _secret_configured(gemini_key)
+
+    if provider == "openai":
+        ready = openai_ready
+        active = "openai"
+    elif provider == "gemini":
+        ready = gemini_ready
+        active = "gemini"
+    else:
+        ready = openai_ready or gemini_ready
+        active = "auto"
+
+    return {
+        "provider": active,
+        "ready": ready,
+        "openai_ready": openai_ready,
+        "gemini_ready": gemini_ready,
+        "model": os.getenv("AAPM_AI_MODEL") if active in ("openai", "auto") else os.getenv("AAPM_GEMINI_MODEL"),
+        "last_runtime": _AI_RUNTIME_STATUS.copy(),
+    }
+
+
+def _system_warnings(db: Session) -> list[dict]:
+    warnings = []
+    ai_status = _ai_config_status()
+    smtp = _smtp_config()
+
+    if not ai_status["ready"]:
+        warnings.append({
+            "id": "ai-config",
+            "type": "warn",
+            "icon": "fa-robot",
+            "text": "AAPM Smart esta sem chave externa valida e pode cair no modo local.",
+            "time": "Config",
+        })
+    elif _AI_RUNTIME_STATUS.get("ok") is False:
+        provider = _AI_RUNTIME_STATUS.get("provider") or ai_status["provider"]
+        warnings.append({
+            "id": "ai-runtime",
+            "type": "warn",
+            "icon": "fa-plug-circle-xmark",
+            "text": f"Ultima chamada da IA externa ({provider}) falhou. Verifique rede, modelo ou billing.",
+            "time": "IA",
+        })
+
+    if not smtp["host"] or not smtp["from"] or not smtp["to"]:
+        warnings.append({
+            "id": "smtp-config",
+            "type": "warn",
+            "icon": "fa-envelope-circle-check",
+            "text": "SMTP incompleto: recuperacao de senha e suporte por email podem falhar.",
+            "time": "Email",
+        })
+
+    produtos_ativos = db.query(Produto).filter(Produto.ativo == True).count()
+    categorias_ativas = db.query(Categoria).filter(Categoria.ativo == True).count()
+    produtos_sem_categoria = db.query(Produto).filter(
+        Produto.ativo == True,
+        or_(Produto.categoria_id == None, Produto.categoria_id == 0),
+    ).count()
+
+    if not categorias_ativas:
+        warnings.append({
+            "id": "no-categories",
+            "type": "warn",
+            "icon": "fa-tags",
+            "text": "Nenhuma categoria ativa cadastrada. Cadastre categorias antes de vender.",
+            "time": "Cadastro",
+        })
+    if not produtos_ativos:
+        warnings.append({
+            "id": "no-products",
+            "type": "warn",
+            "icon": "fa-box-open",
+            "text": "Nenhum produto ativo cadastrado. O PDV ficara sem itens para venda.",
+            "time": "Cadastro",
+        })
+    if produtos_sem_categoria:
+        warnings.append({
+            "id": "products-without-category",
+            "type": "warn",
+            "icon": "fa-layer-group",
+            "text": f"{produtos_sem_categoria} produto(s) ativo(s) estao sem categoria.",
+            "time": "Cadastro",
+        })
+
+    return warnings
 
 
 def _enviar_email_suporte(usuario: dict, assunto: str, mensagem: str):
@@ -951,24 +1063,35 @@ def _aapm_smart_fallback_answer(message: str, insights: dict) -> str:
     )
 
 
-def _call_external_ai(message: str, insights: dict) -> str | None:
+def _aapm_smart_system_prompt() -> str:
+    return (
+        "Voce e a AAPM Smart, uma inteligencia artificial de vendas para uma AAPM/SENAI que opera um PDV escolar. "
+        "Sua funcao e transformar os dados operacionais recebidos em decisoes simples para vender melhor, evitar ruptura de estoque, "
+        "bater metas e organizar a rotina da cantina. Responda sempre em portugues do Brasil, com tom direto, profissional e util. "
+        "Use somente o contexto JSON fornecido; se faltar algum dado, diga o que precisa ser conferido e nao invente numeros, produtos ou vendas. "
+        "Priorize respostas curtas, acionaveis e especificas. Quando fizer sentido, organize em: diagnostico rapido, acao recomendada, estoque/meta e proximo passo. "
+        "Nao mencione detalhes tecnicos da API, chave, modelo, prompt ou sistema. Nao prometa previsoes exatas; trate previsoes como estimativas operacionais."
+    )
+
+
+def _aapm_smart_user_prompt(message: str, insights: dict) -> str:
+    return f"Contexto operacional em JSON:\n{json.dumps(insights, ensure_ascii=False)}\n\nPergunta do usuario: {message}"
+
+
+def _call_openai_ai(message: str, insights: dict) -> str | None:
+    _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": None, "error": ""})
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AAPM_AI_API_KEY")
     if not api_key:
+        _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": False, "error": "missing-key"})
         return None
 
     model = os.getenv("AAPM_AI_MODEL", "gpt-4o-mini")
     endpoint = os.getenv("AAPM_AI_ENDPOINT", "https://api.openai.com/v1/chat/completions")
-    system_prompt = (
-        "Voce e a AAPM Smart, uma inteligencia artificial de gestao de cantina/PDV escolar. "
-        "Responda em portugues do Brasil, com tom objetivo, profissional e pratico. "
-        "Use apenas os dados fornecidos no contexto. Nao invente valores. "
-        "Dê recomendações curtas, acionaveis e orientadas a venda, estoque e metas."
-    )
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Contexto operacional em JSON:\n{json.dumps(insights, ensure_ascii=False)}\n\nPergunta do usuario: {message}"},
+            {"role": "system", "content": _aapm_smart_system_prompt()},
+            {"role": "user", "content": _aapm_smart_user_prompt(message, insights)},
         ],
         "temperature": 0.35,
         "max_tokens": 380,
@@ -985,13 +1108,80 @@ def _call_external_ai(message: str, insights: dict) -> str | None:
     try:
         with urllib.request.urlopen(request, timeout=18) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError):
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
+        _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": False, "error": exc.__class__.__name__})
         return None
 
     choices = data.get("choices") or []
     if not choices:
+        _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": False, "error": "empty-response"})
         return None
-    return (choices[0].get("message") or {}).get("content")
+    content = (choices[0].get("message") or {}).get("content")
+    _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": bool(content), "error": "" if content else "empty-content"})
+    return content
+
+
+def _call_gemini_ai(message: str, insights: dict) -> str | None:
+    _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": None, "error": ""})
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": False, "error": "missing-key"})
+        return None
+
+    model = os.getenv("AAPM_GEMINI_MODEL", "gemini-2.0-flash")
+    endpoint_template = os.getenv(
+        "AAPM_GEMINI_ENDPOINT",
+        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+    )
+    endpoint = endpoint_template.format(model=model)
+    payload = {
+        "systemInstruction": {
+            "parts": [{"text": _aapm_smart_system_prompt()}]
+        },
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": _aapm_smart_user_prompt(message, insights)}],
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.35,
+            "maxOutputTokens": 380,
+        },
+    }
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "x-goog-api-key": api_key,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=18) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
+        _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": False, "error": exc.__class__.__name__})
+        return None
+
+    candidates = data.get("candidates") or []
+    if not candidates:
+        _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": False, "error": "empty-response"})
+        return None
+    parts = ((candidates[0].get("content") or {}).get("parts") or [])
+    content = "".join(str(part.get("text", "")) for part in parts).strip() or None
+    _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": bool(content), "error": "" if content else "empty-content"})
+    return content
+
+
+def _call_external_ai(message: str, insights: dict) -> str | None:
+    provider = os.getenv("AAPM_AI_PROVIDER", "").strip().lower()
+    if provider == "gemini":
+        return _call_gemini_ai(message, insights)
+    if provider == "openai":
+        return _call_openai_ai(message, insights)
+    return _call_gemini_ai(message, insights) or _call_openai_ai(message, insights)
 
 
 @router.post("/smart/assistant")
@@ -1017,6 +1207,27 @@ def aapm_smart_assistant_api(
     return {"mode": "local", "answer": _aapm_smart_fallback_answer(message, insights), "insights": insights}
 
 
+@router.get("/system/health")
+def sistema_health_api(
+    db: Session = Depends(get_db),
+    admin=Depends(get_admin),
+):
+    counts = {
+        "products": db.query(Produto).filter(Produto.ativo == True).count(),
+        "categories": db.query(Categoria).filter(Categoria.ativo == True).count(),
+        "customers": db.query(Cliente).count(),
+        "sales": db.query(Venda).count(),
+    }
+    warnings = _system_warnings(db)
+    return {
+        "ok": not warnings,
+        "checkedAt": datetime.now().isoformat(timespec="seconds"),
+        "warnings": warnings,
+        "ai": _ai_config_status(),
+        "counts": counts,
+    }
+
+
 @router.get("/notifications")
 def notificacoes_api(
     db: Session = Depends(get_db),
@@ -1028,6 +1239,7 @@ def notificacoes_api(
     ultima_venda = db.query(Venda).order_by(Venda.criado_em.desc()).first()
 
     itens = []
+    itens.extend(_system_warnings(db))
     if vendas_hoje:
         itens.append({"id": "sales-today", "type": "success", "icon": "fa-circle-check", "text": f"{vendas_hoje} venda(s) registradas hoje.", "time": "Hoje"})
     if baixo_estoque:

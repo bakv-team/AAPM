@@ -264,6 +264,9 @@ window.API = (function () {
   async function getNotifications() {
     return apiGet("/api/v1/pdv/notifications");
   }
+  async function getSystemHealth() {
+    return apiGet("/api/v1/pdv/system/health");
+  }
   async function getProfile() {
     return apiGet("/api/v1/pdv/profile");
   }
@@ -285,7 +288,7 @@ window.API = (function () {
     getCustomers, createCustomer, deleteCustomer,
     getOrders, createOrder,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts, getSmartInsights, askSmartAssistant,
-    getNotifications, getProfile, changePassword, sendSupport, downloadReport
+    getNotifications, getSystemHealth, getProfile, changePassword, sendSupport, downloadReport
   };
 })();
 
@@ -674,7 +677,7 @@ window.ProductsPage = (function () {
     const items = filtered.slice((page - 1) * perPage, page * perPage);
 
     if (!items.length) {
-      body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum produto encontrado.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum produto encontrado.</td></tr>`;
     } else {
       body.innerHTML = items.map(p => {
         const cat = window.DB.getCategory(p.categoryId);
@@ -686,7 +689,6 @@ window.ProductsPage = (function () {
           : `<div class="prod-thumb" style="background:linear-gradient(135deg, ${color}, ${color}aa)"><i class="fa-solid ${cat?.icon || "fa-box"}"></i></div>`;
         return `
           <tr data-id="${p.id}">
-            <td><input type="checkbox" class="row-check" /></td>
             <td>
               <div class="prod-cell">
                 ${thumb}
@@ -896,7 +898,7 @@ window.OrdersPage = (function () {
     });
 
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum pedido encontrado.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum pedido encontrado.</td></tr>`;
       return;
     }
 
@@ -909,12 +911,6 @@ window.OrdersPage = (function () {
         <td><span class="pill blue">${o.payment}</span></td>
         <td class="muted">${UI.dateBR(o.createdAt)}</td>
         <td>${statusPill(o.status)}</td>
-        <td class="right">
-          <div class="actions-cell">
-            <button class="act-btn view" title="Detalhes"><i class="fa-solid fa-eye"></i></button>
-            <button class="act-btn edit" title="Editar"><i class="fa-solid fa-pen"></i></button>
-          </div>
-        </td>
       </tr>
     `).join("");
   }
@@ -1524,9 +1520,9 @@ window.Dashboard = (function () {
 
 (function () {
   const ROUTE_META = {
-    smart:         { title: "AAPM Smart",            sub: "Inteligencia artificial para previsoes e recomendacoes da AAPM." },
+    smart:         { title: "AAPM Smart",            sub: "Inteligencia artificial de vendas" },
     dashboard:     { title: "Dashboard",             sub: "Visão geral das vendas e operações." },
-    admin:         { title: "Painel Administrativo", sub: "Gerencie os produtos da sua loja." },
+    admin:         { title: "Produtos",              sub: "Gerencie os produtos da sua loja." },
     grafico:       { title: "Painel Gráfico",        sub: "Indicadores e gráficos em tempo real." },
     pedidos:       { title: "Pedidos",               sub: "Acompanhe transações e status." },
     clientes:      { title: "Associados",            sub: "Cadastre associados e acompanhe benefícios de desconto." },
@@ -1818,16 +1814,42 @@ window.Dashboard = (function () {
   })();
 
   const SmartAssistant = (() => {
+    const RESPONSE_DELAY_MS = 5000;
+
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function waitRemaining(startedAt) {
+      return wait(Math.max(0, RESPONSE_DELAY_MS - (Date.now() - startedAt)));
+    }
+
     function appendMessage(type, text) {
       const log = document.getElementById("smartChatLog");
       if (!log) return;
       const icon = type === "user" ? "fa-user" : "fa-brain";
       const message = document.createElement("div");
-      message.className = `smart-chat-message ${type}`;
+      message.className = `smart-chat-message ${type} is-new`;
       message.innerHTML = `<i class="fa-solid ${icon}"></i><p></p>`;
       message.querySelector("p").textContent = text;
       log.appendChild(message);
       log.scrollTop = log.scrollHeight;
+      message.addEventListener("animationend", () => message.classList.remove("is-new"), { once: true });
+    }
+
+    function appendLoadingMessage() {
+      const log = document.getElementById("smartChatLog");
+      if (!log) return null;
+      const message = document.createElement("div");
+      message.className = "smart-chat-message ai smart-chat-loading is-new";
+      message.innerHTML = `
+        <i class="fa-solid fa-brain"></i>
+        <p><span></span><span></span><span></span></p>
+      `;
+      log.appendChild(message);
+      log.scrollTop = log.scrollHeight;
+      message.addEventListener("animationend", () => message.classList.remove("is-new"), { once: true });
+      return message;
     }
 
     function setStatus(text, mode = "") {
@@ -1849,6 +1871,9 @@ window.Dashboard = (function () {
       input.value = "";
       setStatus("Pensando...");
       form?.querySelector("button")?.setAttribute("disabled", "true");
+      form?.classList.add("is-sending");
+      const loadingMessage = appendLoadingMessage();
+      const startedAt = Date.now();
 
       try {
         const payload = {
@@ -1856,19 +1881,26 @@ window.Dashboard = (function () {
           meta_diaria: Number(document.getElementById("smartDailyGoal")?.value) || 30,
           lucro_unidade: Number(document.getElementById("smartProfitPerItem")?.value) || 3.5
         };
-        const response = await window.API.askSmartAssistant(payload);
+        const [response] = await Promise.all([
+          window.API.askSmartAssistant(payload),
+          wait(RESPONSE_DELAY_MS)
+        ]);
         if (response?.insights) {
           window.DB.smart = response.insights;
           SmartGoals.renderSmartData(response.insights);
         }
+        loadingMessage?.remove();
         appendMessage("ai", response?.answer || "Nao consegui gerar uma resposta agora.");
         setStatus(response?.mode === "external" ? "IA externa ativa" : "IA local ativa", response?.mode || "local");
       } catch (error) {
         console.error("Falha na AAPM Smart externa:", error);
+        await waitRemaining(startedAt);
+        loadingMessage?.remove();
         appendMessage("ai", "Nao consegui acessar a IA agora. Verifique a conexao ou a chave configurada.");
         setStatus("IA indisponivel", "local");
       } finally {
         form?.querySelector("button")?.removeAttribute("disabled");
+        form?.classList.remove("is-sending");
         input?.focus();
       }
     }
@@ -1893,6 +1925,19 @@ window.Dashboard = (function () {
         <div>${n.text}<time>${n.time}</time></div>
       </li>
     `).join("");
+  }
+
+  async function runPreventiveChecks() {
+    try {
+      const health = await window.API.getSystemHealth();
+      const warnings = health?.warnings || [];
+      if (!warnings.length) return;
+      const severe = warnings.find(item => item.type === "error") || warnings[0];
+      UI.toast(severe.text || "Ha alertas preventivos no sistema.", severe.type === "error" ? "error" : "warn");
+      document.querySelector("#notifBtn .dot")?.classList.remove("hidden");
+    } catch (err) {
+      console.warn("Falha na checagem preventiva:", err);
+    }
   }
 
   function updateSidebarBadges() {
@@ -2262,6 +2307,7 @@ window.Dashboard = (function () {
     safeInit("assistente AAPM Smart", () => SmartAssistant.init());
     renderNotifications();
     updateSidebarBadges();
+    runPreventiveChecks();
     setupMotionObserver();
 
     // Initial route via hash

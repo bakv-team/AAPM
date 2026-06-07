@@ -50,7 +50,7 @@
         <nav class="nav" aria-label="Navegação principal">
           <p class="nav-label">Principal</p>
           <button class="nav-item active" data-route="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></button>
-          <button class="nav-item" data-route="admin"><i class="fa-solid fa-table-cells-large"></i><span>Painel Administrativo</span></button>
+          <button class="nav-item" data-route="admin"><i class="fa-solid fa-table-cells-large"></i><span>Produtos</span></button>
           <button class="nav-item" data-route="grafico"><i class="fa-solid fa-chart-column"></i><span>Painel Gráfico</span></button>
 
           <p class="nav-label">Operacional</p>
@@ -153,6 +153,27 @@
               <span class="smart-node node-c"></span>
             </div>
           </div>
+
+          <article class="smart-assistant smart-depth-card">
+            <div class="smart-assistant-head">
+              <div>
+                <span class="smart-eyebrow"><i class="fa-solid fa-robot"></i> IA externa</span>
+                <h3>Assistente AAPM Smart</h3>
+                <p class="muted">Converse com a IA para transformar previsões, metas e estoque em ações práticas.</p>
+              </div>
+              <span class="smart-ai-status" id="smartAiStatus">Aguardando pergunta</span>
+            </div>
+            <div class="smart-chat" id="smartChatLog" aria-live="polite">
+              <div class="smart-chat-message ai">
+                <i class="fa-solid fa-brain"></i>
+                <p>Me pergunte algo como: "O que devo comprar para amanhã?" ou "Como bater a meta de hoje?"</p>
+              </div>
+            </div>
+            <form class="smart-chat-form" id="smartChatForm">
+              <input id="smartChatInput" type="text" maxlength="500" placeholder="Pergunte para a AAPM Smart..." autocomplete="off" />
+              <button type="submit"><i class="fa-solid fa-paper-plane"></i><span>Enviar</span></button>
+            </form>
+          </article>
 
           <div class="smart-kpis">
             <article class="smart-kpi smart-depth-card glass">
@@ -308,26 +329,6 @@
             </div>
           </article>
 
-          <article class="smart-assistant smart-depth-card glass">
-            <div class="smart-assistant-head">
-              <div>
-                <span class="smart-eyebrow"><i class="fa-solid fa-robot"></i> IA externa</span>
-                <h3>Assistente AAPM Smart</h3>
-                <p class="muted">Converse com a IA para transformar previsões, metas e estoque em ações práticas.</p>
-              </div>
-              <span class="smart-ai-status" id="smartAiStatus">Aguardando pergunta</span>
-            </div>
-            <div class="smart-chat" id="smartChatLog" aria-live="polite">
-              <div class="smart-chat-message ai">
-                <i class="fa-solid fa-brain"></i>
-                <p>Me pergunte algo como: "O que devo comprar para amanhã?" ou "Como bater a meta de hoje?"</p>
-              </div>
-            </div>
-            <form class="smart-chat-form" id="smartChatForm">
-              <input id="smartChatInput" type="text" maxlength="500" placeholder="Pergunte para a AAPM Smart..." autocomplete="off" />
-              <button type="submit"><i class="fa-solid fa-paper-plane"></i><span>Enviar</span></button>
-            </form>
-          </article>
         </section>
 
         <!-- ============================= PAGE: DASHBOARD ============================= -->
@@ -388,7 +389,7 @@
           <div class="card glass no-pad">
             <div class="table-wrap">
               <table class="data-table" id="productsTable">
-                <thead><tr><th><input type="checkbox" id="selectAllProducts" /></th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th class="right">Ações</th></tr></thead>
+                <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th class="right">Ações</th></tr></thead>
                 <tbody id="productsBody"></tbody>
               </table>
             </div>
@@ -426,10 +427,9 @@
               <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="orderSearch" placeholder="Buscar pedido ou associado..." /></div>
               <select id="orderStatusFilter" class="select"><option value="">Todos status</option><option value="concluido">Concluído</option><option value="pendente">Pendente</option><option value="cancelado">Cancelado</option></select>
             </div>
-            <div class="toolbar-right"><a class="primary-btn" href="/pdv"><i class="fa-solid fa-cash-register"></i> Abrir PDV</a></div>
           </div>
           <div class="card glass no-pad"><div class="table-wrap">
-            <table class="data-table"><thead><tr><th>Pedido</th><th>Associado/Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Data</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="ordersBody"></tbody></table>
+            <table class="data-table"><thead><tr><th>Pedido</th><th>Associado/Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Data</th><th>Status</th></tr></thead><tbody id="ordersBody"></tbody></table>
           </div></div>
         </section>
 

@@ -7,6 +7,7 @@ import smtplib
 import urllib.error
 import urllib.request
 from email.message import EmailMessage
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
@@ -33,6 +34,10 @@ _AI_RUNTIME_STATUS = {
     "ok": None,
     "error": "",
 }
+
+PRODUCT_IMAGE_DIR = Path("database/static/uploads")
+PRODUCT_IMAGE_PREFIX = "uploads"
+PRODUCT_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 class CategoriaPayload(BaseModel):
@@ -113,6 +118,25 @@ def _produto_json(produto: Produto) -> dict:
         "imageUrl": produto.imagem_url if produto.imagem_path else "",
         "ativo": produto.ativo,
     }
+
+
+def _imagem_existente_path(valor: str | None) -> str | None:
+    valor = (valor or "").strip().replace("\\", "/")
+    if not valor:
+        return None
+    if valor.startswith("/static/"):
+        valor = valor[len("/static/"):]
+    if valor.startswith("static/"):
+        valor = valor[len("static/"):]
+
+    nome_arquivo = Path(valor).name
+    if not nome_arquivo or Path(nome_arquivo).suffix.lower() not in PRODUCT_IMAGE_EXTENSIONS:
+        return None
+
+    caminho = PRODUCT_IMAGE_DIR / nome_arquivo
+    if not caminho.is_file():
+        return None
+    return f"{PRODUCT_IMAGE_PREFIX}/{nome_arquivo}"
 
 
 def _usuario_id_atual(usuario: dict, db: Session) -> int | None:
@@ -542,6 +566,25 @@ def listar_produtos_api(
         produtos = [p for p in produtos if p.estoque_atual <= 0]
 
     return [_produto_json(produto) for produto in produtos]
+
+
+@router.get("/product-images")
+def listar_imagens_produto_api(admin=Depends(get_admin)):
+    PRODUCT_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    imagens = []
+    for caminho in sorted(PRODUCT_IMAGE_DIR.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
+        if not caminho.is_file() or caminho.suffix.lower() not in PRODUCT_IMAGE_EXTENSIONS:
+            continue
+        rel = f"{PRODUCT_IMAGE_PREFIX}/{caminho.name}"
+        stat = caminho.stat()
+        imagens.append({
+            "name": caminho.name,
+            "path": rel,
+            "url": f"/static/{rel}",
+            "size": stat.st_size,
+            "updatedAt": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
+        })
+    return imagens
 
 
 @router.get("/sale/products")
@@ -1372,6 +1415,7 @@ async def criar_produto_api(
     estoque_atual: int = Form(...),
     categoria_id: int = Form(0),
     imagem: UploadFile = File(None),
+    imagem_existente: str = Form(""),
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
@@ -1396,7 +1440,7 @@ async def criar_produto_api(
         if not categoria:
             raise HTTPException(status_code=400, detail="Categoria invalida.")
 
-    imagem_path = await _salvar_imagem(imagem)
+    imagem_path = await _salvar_imagem(imagem) or _imagem_existente_path(imagem_existente)
 
     produto = Produto(
         nome=nome,
@@ -1423,6 +1467,7 @@ async def editar_produto_api(
     estoque_atual: int = Form(...),
     categoria_id: int = Form(0),
     imagem: UploadFile = File(None),
+    imagem_existente: str = Form(""),
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
@@ -1459,6 +1504,10 @@ async def editar_produto_api(
     if nova_imagem_path:
         _remover_imagem(produto.imagem_path)
         produto.imagem_path = nova_imagem_path
+    else:
+        imagem_path_existente = _imagem_existente_path(imagem_existente)
+        if imagem_path_existente:
+            produto.imagem_path = imagem_path_existente
 
     produto.nome = nome
     produto.descricao = (descricao or "").strip()

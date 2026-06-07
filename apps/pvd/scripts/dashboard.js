@@ -165,6 +165,7 @@ window.API = (function () {
     data.set("estoque_atual", payload.stock);
     data.set("categoria_id", payload.categoryId || 0);
     if (payload.image) data.set("imagem", payload.image);
+    if (!payload.image && payload.existingImage) data.set("imagem_existente", payload.existingImage);
     return data;
   }
 
@@ -190,6 +191,9 @@ window.API = (function () {
     if (filters.stock) qs.set("stock", filters.stock);
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return apiGet(`/api/v1/pdv/products${suffix}`);
+  }
+  async function getProductImages() {
+    return apiGet("/api/v1/pdv/product-images");
   }
   async function createProduct(payload) {
     return apiForm("/api/v1/pdv/products", "POST", productFormData(payload));
@@ -284,7 +288,7 @@ window.API = (function () {
     BASE_URL,
     apiGet, apiPost, apiPut, apiDelete,
     getCategories, createCategory, updateCategory, deleteCategory,
-    getProducts, createProduct, updateProduct, addProductStock, getStockMovements, deleteProduct,
+    getProducts, getProductImages, createProduct, updateProduct, addProductStock, getStockMovements, deleteProduct,
     getCustomers, createCustomer, deleteCustomer,
     getOrders, createOrder,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts, getSmartInsights, askSmartAssistant,
@@ -371,11 +375,18 @@ window.UI = (function () {
   // Simple modal helpers
   function openModal(id) {
     const el = document.getElementById(id);
-    if (el) el.classList.remove("hidden");
+    if (!el) return;
+    el.classList.remove("is-closing");
+    el.classList.remove("hidden");
   }
   function closeModal(id) {
     const el = document.getElementById(id);
-    if (el) el.classList.add("hidden");
+    if (!el || el.classList.contains("hidden") || el.classList.contains("is-closing")) return;
+    el.classList.add("is-closing");
+    window.setTimeout(() => {
+      el.classList.add("hidden");
+      el.classList.remove("is-closing");
+    }, 220);
   }
 
   // Confirm dialog (returns Promise<boolean>)
@@ -651,6 +662,7 @@ window.ProductsPage = (function () {
   let page = 1;
   const perPage = 8;
   let filters = { q: "", category: "", stock: "" };
+  let imageLibraryItems = [];
 
   function getFiltered() {
     return window.DB.products.filter(p => {
@@ -769,6 +781,92 @@ window.ProductsPage = (function () {
     }
   }
 
+  function resetProductImageChoice(text = "Escolher imagem", hint = "PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva.") {
+    const fileInput = document.getElementById("productImage");
+    const existingInput = document.getElementById("productExistingImage");
+    const fileName = document.getElementById("productImageFileName");
+    const imageHint = document.getElementById("productImageHint");
+    if (fileInput) fileInput.value = "";
+    if (existingInput) existingInput.value = "";
+    if (fileName) fileName.textContent = text;
+    if (imageHint) imageHint.textContent = hint;
+  }
+
+  function handleProductImageFileChange(event) {
+    const file = event.target.files?.[0];
+    const existingInput = document.getElementById("productExistingImage");
+    const fileName = document.getElementById("productImageFileName");
+    const imageHint = document.getElementById("productImageHint");
+    if (existingInput) existingInput.value = "";
+    if (fileName) fileName.textContent = file ? file.name : "Escolher imagem";
+    if (imageHint) {
+      imageHint.textContent = file
+        ? "Imagem nova selecionada. Ela sera salva no projeto ao cadastrar o produto."
+        : "PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva.";
+    }
+  }
+
+  function chooseExistingImage(image) {
+    const fileInput = document.getElementById("productImage");
+    const existingInput = document.getElementById("productExistingImage");
+    const fileName = document.getElementById("productImageFileName");
+    const imageHint = document.getElementById("productImageHint");
+    if (fileInput) fileInput.value = "";
+    if (existingInput) existingInput.value = image.path || "";
+    if (fileName) fileName.textContent = image.name || "Imagem da galeria";
+    if (imageHint) imageHint.textContent = "Imagem selecionada da galeria do projeto.";
+    UI.closeModal("imageLibraryModal");
+  }
+
+  function renderImageLibrary(images, term = "") {
+    const grid = document.getElementById("imageLibraryGrid");
+    if (!grid) return;
+    const query = term.trim().toLowerCase();
+    const visibleImages = query
+      ? images.filter(image => `${image.name || ""} ${image.path || ""}`.toLowerCase().includes(query))
+      : images;
+    grid.innerHTML = "";
+    if (!visibleImages.length) {
+      const empty = document.createElement("div");
+      empty.className = "image-library-empty";
+      empty.textContent = images.length
+        ? "Nenhuma imagem encontrada com esse nome."
+        : "Nenhuma imagem encontrada em database/static/uploads.";
+      grid.appendChild(empty);
+      return;
+    }
+    visibleImages.forEach(image => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "image-library-item";
+      const preview = document.createElement("img");
+      preview.src = image.url;
+      preview.alt = image.name || "Imagem do produto";
+      preview.loading = "lazy";
+      const name = document.createElement("span");
+      name.textContent = image.name || image.path;
+      button.append(preview, name);
+      button.addEventListener("click", () => chooseExistingImage(image));
+      grid.appendChild(button);
+    });
+  }
+
+  async function openImageLibrary() {
+    const grid = document.getElementById("imageLibraryGrid");
+    const search = document.getElementById("imageLibrarySearch");
+    if (search) search.value = "";
+    if (grid) grid.innerHTML = `<div class="image-library-empty">Carregando imagens...</div>`;
+    UI.openModal("imageLibraryModal");
+    try {
+      imageLibraryItems = await window.API.getProductImages();
+      renderImageLibrary(imageLibraryItems);
+    } catch (err) {
+      console.error("Falha ao carregar galeria de produtos:", err);
+      if (grid) grid.innerHTML = `<div class="image-library-empty">Nao foi possivel carregar as imagens.</div>`;
+      UI.toast("Nao foi possivel abrir a galeria de imagens.", "error");
+    }
+  }
+
   function openProductForm(id) {
     const titleEl = document.getElementById("productModalTitle");
     const catSel = document.getElementById("productCategory");
@@ -782,12 +880,16 @@ window.ProductsPage = (function () {
       document.getElementById("productCategory").value = p.categoryId;
       document.getElementById("productPrice").value = p.price;
       document.getElementById("productStock").value = p.stock;
-      document.getElementById("productImage").value = "";
+      resetProductImageChoice(
+        p.imageUrl ? "Manter imagem atual" : "Escolher imagem",
+        p.imageUrl ? "Imagem atual mantida. Escolha outra se quiser trocar." : "PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva."
+      );
       document.getElementById("productDesc").value = p.description || "";
     } else {
       titleEl.textContent = "Novo produto";
       document.getElementById("productForm").reset();
       document.getElementById("productId").value = "";
+      resetProductImageChoice();
     }
     UI.openModal("productModal");
   }
@@ -801,7 +903,8 @@ window.ProductsPage = (function () {
       price: parseFloat(document.getElementById("productPrice").value) || 0,
       stock: parseInt(document.getElementById("productStock").value, 10) || 0,
       description: document.getElementById("productDesc").value.trim(),
-      image: document.getElementById("productImage").files[0] || null
+      image: document.getElementById("productImage").files[0] || null,
+      existingImage: document.getElementById("productExistingImage").value || ""
     };
     if (!data.name) { UI.toast("Informe o nome do produto.", "error"); return; }
     if (data.stock < 5) { UI.toast("O estoque não pode ser menor que 5.", "error"); return; }
@@ -843,6 +946,11 @@ window.ProductsPage = (function () {
 
     document.getElementById("newProductBtn").addEventListener("click", () => openProductForm());
     document.getElementById("productForm").addEventListener("submit", saveProduct);
+    document.getElementById("productImage").addEventListener("change", handleProductImageFileChange);
+    document.getElementById("openImageLibrary").addEventListener("click", openImageLibrary);
+    document.getElementById("imageLibrarySearch").addEventListener("input", e => {
+      renderImageLibrary(imageLibraryItems, e.target.value);
+    });
 
     document.getElementById("exportProducts").addEventListener("click", () => {
       const rows = [["Nome", "SKU", "Categoria", "Preço", "Estoque"]];
@@ -858,6 +966,9 @@ window.ProductsPage = (function () {
     });
     document.getElementById("productModal").addEventListener("click", e => {
       if (e.target.id === "productModal") UI.closeModal("productModal");
+    });
+    document.getElementById("imageLibraryModal").addEventListener("click", e => {
+      if (e.target.id === "imageLibraryModal") UI.closeModal("imageLibraryModal");
     });
 
     render();
@@ -2231,7 +2342,7 @@ window.Dashboard = (function () {
         document.getElementById("globalSearch").focus();
       }
       if (e.key === "Escape") {
-        document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.add("hidden"));
+        document.querySelectorAll(".modal-backdrop:not(.hidden)").forEach(m => UI.closeModal(m.id));
       }
     });
 

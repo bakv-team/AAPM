@@ -612,13 +612,49 @@
           <label>Categoria<select id="productCategory" required></select></label>
           <label>Preço (R$)<input type="number" id="productPrice" step="0.01" min="0" required /></label>
           <label>Estoque atual<input type="number" id="productStock" min="0" required /></label>
-          <label class="span-2">Imagem do produto<input type="file" id="productImage" accept="image/png,image/jpeg,image/webp" /></label>
+          <div class="span-2 product-image-field">
+            <span class="field-label">Imagem do produto</span>
+            <input type="hidden" id="productExistingImage" />
+            <input type="file" id="productImage" accept="image/png,image/jpeg,image/webp" />
+            <div class="product-image-actions">
+              <label class="image-upload-btn" for="productImage">
+                <i class="fa-solid fa-image"></i>
+                <span id="productImageFileName">Escolher imagem</span>
+              </label>
+              <button type="button" class="image-library-btn" id="openImageLibrary">
+                <i class="fa-solid fa-folder-open"></i>
+                <span>Galeria</span>
+              </button>
+            </div>
+            <p class="image-field-hint" id="productImageHint">PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva.</p>
+          </div>
           <label class="span-2">Descrição<textarea id="productDesc" rows="3"></textarea></label>
           <div class="modal-foot span-2">
             <button type="button" class="ghost-btn" data-close-modal="productModal">Cancelar</button>
             <button type="submit" class="primary-btn">Salvar produto</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: GALERIA DE IMAGENS ====================== -->
+    <div class="modal-backdrop hidden" id="imageLibraryModal">
+      <div class="modal glass image-library-modal">
+        <div class="modal-head">
+          <div>
+            <h3>Galeria de imagens</h3>
+            <p class="muted">Imagens salvas no projeto</p>
+          </div>
+          <button class="icon-btn ghost" data-close-modal="imageLibraryModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="image-library-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" id="imageLibrarySearch" placeholder="Pesquisar imagem..." autocomplete="off" />
+        </div>
+        <div class="image-library-grid" id="imageLibraryGrid"></div>
+        <div class="modal-foot image-library-foot">
+          <button type="button" class="ghost-btn" data-close-modal="imageLibraryModal">Fechar</button>
+        </div>
       </div>
     </div>
 

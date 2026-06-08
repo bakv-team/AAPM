@@ -1285,26 +1285,47 @@ def notificacoes_api(
     return itens
 
 
+def _periodo_relatorio(period: str) -> tuple[date, date, int, str]:
+    hoje = date.today()
+    period = (period or "month").strip().lower()
+    periodos = {
+        "today": (hoje, hoje, 1, "hoje"),
+        "week": (hoje - timedelta(days=6), hoje, 7, "ultimos-7-dias"),
+        "month": (hoje - timedelta(days=29), hoje, 30, "ultimos-30-dias"),
+        "year": (hoje - timedelta(days=364), hoje, 365, "ultimos-12-meses"),
+    }
+    return periodos.get(period, periodos["month"])
+
+
+def _filtrar_vendas_por_periodo(query, inicio: date, fim: date):
+    return query.filter(
+        Venda.criado_em >= _inicio_do_dia(inicio),
+        Venda.criado_em <= _fim_do_dia(fim),
+    )
+
+
 @router.get("/reports/{tipo}")
 def baixar_relatorio_api(
     tipo: str,
+    period: str = Query("month"),
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
     hoje = date.today().isoformat()
+    inicio, fim, dias, periodo_slug = _periodo_relatorio(period)
 
     if tipo == "sales":
-        vendas = db.query(Venda).order_by(Venda.criado_em.desc()).all()
+        vendas = _filtrar_vendas_por_periodo(db.query(Venda), inicio, fim).order_by(Venda.criado_em.desc()).all()
         return _csv_response(
-            f"relatorio-vendas-{hoje}.csv",
+            f"relatorio-vendas-{periodo_slug}-{hoje}.csv",
             ["Pedido", "Cliente", "Pagamento", "Data", "Total bruto", "Desconto", "Total liquido"],
             [[f"#{v.id:04d}", _venda_json(v)["customerName"], _extrair_pagamento(v.observacao or ""), v.criado_em, v.total_bruto, v.desconto_valor, v.total_liquido] for v in vendas],
         )
 
     if tipo == "daily":
-        rows = vendas_por_dia_api(dias=30, db=db, admin=admin)
+        rows = vendas_por_dia_api(dias=dias, db=db, admin=admin)
         return _csv_response(
-            f"resumo-diario-{hoje}.csv",
+            f"resumo-diario-{periodo_slug}-{hoje}.csv",
             ["Data", "Receita", "Pedidos", "Itens"],
             [[r["date"], r["revenue"], r["orders"], r["items"]] for r in rows],
         )
@@ -1317,28 +1338,94 @@ def baixar_relatorio_api(
             [[p.nome, p.categoria.nome if p.categoria else "", p.preco, p.estoque_atual] for p in produtos],
         )
 
-    if tipo == "abc":
-        produtos = produtos_mais_vendidos_api(db=db, admin=admin)
+    if tipo == "stock-low":
+        produtos = db.query(Produto).filter(Produto.ativo == True, Produto.estoque_atual > 0, Produto.estoque_atual <= 5).order_by(Produto.estoque_atual, Produto.nome).all()
         return _csv_response(
-            f"curva-abc-{hoje}.csv",
+            f"estoque-baixo-{hoje}.csv",
+            ["Produto", "Categoria", "Preco", "Estoque"],
+            [[p.nome, p.categoria.nome if p.categoria else "", p.preco, p.estoque_atual] for p in produtos],
+        )
+
+    if tipo == "stock-out":
+        produtos = db.query(Produto).filter(Produto.ativo == True, Produto.estoque_atual <= 0).order_by(Produto.nome).all()
+        return _csv_response(
+            f"sem-estoque-{hoje}.csv",
+            ["Produto", "Categoria", "Preco", "Estoque"],
+            [[p.nome, p.categoria.nome if p.categoria else "", p.preco, p.estoque_atual] for p in produtos],
+        )
+
+    if tipo == "stock-value":
+        produtos = db.query(Produto).filter(Produto.ativo == True).order_by(Produto.nome).all()
+        return _csv_response(
+            f"valor-em-estoque-{hoje}.csv",
+            ["Produto", "Categoria", "Preco", "Estoque", "Subtotal"],
+            [[p.nome, p.categoria.nome if p.categoria else "", p.preco, p.estoque_atual, (p.preco or 0) * (p.estoque_atual or 0)] for p in produtos],
+        )
+
+    if tipo == "abc":
+        rows = (
+            db.query(
+                ItemVenda.produto_id,
+                ItemVenda.produto_nome,
+                func.coalesce(func.sum(ItemVenda.quantidade), 0).label("qty"),
+                func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0).label("revenue"),
+            )
+            .join(Venda, Venda.id == ItemVenda.venda_id)
+            .filter(Venda.criado_em >= _inicio_do_dia(inicio), Venda.criado_em <= _fim_do_dia(fim))
+            .group_by(ItemVenda.produto_id, ItemVenda.produto_nome)
+            .order_by(func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0).desc())
+            .all()
+        )
+        produtos = []
+        for produto_id, nome, qty, revenue in rows:
+            produto = db.query(Produto).filter(Produto.id == produto_id).first() if produto_id else None
+            produtos.append({
+                "name": nome,
+                "categoryName": produto.categoria.nome if produto and produto.categoria else "Sem categoria",
+                "qty": int(qty or 0),
+                "revenue": float(revenue or 0),
+            })
+        return _csv_response(
+            f"curva-abc-{periodo_slug}-{hoje}.csv",
             ["Produto", "Categoria", "Quantidade vendida", "Receita"],
             [[p["name"], p["categoryName"], p["qty"], p["revenue"]] for p in produtos],
         )
 
     if tipo == "customers":
         clientes = db.query(Cliente).filter(Cliente.ativo == True).order_by(Cliente.nome).all()
+        rows = []
+        for c in clientes:
+            vendas = _filtrar_vendas_por_periodo(db.query(Venda).filter(Venda.cliente_id == c.id), inicio, fim).all()
+            rows.append([c.nome, c.matricula or "", c.telefone or "", "Sim" if c.is_associado else "Nao", len(vendas), sum(v.total_liquido or 0 for v in vendas)])
         return _csv_response(
-            f"clientes-ativos-{hoje}.csv",
-            ["Cliente", "Matricula", "Telefone", "Associado", "Pedidos", "Total gasto"],
-            [[c.nome, c.matricula or "", c.telefone or "", "Sim" if c.is_associado else "Nao", _cliente_json(c)["orders"], _cliente_json(c)["totalSpent"]] for c in clientes],
+            f"clientes-ativos-{periodo_slug}-{hoje}.csv",
+            ["Cliente", "Matricula", "Telefone", "Associado", "Pedidos no periodo", "Total gasto no periodo"],
+            rows,
         )
 
     if tipo == "categories":
         categorias = db.query(Categoria).filter(Categoria.ativo == True).order_by(Categoria.nome).all()
+        rows = []
+        for c in categorias:
+            vendidos = (
+                db.query(
+                    func.coalesce(func.sum(ItemVenda.quantidade), 0),
+                    func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0),
+                )
+                .join(Venda, Venda.id == ItemVenda.venda_id)
+                .join(Produto, Produto.id == ItemVenda.produto_id)
+                .filter(
+                    Produto.categoria_id == c.id,
+                    Venda.criado_em >= _inicio_do_dia(inicio),
+                    Venda.criado_em <= _fim_do_dia(fim),
+                )
+                .first()
+            )
+            rows.append([c.nome, len([p for p in c.produtos if p.ativo]), int(vendidos[0] or 0), float(vendidos[1] or 0)])
         return _csv_response(
-            f"relatorio-categorias-{hoje}.csv",
-            ["Categoria", "Produtos ativos"],
-            [[c.nome, len([p for p in c.produtos if p.ativo])] for c in categorias],
+            f"relatorio-categorias-{periodo_slug}-{hoje}.csv",
+            ["Categoria", "Produtos ativos", "Itens vendidos", "Receita"],
+            rows,
         )
 
     raise HTTPException(status_code=404, detail="Relatorio nao encontrado.")

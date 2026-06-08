@@ -558,6 +558,80 @@
 
         <!-- ============================= PAGE: RELATÓRIOS ============================= -->
         <section class="page" id="page-relatorios">
+          <div class="card glass reports-panel">
+            <div class="card-head">
+              <div><h3>Relatorios</h3><p class="muted">Exporte leituras por periodo, operacao e area do PDV.</p></div>
+            </div>
+
+            <div class="report-tabs" role="tablist" aria-label="Tipos de relatorio">
+              <button class="report-tab active" type="button" data-report-tab="sales" role="tab" aria-selected="true">Vendas</button>
+              <button class="report-tab" type="button" data-report-tab="daily" role="tab" aria-selected="false">Resumo</button>
+              <button class="report-tab" type="button" data-report-tab="abc" role="tab" aria-selected="false">Produtos</button>
+              <button class="report-tab" type="button" data-report-tab="categories" role="tab" aria-selected="false">Categorias</button>
+              <button class="report-tab" type="button" data-report-tab="customers" role="tab" aria-selected="false">Associados</button>
+              <button class="report-tab" type="button" data-report-tab="stock" role="tab" aria-selected="false">Estoque</button>
+            </div>
+
+            <div class="report-tab-panel active" data-report-panel="sales" role="tabpanel">
+              <div class="report-copy"><strong>Vendas</strong><span>Pedidos, cliente, pagamento, data, desconto e total liquido.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="sales" data-period="today"><i class="fa-solid fa-calendar-day"></i><span>Hoje</span><small>Vendas registradas hoje</small></button>
+                <button class="report-card" data-report="sales" data-period="week"><i class="fa-solid fa-calendar-week"></i><span>Ultimos 7 dias</span><small>Uma semana de pedidos</small></button>
+                <button class="report-card" data-report="sales" data-period="month"><i class="fa-solid fa-calendar-days"></i><span>Ultimos 30 dias</span><small>Leitura mensal de vendas</small></button>
+                <button class="report-card" data-report="sales" data-period="year"><i class="fa-solid fa-calendar"></i><span>Ultimos 12 meses</span><small>Historico anual de vendas</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="daily" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Resumo financeiro</strong><span>Receita, pedidos e itens agrupados por dia.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="daily" data-period="today"><i class="fa-solid fa-sun"></i><span>Hoje</span><small>Resumo do dia atual</small></button>
+                <button class="report-card" data-report="daily" data-period="week"><i class="fa-solid fa-chart-simple"></i><span>Ultimos 7 dias</span><small>Evolucao da semana</small></button>
+                <button class="report-card" data-report="daily" data-period="month"><i class="fa-solid fa-chart-column"></i><span>Ultimos 30 dias</span><small>Consolidacao mensal</small></button>
+                <button class="report-card" data-report="daily" data-period="year"><i class="fa-solid fa-chart-line"></i><span>Ultimos 12 meses</span><small>Base anual por dia</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="abc" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Produtos vendidos</strong><span>Ranking de quantidade vendida e receita por produto.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="abc" data-period="today"><i class="fa-solid fa-ranking-star"></i><span>Hoje</span><small>Produtos destaque do dia</small></button>
+                <button class="report-card" data-report="abc" data-period="week"><i class="fa-solid fa-medal"></i><span>Ultimos 7 dias</span><small>Mais vendidos da semana</small></button>
+                <button class="report-card" data-report="abc" data-period="month"><i class="fa-solid fa-trophy"></i><span>Ultimos 30 dias</span><small>Curva ABC mensal</small></button>
+                <button class="report-card" data-report="abc" data-period="year"><i class="fa-solid fa-award"></i><span>Ultimos 12 meses</span><small>Performance anual</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="categories" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Categorias</strong><span>Produtos ativos, itens vendidos e receita por categoria.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="categories" data-period="today"><i class="fa-solid fa-tags"></i><span>Hoje</span><small>Categorias vendidas hoje</small></button>
+                <button class="report-card" data-report="categories" data-period="week"><i class="fa-solid fa-layer-group"></i><span>Ultimos 7 dias</span><small>Forca por categoria</small></button>
+                <button class="report-card" data-report="categories" data-period="month"><i class="fa-solid fa-table-cells"></i><span>Ultimos 30 dias</span><small>Mix mensal de vendas</small></button>
+                <button class="report-card" data-report="categories" data-period="year"><i class="fa-solid fa-chart-pie"></i><span>Ultimos 12 meses</span><small>Mix anual de categorias</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="customers" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Associados</strong><span>Clientes ativos, matricula, pedidos e gasto no periodo.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="customers" data-period="today"><i class="fa-solid fa-user-check"></i><span>Hoje</span><small>Compras de associados hoje</small></button>
+                <button class="report-card" data-report="customers" data-period="week"><i class="fa-solid fa-users-viewfinder"></i><span>Ultimos 7 dias</span><small>Movimento da semana</small></button>
+                <button class="report-card" data-report="customers" data-period="month"><i class="fa-solid fa-people-group"></i><span>Ultimos 30 dias</span><small>Engajamento mensal</small></button>
+                <button class="report-card" data-report="customers" data-period="year"><i class="fa-solid fa-address-book"></i><span>Ultimos 12 meses</span><small>Historico anual</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="stock" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Estoque</strong><span>Inventario atual, alertas de reposicao e produtos indisponiveis.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="stock"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque atual</span><small>Todos os produtos ativos</small></button>
+                <button class="report-card" data-report="stock-low"><i class="fa-solid fa-triangle-exclamation"></i><span>Estoque baixo</span><small>Itens com 5 ou menos unidades</small></button>
+                <button class="report-card" data-report="stock-out"><i class="fa-solid fa-circle-xmark"></i><span>Sem estoque</span><small>Produtos indisponiveis</small></button>
+                <button class="report-card" data-report="stock-value"><i class="fa-solid fa-coins"></i><span>Valor em estoque</span><small>Preco, quantidade e subtotal</small></button>
+              </div>
+            </div>
+          </div>
           <div class="card glass">
             <div class="card-head"><div><h3>Relatórios</h3><p class="muted">Exporte e analise dados de vendas e operações</p></div></div>
             <div class="report-grid">

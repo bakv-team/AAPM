@@ -280,8 +280,11 @@ window.API = (function () {
   async function sendSupport(payload) {
     return apiPost("/api/v1/pdv/support", payload);
   }
-  function downloadReport(kind) {
-    window.location.href = `${BASE_URL}/api/v1/pdv/reports/${encodeURIComponent(kind)}`;
+  function downloadReport(kind, period = "") {
+    const qs = new URLSearchParams();
+    if (period) qs.set("period", period);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    window.location.href = `${BASE_URL}/api/v1/pdv/reports/${encodeURIComponent(kind)}${suffix}`;
   }
 
   return {
@@ -458,6 +461,19 @@ window.CHARTS = (function () {
     };
   }
 
+  function shortLabel(value, max = 26) {
+    const text = String(value || "");
+    return text.length > max ? `${text.slice(0, Math.max(0, max - 1))}…` : text;
+  }
+
+  function shortMoneyTick(value) {
+    const n = Number(value) || 0;
+    const abs = Math.abs(n);
+    if (abs >= 1000000) return `R$ ${(n / 1000000).toFixed(abs >= 10000000 ? 0 : 1)}M`;
+    if (abs >= 1000) return `R$ ${(n / 1000).toFixed(abs >= 10000 ? 0 : 1)}k`;
+    return `R$ ${n}`;
+  }
+
   function salesLine(range = 7) {
     destroy("salesLine");
     const ctx = document.getElementById("chartSalesLine");
@@ -510,7 +526,7 @@ window.CHARTS = (function () {
         },
         scales: {
           x: { grid: { display: false }, ticks: { color: TEXT_COLOR() } },
-          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => "R$ " + v } },
+          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => shortMoneyTick(v) } },
           y1: { position: "right", grid: { display: false }, ticks: { color: TEXT_COLOR() } }
         }
       }
@@ -541,7 +557,7 @@ window.CHARTS = (function () {
     instances[canvasId] = new Chart(ctx, {
       type: "doughnut",
       data: {
-        labels: data.map(d => d.name),
+        labels: data.map(d => shortLabel(d.name, 30)),
         datasets: [{
           data: data.map(d => d.value),
           backgroundColor: data.map(d => d.color),
@@ -555,7 +571,7 @@ window.CHARTS = (function () {
         cutout: "65%",
         plugins: {
           legend: { display: false },
-          tooltip: { ...tooltipStyle(), callbacks: { label: c => `${c.label}: ${UI.money(c.parsed)}` } }
+          tooltip: { ...tooltipStyle(), callbacks: { label: c => `${data[c.dataIndex]?.name || c.label}: ${UI.money(c.parsed)}` } }
         }
       }
     });
@@ -567,9 +583,9 @@ window.CHARTS = (function () {
     if (!el) return;
     const total = data.reduce((s, d) => s + d.value, 0) || 1;
     el.innerHTML = data.map(d => `
-      <li>
+      <li title="${d.name}">
         <span class="swatch" style="background:${d.color}"></span>
-        <span>${d.name}</span>
+        <span>${shortLabel(d.name, 44)}</span>
         <strong>${((d.value / total) * 100).toFixed(1)}%</strong>
       </li>
     `).join("");
@@ -583,7 +599,7 @@ window.CHARTS = (function () {
     instances[canvasId] = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: data.map(d => d.name),
+        labels: data.map(d => shortLabel(d.name, 18)),
         datasets: [{
           label: "Receita",
           data: data.map(d => d.value),
@@ -596,11 +612,11 @@ window.CHARTS = (function () {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { ...tooltipStyle(), callbacks: { label: c => UI.money(c.parsed.y) } }
+          tooltip: { ...tooltipStyle(), callbacks: { title: items => data[items[0]?.dataIndex]?.name || items[0]?.label || "", label: c => UI.money(c.parsed.y) } }
         },
         scales: {
           x: { grid: { display: false }, ticks: { color: TEXT_COLOR() } },
-          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => "R$ " + v } }
+          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => shortMoneyTick(v) } }
         }
       }
     });
@@ -628,7 +644,7 @@ window.CHARTS = (function () {
         plugins: { legend: { display: true, position: "bottom", labels: { color: TEXT_COLOR(), usePointStyle: true, padding: 14 } }, tooltip: tooltipStyle() },
         scales: {
           x: { grid: { display: false }, ticks: { color: TEXT_COLOR() } },
-          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR() } }
+          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => shortMoneyTick(v) } }
         }
       }
     });
@@ -1075,15 +1091,14 @@ window.CustomersPage = (function () {
       return;
     }
 
-    grid.innerHTML = rows.map(c => `
-      <article class="customer-card">
-        <div class="customer-card-head">
-          <div class="avatar lg">${UI.initialsFromName(c.name)}</div>
-          <button class="customer-delete-btn" type="button" data-delete-customer="${c.id}" aria-label="Excluir ${c.name}" title="Excluir associado">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
-        <h4>${c.name}</h4>
+    const rowsHtml = rows.map(c => `
+      <tr data-customer-id="${c.id}">
+        <td>
+          <div class="customer-table-name">
+            <span class="avatar">${UI.initialsFromName(c.name)}</span>
+            <strong title="${c.name}">${c.name}</strong>
+          </div>
+        </td>
         <p><i class="fa-solid fa-id-card"></i> ${c.matricula || "Sem matrícula"}</p>
         <p><i class="fa-solid fa-phone"></i> ${c.phone || "Sem telefone"}</p>
         <p><i class="fa-solid ${c.isAssociado ? "fa-circle-check" : "fa-circle-minus"}"></i> ${c.isAssociado ? "Desconto ativo" : "Sem desconto"}</p>
@@ -1094,6 +1109,50 @@ window.CustomersPage = (function () {
         </div>
       </article>
     `).join("");
+    const tableRowsHtml = rows.map(c => `
+      <tr data-customer-id="${c.id}">
+        <td>
+          <div class="customer-table-name">
+            <span class="avatar">${UI.initialsFromName(c.name)}</span>
+            <strong title="${c.name}">${c.name}</strong>
+          </div>
+        </td>
+        <td title="${c.matricula || "Sem matricula"}">${c.matricula || "Sem matricula"}</td>
+        <td title="${c.phone || "Sem telefone"}">${c.phone || "Sem telefone"}</td>
+        <td><span class="pill ${c.isAssociado ? "green" : "gray"}">${c.isAssociado ? "Ativo" : "Sem desconto"}</span></td>
+        <td class="right"><strong>${UI.money(c.totalSpent)}</strong></td>
+        <td class="right">${c.orders}</td>
+        <td class="right">${c.lastOrder}</td>
+        <td class="right">
+          <div class="actions-cell">
+            <button class="act-btn delete" type="button" data-delete-customer="${c.id}" aria-label="Excluir ${c.name}" title="Excluir associado">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+    grid.innerHTML = `
+      <div class="card glass no-pad customer-table-card">
+        <div class="table-wrap">
+          <table class="data-table customer-table">
+            <thead>
+              <tr>
+                <th>Associado</th>
+                <th>Matricula</th>
+                <th>Telefone</th>
+                <th>Desconto</th>
+                <th class="right">Total gasto</th>
+                <th class="right">Pedidos</th>
+                <th class="right">Ultimo</th>
+                <th class="right">Acoes</th>
+              </tr>
+            </thead>
+            <tbody>${tableRowsHtml}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
     bindActions();
   }
 
@@ -1141,27 +1200,45 @@ window.CategoriesPage = (function () {
     }
 
     const agg = window.CHARTS.aggregateByCategory();
-    grid.innerHTML = window.DB.categories.map(c => {
+    const rowsHtml = window.DB.categories.map(c => {
       const a = agg.find(x => x.id === c.id) || { value: 0, color: c.color || "#2D7BFF" };
       const productCount = c.productCount ?? window.DB.products.filter(p => p.categoryId === c.id).length;
       return `
-        <article class="category-card" data-category-id="${c.id}">
-          <div class="cat-ic" style="background:linear-gradient(135deg, ${a.color}, ${a.color}aa)"><i class="fa-solid ${c.icon || "fa-box"}"></i></div>
-          <div class="category-main">
-            <h4>${c.name}</h4>
-            <p>${productCount} produto${productCount === 1 ? "" : "s"}</p>
-          </div>
-          <div class="cat-rev">
-            <strong>${UI.money(a.value)}</strong>
-            <span>Receita vinculada</span>
-          </div>
-          <div class="actions-cell category-actions">
-            <button class="act-btn edit" type="button" data-edit-category="${c.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>
-            <button class="act-btn delete" type="button" data-delete-category="${c.id}" title="Remover"><i class="fa-solid fa-trash"></i></button>
-          </div>
-        </article>
+        <tr data-category-id="${c.id}">
+          <td>
+            <div class="category-table-name">
+              <span class="cat-ic" style="background:linear-gradient(135deg, ${a.color}, ${a.color}aa)"><i class="fa-solid ${c.icon || "fa-box"}"></i></span>
+              <strong title="${c.name}">${c.name}</strong>
+            </div>
+          </td>
+          <td>${productCount} produto${productCount === 1 ? "" : "s"}</td>
+          <td class="right"><strong>${UI.money(a.value)}</strong></td>
+          <td class="right">
+            <div class="actions-cell">
+              <button class="act-btn edit" type="button" data-edit-category="${c.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+              <button class="act-btn delete" type="button" data-delete-category="${c.id}" title="Remover"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
       `;
     }).join("");
+    grid.innerHTML = `
+      <div class="card glass no-pad category-table-card">
+        <div class="table-wrap">
+          <table class="data-table category-table">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Produtos</th>
+                <th class="right">Receita vinculada</th>
+                <th class="right">Acoes</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
     bindActions();
     syncProductCategoryFilter();
   }
@@ -1557,7 +1634,7 @@ window.Dashboard = (function () {
       return `
         <li>
           <div class="thumb" style="background:linear-gradient(135deg, ${color}, ${color}aa)"><i class="fa-solid ${cat?.icon || "fa-box"}"></i></div>
-          <div class="meta"><strong>${s.name}</strong><span>${s.categoryName || cat?.name || "Sem categoria"}</span></div>
+          <div class="meta"><strong title="${s.name}">${s.name}</strong><span title="${s.categoryName || cat?.name || "Sem categoria"}">${s.categoryName || cat?.name || "Sem categoria"}</span></div>
           <div class="val">${UI.money(s.revenue || 0)}</div>
         </li>
       `;
@@ -2321,8 +2398,23 @@ window.Dashboard = (function () {
       document.querySelector("#notifBtn .dot")?.classList.add("hidden");
       UI.toast("Notificacoes marcadas como lidas.", "success");
     });
+    document.querySelectorAll("[data-report-tab]").forEach(button => {
+      button.addEventListener("click", () => {
+        const target = button.dataset.reportTab;
+        document.querySelectorAll("[data-report-tab]").forEach(tab => {
+          const active = tab === button;
+          tab.classList.toggle("active", active);
+          tab.setAttribute("aria-selected", String(active));
+        });
+        document.querySelectorAll("[data-report-panel]").forEach(panel => {
+          const active = panel.dataset.reportPanel === target;
+          panel.classList.toggle("active", active);
+          panel.hidden = !active;
+        });
+      });
+    });
     document.querySelectorAll("[data-report]").forEach(button => {
-      button.addEventListener("click", () => window.API.downloadReport(button.dataset.report));
+      button.addEventListener("click", () => window.API.downloadReport(button.dataset.report, button.dataset.period || ""));
     });
     document.getElementById("securityForm")?.addEventListener("submit", submitSecurity);
     document.getElementById("supportForm")?.addEventListener("submit", submitSupport);

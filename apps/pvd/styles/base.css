@@ -6147,9 +6147,12 @@ body.checkout-returning .app-shell {
 /* ITEM 10: prevent horizontal scrollbar in the minimized PDV sidebar. */
 .app-shell.sidebar-collapsed .sidebar {
     overflow-x: clip !important;
-    scrollbar-gutter: stable !important;
-    padding-left: 10px !important;
-    padding-right: 10px !important;
+    scrollbar-gutter: auto !important;
+    width: var(--sidebar-collapsed-w, 88px) !important;
+    max-width: var(--sidebar-collapsed-w, 88px) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    align-items: center !important;
 }
 
 @supports not (overflow: clip) {
@@ -6166,8 +6169,8 @@ body.checkout-returning .app-shell {
 .app-shell.sidebar-collapsed .categoria-content,
 .app-shell.sidebar-collapsed #categoryButtons,
 .app-shell.sidebar-collapsed .sidebar .nav {
-    width: 100% !important;
-    max-width: 100% !important;
+    width: var(--sidebar-collapsed-w, 88px) !important;
+    max-width: var(--sidebar-collapsed-w, 88px) !important;
     min-width: 0 !important;
     overflow-x: clip !important;
 }
@@ -6187,6 +6190,11 @@ body.checkout-returning .app-shell {
     min-height: 40px !important;
     flex: 0 0 40px !important;
     margin: 0 auto !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    justify-content: center !important;
+    align-content: center !important;
     border-radius: 13px !important;
     transform: none !important;
     box-shadow: none !important;
@@ -6210,7 +6218,12 @@ body.checkout-returning .app-shell {
 .app-shell.sidebar-collapsed #categoryButtons .nav-item i {
     width: 18px !important;
     flex: 0 0 18px !important;
+    display: grid !important;
+    place-items: center !important;
+    margin: 0 !important;
+    line-height: 1 !important;
     font-size: 16px !important;
+    text-align: center !important;
 }
 
 .app-shell.sidebar-collapsed .sidebar-toggle {
@@ -7453,4 +7466,116 @@ body.checkout-returning .app-shell {
     .pdv-main .topbar-actions {
         grid-template-columns: minmax(0, 1fr) 42px 42px 42px !important;
     }
+}
+
+/* Final override: match PDV profile and notification popovers to the dashboard glass style. */
+.pdv-main > .notif-tray,
+.pdv-main > .profile-tray {
+    position: fixed !important;
+    top: 102px !important;
+    right: 40px !important;
+    z-index: 5000 !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 18px !important;
+    background: var(--glass-strong) !important;
+    box-shadow: 0 24px 70px rgba(10, 23, 56, 0.18) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    overflow: hidden;
+}
+
+.pdv-main > .notif-tray {
+    width: 340px !important;
+    max-width: calc(100vw - 36px) !important;
+    padding: 14px !important;
+}
+
+.pdv-main > .profile-tray {
+    width: 280px !important;
+    max-width: calc(100vw - 36px) !important;
+    padding: 16px !important;
+}
+
+.pdv-main .notif-head {
+    padding: 4px 6px 10px !important;
+    background: transparent !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+.pdv-main .notif-head strong,
+.pdv-main .profile-tray-head strong {
+    color: var(--text);
+    font-size: 14px;
+}
+
+.pdv-main .notif-tray ul {
+    margin: 8px 0 0 !important;
+}
+
+.pdv-main .notif-tray li {
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 10px 8px !important;
+    border-radius: 10px !important;
+    color: var(--text);
+}
+
+.pdv-main .notif-tray li i {
+    width: 28px !important;
+    height: 28px !important;
+    flex: 0 0 28px !important;
+    border-radius: 8px !important;
+}
+
+.pdv-main .profile-tray-head {
+    padding: 8px 8px 14px !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+.pdv-main .profile-logout {
+    min-height: 42px;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    color: var(--red);
+    font-weight: 800;
+}
+
+[data-theme="dark"] .pdv-main > .notif-tray,
+[data-theme="dark"] .pdv-main > .profile-tray {
+    background: rgba(255, 255, 255, 0.10) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42) !important;
+}
+
+[data-theme="dark"] .pdv-main .profile-logout:hover,
+[data-theme="dark"] .pdv-main .notif-tray li:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+}
+
+@media (max-width: 880px) {
+    .pdv-main > .notif-tray,
+    .pdv-main > .profile-tray {
+        top: 92px !important;
+        right: 18px !important;
+    }
+}
+
+/* Dark theme: keep the PDV sidebar collapse control aligned with the glass UI. */
+[data-theme="dark"] .sidebar-toggle {
+    color: #dbe4ff !important;
+    background: rgba(255, 255, 255, 0.09) !important;
+    border-color: rgba(255, 255, 255, 0.13) !important;
+    box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .sidebar-toggle:hover {
+    color: var(--orange) !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
 }

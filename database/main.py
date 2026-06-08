@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from database.controllers import auth_controller
 from database.controllers import admin_controller
@@ -35,6 +36,29 @@ async def disable_apps_static_cache(request: Request, call_next):
 app.include_router(auth_controller.router)
 app.include_router(admin_controller.router)
 app.include_router(pvd.router)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def tratar_rota_nao_encontrada(request: Request, exc: StarletteHTTPException):
+    if exc.status_code != 404:
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+    aceita_html = "text/html" in request.headers.get("accept", "")
+    rota_interna = request.url.path.startswith(("/api/", "/apps/", "/static/"))
+    mensagem = "Pagina nao encontrada. Voce foi direcionado para o login para iniciar novamente com seguranca."
+
+    if rota_interna or not aceita_html:
+        return JSONResponse({"detail": mensagem}, status_code=404)
+
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {
+            "request": request,
+            "notfound_message": mensagem,
+        },
+        status_code=404,
+    )
 
 
 @app.get("/")

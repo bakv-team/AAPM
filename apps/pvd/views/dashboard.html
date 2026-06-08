@@ -674,6 +674,27 @@
       </main>
     </div>
 
+    <!-- ====================== MODAL: ITENS DO PEDIDO ====================== -->
+    <div class="modal-backdrop hidden" id="orderItemsModal">
+      <div class="modal glass order-items-modal" role="dialog" aria-modal="true" aria-labelledby="orderItemsModalTitle">
+        <div class="modal-head">
+          <div>
+            <h3 id="orderItemsModalTitle">Produtos do pedido</h3>
+            <p class="muted"><span id="orderItemsCustomer">Cliente</span> • <span id="orderItemsDate">-</span></p>
+          </div>
+          <button class="icon-btn ghost" data-close-modal="orderItemsModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="order-items-content">
+          <ul class="order-items-list" id="orderItemsList"></ul>
+          <p class="order-items-empty" id="orderItemsEmpty" hidden>Nenhum produto encontrado neste pedido.</p>
+        </div>
+        <div class="modal-foot order-items-foot">
+          <span>Total do pedido</span>
+          <strong id="orderItemsTotal">R$ 0,00</strong>
+        </div>
+      </div>
+    </div>
+
     <!-- ====================== MODAL: PRODUTO ====================== -->
     <div class="modal-backdrop hidden" id="productModal">
       <div class="modal glass">

@@ -230,7 +230,11 @@ function toast(message, type = "info") {
     warn: "fa-triangle-exclamation",
     info: "fa-circle-info"
   };
-  item.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${message}</span>`;
+  const marker = document.createElement("i");
+  marker.className = `fa-solid ${icons[type] || icons.info}`;
+  const text = document.createElement("span");
+  text.textContent = message;
+  item.append(marker, text);
   wrap.appendChild(item);
   setTimeout(() => {
     item.classList.add("leaving");
@@ -240,7 +244,11 @@ function toast(message, type = "info") {
 
 async function apiGet(path) {
   const response = await fetch(`${API_BASE}${path}`, { credentials: "same-origin" });
-  if (!response.ok) throw new Error(`GET ${path} -> ${response.status}`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || {});
+    throw new Error(detail && detail !== "{}" ? detail : `GET ${path} -> ${response.status}`);
+  }
   return response.json();
 }
 

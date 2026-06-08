@@ -116,9 +116,31 @@
 window.API = (function () {
   const BASE_URL = window.location.origin;
 
+  async function apiErrorMessage(res, fallback) {
+    try {
+      const data = await res.clone().json();
+      if (typeof data.detail === "string" && data.detail.trim()) return data.detail;
+      if (Array.isArray(data.detail) && data.detail.length) {
+        return data.detail.map(item => item.msg || item.message || JSON.stringify(item)).join(" ");
+      }
+      if (typeof data.message === "string" && data.message.trim()) return data.message;
+    } catch (error) {
+      try {
+        const text = await res.clone().text();
+        if (text.trim()) return text.trim();
+      } catch (textError) {}
+    }
+    return fallback || `Erro ${res.status}`;
+  }
+
+  async function assertOk(res, fallback) {
+    if (res.ok) return;
+    throw new Error(await apiErrorMessage(res, fallback));
+  }
+
   async function apiGet(path) {
     const res = await fetch(`${BASE_URL}${path}`, { credentials: "same-origin" });
-    if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
+    await assertOk(res, `GET ${path} -> ${res.status}`);
     return res.json();
   }
   async function apiPost(path, body) {
@@ -128,7 +150,7 @@ window.API = (function () {
       credentials: "same-origin",
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(`POST ${path} -> ${res.status}`);
+    await assertOk(res, `POST ${path} -> ${res.status}`);
     return res.json();
   }
   async function apiPut(path, body) {
@@ -138,12 +160,12 @@ window.API = (function () {
       credentials: "same-origin",
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(`PUT ${path} -> ${res.status}`);
+    await assertOk(res, `PUT ${path} -> ${res.status}`);
     return res.json();
   }
   async function apiDelete(path) {
     const res = await fetch(`${BASE_URL}${path}`, { method: "DELETE", credentials: "same-origin" });
-    if (!res.ok) throw new Error(`DELETE ${path} -> ${res.status}`);
+    await assertOk(res, `DELETE ${path} -> ${res.status}`);
     return res.ok;
   }
 
@@ -153,7 +175,7 @@ window.API = (function () {
       credentials: "same-origin",
       body
     });
-    if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}`);
+    await assertOk(res, `${method} ${path} -> ${res.status}`);
     return res.json();
   }
 
@@ -363,6 +385,11 @@ window.UI = (function () {
       .join("")
       .toUpperCase();
   }
+  function escapeHTML(value) {
+    const div = document.createElement("div");
+    div.textContent = value ?? "";
+    return div.innerHTML;
+  }
 
   // Toast notification
   function toast(message, type = "info") {
@@ -371,7 +398,11 @@ window.UI = (function () {
     const t = document.createElement("div");
     t.className = "toast " + type;
     const iconMap = { success: "fa-circle-check", error: "fa-circle-xmark", info: "fa-circle-info", warn: "fa-triangle-exclamation" };
-    t.innerHTML = `<i class="fa-solid ${iconMap[type] || iconMap.info}"></i><span>${message}</span>`;
+    const icon = document.createElement("i");
+    icon.className = `fa-solid ${iconMap[type] || iconMap.info}`;
+    const text = document.createElement("span");
+    text.textContent = message;
+    t.append(icon, text);
     wrap.appendChild(t);
     setTimeout(() => {
       t.classList.add("leaving");
@@ -435,7 +466,7 @@ window.UI = (function () {
 
   const palette = ["#FF6B35", "#2D7BFF", "#7C5CFF", "#16C784", "#F5A623", "#FF4D6D", "#22D3EE", "#A855F7"];
 
-  return { money, num, pct, todayBR, dayShort, dateBR, stockStatus, initialsFromName, toast, openModal, closeModal, confirmDialog, downloadCSV, palette };
+  return { money, num, pct, todayBR, dayShort, dateBR, stockStatus, initialsFromName, escapeHTML, toast, openModal, closeModal, confirmDialog, downloadCSV, palette };
 
 })();
 
@@ -992,7 +1023,7 @@ window.ProductsPage = (function () {
       }
     } catch (err) {
       console.error("Falha ao salvar produto:", err);
-      UI.toast("Não foi possível salvar o produto.", "error");
+      UI.toast(err.message || "Não foi possível salvar o produto.", "error");
       return;
     }
     UI.closeModal("productModal");
@@ -1063,7 +1094,67 @@ window.OrdersPage = (function () {
     if (s === "concluido") return `<span class="pill green">Concluído</span>`;
     if (s === "pendente")  return `<span class="pill yellow">Pendente</span>`;
     if (s === "cancelado") return `<span class="pill red">Cancelado</span>`;
-    return `<span class="pill gray">${s}</span>`;
+    return `<span class="pill gray">${UI.escapeHTML(s)}</span>`;
+  }
+
+  function sortedOrderItems(order) {
+    return [...(order.items || [])].sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
+    );
+  }
+
+  function orderItemsCount(order) {
+    return (order.items || []).reduce((total, item) => total + (Number(item.qty) || 0), 0);
+  }
+
+  function renderItemsButton(order) {
+    const count = orderItemsCount(order);
+    const label = `${count} ${count === 1 ? "item" : "itens"}`;
+    return `
+      <button class="order-items-btn" type="button" data-order-items="${UI.escapeHTML(order.number)}" aria-label="Ver produtos do pedido ${UI.escapeHTML(order.number)}">
+        <span>${label}</span>
+        <i class="fa-solid fa-list-check"></i>
+      </button>
+    `;
+  }
+
+  function renderOrderItemsList(order) {
+    const items = sortedOrderItems(order);
+    const list = document.getElementById("orderItemsList");
+    const total = document.getElementById("orderItemsTotal");
+    const empty = document.getElementById("orderItemsEmpty");
+    if (!list || !total || !empty) return;
+
+    total.textContent = UI.money(order.total);
+    list.innerHTML = "";
+    empty.hidden = Boolean(items.length);
+
+    items.forEach(item => {
+      const qty = Number(item.qty) || 0;
+      const price = Number(item.price) || 0;
+      const subtotal = Number(item.subtotal) || qty * price;
+      const row = document.createElement("li");
+      row.className = "order-item-row";
+      row.innerHTML = `
+        <div class="order-item-index">${String(qty).padStart(2, "0")}</div>
+        <div class="order-item-info">
+          <strong>${UI.escapeHTML(item.name || "Produto sem nome")}</strong>
+          <span>${qty} ${qty === 1 ? "unidade" : "unidades"} x ${UI.money(price)}</span>
+        </div>
+        <strong class="order-item-subtotal">${UI.money(subtotal)}</strong>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function openOrderItemsModal(orderNumber) {
+    const order = window.DB.orders.find(item => item.number === orderNumber);
+    if (!order) return;
+    document.getElementById("orderItemsModalTitle").textContent = `Produtos do pedido ${order.number}`;
+    document.getElementById("orderItemsCustomer").textContent = order.customerName || "Cliente";
+    document.getElementById("orderItemsDate").textContent = UI.dateBR(order.createdAt);
+    renderOrderItemsList(order);
+    UI.openModal("orderItemsModal");
   }
 
   async function refreshFromApi() {
@@ -1093,20 +1184,30 @@ window.OrdersPage = (function () {
 
     body.innerHTML = rows.map(o => `
       <tr>
-        <td><strong>${o.number}</strong></td>
-        <td>${o.customerName}</td>
-        <td>${(o.items || []).length}</td>
+        <td><strong>${UI.escapeHTML(o.number)}</strong></td>
+        <td>${UI.escapeHTML(o.customerName)}</td>
+        <td>${renderItemsButton(o)}</td>
         <td><strong>${UI.money(o.total)}</strong></td>
-        <td><span class="pill blue">${o.payment}</span></td>
+        <td><span class="pill blue">${UI.escapeHTML(o.payment)}</span></td>
         <td class="muted">${UI.dateBR(o.createdAt)}</td>
         <td>${statusPill(o.status)}</td>
       </tr>
     `).join("");
+
+    body.querySelectorAll("[data-order-items]").forEach(button => {
+      button.addEventListener("click", () => openOrderItemsModal(button.dataset.orderItems));
+    });
   }
 
   function init() {
     document.getElementById("orderSearch").addEventListener("input", e => { filters.q = e.target.value; render(); });
     document.getElementById("orderStatusFilter").addEventListener("change", e => { filters.status = e.target.value; render(); });
+    document.querySelectorAll("[data-close-modal='orderItemsModal']").forEach(button => {
+      button.addEventListener("click", () => UI.closeModal("orderItemsModal"));
+    });
+    document.getElementById("orderItemsModal")?.addEventListener("click", e => {
+      if (e.target.id === "orderItemsModal") UI.closeModal("orderItemsModal");
+    });
     render();
   }
 
@@ -1343,7 +1444,7 @@ window.CategoriesPage = (function () {
       if (window.Dashboard) window.Dashboard.refresh();
     } catch (err) {
       console.error("Falha ao salvar categoria:", err);
-      UI.toast("Não foi possível salvar a categoria.", "error");
+      UI.toast(err.message || "Não foi possível salvar a categoria.", "error");
     }
   }
 
@@ -1368,7 +1469,7 @@ window.CategoriesPage = (function () {
       if (window.Dashboard) window.Dashboard.refresh();
     } catch (err) {
       console.error("Falha ao remover categoria:", err);
-      UI.toast("Não foi possível remover. Verifique se há produtos vinculados.", "error");
+      UI.toast(err.message || "Não foi possível remover. Verifique se há produtos vinculados.", "error");
     }
   }
 
@@ -2578,3 +2679,4 @@ window.Dashboard = (function () {
     setInterval(updateSidebarBadges, 5000);
   });
 })();
+

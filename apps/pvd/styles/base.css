@@ -1207,6 +1207,7 @@ header.topbar {
     z-index: 3000;
     display: grid;
     gap: 10px;
+    pointer-events: none;
 }
 
 .toast {
@@ -1214,13 +1215,19 @@ header.topbar {
     align-items: center;
     gap: 10px;
     min-width: 260px;
-    max-width: 380px;
+    max-width: min(380px, calc(100vw - 28px));
     padding: 14px 16px;
     border-radius: 14px;
     background: #0A1738;
     color: #fff;
     box-shadow: 0 16px 45px rgba(10, 23, 56, 0.22);
     animation: toast-in 0.18s ease-out;
+    pointer-events: auto;
+}
+
+.toast span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .toast.success i { color: #22c55e; }
@@ -5459,6 +5466,7 @@ body::after {
 .confirm-panel,
 .success-panel {
     width: min(460px, 100%);
+    min-width: 0;
     padding: 30px;
     border: 1px solid var(--glass-border);
     border-radius: 24px;
@@ -5484,12 +5492,34 @@ body::after {
     margin: 0;
     color: var(--navy);
     font-size: 1.45rem;
+    max-width: 42ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .confirm-panel p {
     margin: 10px 0 22px;
     color: var(--text-mute);
     line-height: 1.5;
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.success-panel h1,
+.success-panel p,
+.checkout-summary-row strong,
+.checkout-summary-row span,
+.checkout-item-info strong,
+.checkout-item-info span {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .checkout-success {

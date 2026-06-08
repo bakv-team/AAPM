@@ -119,7 +119,9 @@
 
                 </div>
 
-                <form action="/auth/" method="post" id="loginForm">
+                <form action="/auth/" method="post" id="loginForm" data-temporary-error="{{ 'true' if erro_temporario else 'false' }}">
+                    {% set erro_normalizado = (erro or "")|lower %}
+                    {% set credenciais_invalidas = erro and ("senha" in erro_normalizado or "e-mail" in erro_normalizado) %}
 
                     <div class="input-box">
 
@@ -129,17 +131,24 @@
 
                     </div>
 
-                    <div class="input-box">
+                    <div class="input-box password-field {% if credenciais_invalidas %}has-error{% endif %}">
 
                         <i data-lucide="lock"></i>
 
-                        <input type="password" name="senha" id="passwordInput" placeholder="Senha" required>
+                        <input type="password" name="senha" id="passwordInput" placeholder="Senha" required {% if credenciais_invalidas %}aria-invalid="true" aria-describedby="loginPasswordError"{% endif %}>
 
                         <button class="password-toggle" id="passwordToggle" type="button" aria-label="Mostrar senha" aria-pressed="false">
                             <i data-lucide="eye"></i>
                         </button>
 
                     </div>
+
+                    {% if credenciais_invalidas %}
+                    <p class="login-field-error" id="loginPasswordError">
+                        <i data-lucide="circle-alert"></i>
+                        <span>Senha incorreta. Verifique seus dados e tente novamente.</span>
+                    </p>
+                    {% endif %}
 
                     <div class="options">
 
@@ -155,6 +164,9 @@
                     </div>
 
                     <p class="auth-feedback" id="forgotPasswordFeedback" hidden></p>
+                    {% if erro and not credenciais_invalidas %}
+                    <p class="auth-feedback error">{{ erro }}</p>
+                    {% endif %}
 
                     <button type="submit" class="login-btn">
 
@@ -162,9 +174,6 @@
 
                         <i data-lucide="arrow-right"></i>
                     </button>
-                     {% if erro %}
-                        <p style="color: red;">{{ erro }}</p>
-                    {% endif %} 
                 </form>
                 <div class="security">
 
@@ -189,6 +198,8 @@
             <div class="loading-bar" aria-hidden="true"><span></span></div>
         </div>
     </div>
+
+    <div class="toast-wrap" id="toastWrap" aria-live="polite" data-notfound-message="{{ notfound_message or '' }}"></div>
 
     <script src="/apps/pvd/scripts/login.js?v=forgot-password-20260604-1"></script>
 

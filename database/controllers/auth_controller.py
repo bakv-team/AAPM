@@ -138,11 +138,19 @@ def _base_url_recuperacao(request: Request) -> str:
 # Tela Login
 @router.get("/")
 @router.get("/login")
-def tela_login(request: Request):
+def tela_login(request: Request, erro: str | None = None):
+    mensagens_erro = {
+        "credenciais": "E-mail ou senha incorretos.",
+        "inativo": "Usuario inativo. Contate o administrador.",
+    }
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"request": request}
+        {
+            "request": request,
+            "erro": mensagens_erro.get((erro or "").strip().lower(), ""),
+            "erro_temporario": bool(erro),
+        }
     )
 
 @router.post("/")
@@ -178,27 +186,11 @@ def login(
 
 # 1. Se a senha estiver errada:
     if not senha_correta:
-        return templates.TemplateResponse(
-            request,
-            "login.html",
-            {
-                "request": request,
-                "erro": "E-mail ou senha incorretos." # Padronizado para 'erro'
-            }
-            # Removido o status_code=401 para o navegador não travar
-        )
+        return RedirectResponse(url="/auth/login?erro=credenciais", status_code=303)
 
     # 2. Se o usuário estiver inativo (e corrigindo a falta do nome do template que vimos antes):
     if not usuario.ativo:
-        return templates.TemplateResponse(
-            request,
-            "login.html", # Adicionado o caminho do template que faltava
-            {
-                "request": request,
-                "erro": "Usuário inativo. Contate o administrador."
-            }
-            # Removido o status_code=403
-        )
+        return RedirectResponse(url="/auth/login?erro=inativo", status_code=303)
 
     # Dados que ficarão no payload do JWT
     # "sub" (subject) é a convenção JWT para identificar o usuário
@@ -341,3 +333,4 @@ def sair():
     response = RedirectResponse(url="/", status_code=302)
     response.delete_cookie("access_token")
     return response
+

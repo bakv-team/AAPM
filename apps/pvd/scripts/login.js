@@ -186,6 +186,8 @@ const resetPasswordToggle =
 document.getElementById("resetPasswordToggle");
 const resetConfirmInput =
 document.getElementById("resetConfirmInput");
+const loginPasswordError =
+document.getElementById("loginPasswordError");
 
 let loadingTimer = null;
 
@@ -193,6 +195,49 @@ function refreshIcons(){
   if(window.lucide){
     window.lucide.createIcons();
   }
+}
+
+function replayEntryAnimation(element){
+  if(!element){
+    return;
+  }
+  element.style.animation = "none";
+  element.offsetHeight;
+  element.style.animation = "";
+}
+
+function clearTemporaryLoginError(){
+  if(form?.dataset.temporaryError !== "true"){
+    return;
+  }
+  const cleanPath = `${window.location.origin}${window.location.pathname}`;
+  window.history.replaceState({}, document.title, cleanPath);
+  form.dataset.temporaryError = "false";
+}
+
+function toast(message, type = "warn"){
+  const wrap = document.getElementById("toastWrap");
+  if(!wrap || !message){
+    return;
+  }
+
+  const item = document.createElement("div");
+  item.className = `toast ${type}`;
+
+  const marker = document.createElement("i");
+  marker.setAttribute("data-lucide", type === "error" ? "circle-x" : "triangle-alert");
+
+  const text = document.createElement("span");
+  text.textContent = message;
+
+  item.append(marker, text);
+  wrap.appendChild(item);
+  refreshIcons();
+
+  window.setTimeout(()=>{
+    item.classList.add("leaving");
+    window.setTimeout(()=>item.remove(), 260);
+  }, 4600);
 }
 
 function resetLoginLoading(){
@@ -254,6 +299,12 @@ passwordToggle?.addEventListener("click",()=>{
   passwordInput.focus();
 });
 
+passwordInput?.addEventListener("input", () => {
+  passwordInput.removeAttribute("aria-invalid");
+  passwordInput.closest(".input-box")?.classList.remove("has-error");
+  loginPasswordError?.remove();
+});
+
 resetPasswordToggle?.addEventListener("click",()=>{
   if(!resetPasswordInput){
     return;
@@ -281,6 +332,7 @@ forgotPasswordLink?.addEventListener("click", async event => {
       forgotPasswordFeedback.hidden = false;
       forgotPasswordFeedback.className = "auth-feedback error";
       forgotPasswordFeedback.textContent = "Digite seu e-mail antes de solicitar a recuperação.";
+      replayEntryAnimation(forgotPasswordFeedback);
     }
     return;
   }
@@ -305,12 +357,14 @@ forgotPasswordLink?.addEventListener("click", async event => {
       forgotPasswordFeedback.hidden = false;
       forgotPasswordFeedback.className = "auth-feedback success";
       forgotPasswordFeedback.textContent = data.message || "Se o e-mail estiver cadastrado, enviaremos o link de recuperação.";
+      replayEntryAnimation(forgotPasswordFeedback);
     }
   }catch(error){
     if(forgotPasswordFeedback){
       forgotPasswordFeedback.hidden = false;
       forgotPasswordFeedback.className = "auth-feedback error";
       forgotPasswordFeedback.textContent = error.message || "Nao foi possivel solicitar a recuperacao.";
+      replayEntryAnimation(forgotPasswordFeedback);
     }
   }finally{
     forgotPasswordLink.textContent = originalText;
@@ -325,11 +379,18 @@ window.addEventListener("pageshow",(event)=>{
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  clearTemporaryLoginError();
+
+  const notfoundMessage = document.getElementById("toastWrap")?.dataset.notfoundMessage;
+  if(notfoundMessage){
+    toast(notfoundMessage, "warn");
+  }
+
   const animated = document.querySelectorAll(
     '.brand, .tag, .content h2, .text, .mini-cards, ' +
     '.mini-card, .login-card, .line, .header h3, ' +
     '.header p, .input-box, .options, .login-btn, ' +
-    '.security, .blur'
+    '.login-field-error, .auth-feedback:not([hidden]), .security, .blur'
   );
 
   animated.forEach(el => {

@@ -670,15 +670,6 @@ def criar_venda_api(
             .order_by(Cliente.is_associado.desc(), Cliente.nome)
             .first()
         )
-        if not cliente:
-            cliente = Cliente(
-                nome=cliente_nome,
-                is_associado=False,
-                ativo=True,
-            )
-            db.add(cliente)
-            db.flush()
-
         associado_confirmado = bool(cliente and cliente.is_associado)
         desconto_percentual = 10.0 if associado_confirmado else 0.0
         total_bruto = sum(produtos_por_id[id].preco * qtd for id, qtd in quantidades.items())

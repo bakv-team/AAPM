@@ -379,6 +379,7 @@
               <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="productSearch" placeholder="Buscar produto..." /></div>
               <select id="productCategoryFilter" class="select"><option value="">Todas categorias</option></select>
               <select id="productStockFilter" class="select"><option value="">Estoque</option><option value="in">Em estoque</option><option value="low">Estoque baixo</option><option value="out">Sem estoque</option></select>
+              <select id="productStatusFilter" class="select"><option value="active">Ativos</option><option value="inactive">Inativos</option><option value="all">Todos</option></select>
             </div>
             <div class="toolbar-right">
               <button class="ghost-btn" id="exportProducts"><i class="fa-solid fa-file-csv"></i> Exportar</button>
@@ -389,7 +390,7 @@
           <div class="card glass no-pad">
             <div class="table-wrap">
               <table class="data-table" id="productsTable">
-                <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th class="right">Ações</th></tr></thead>
+                <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Situação</th><th class="right">Ações</th></tr></thead>
                 <tbody id="productsBody"></tbody>
               </table>
             </div>

@@ -93,7 +93,6 @@ if (canvas && ctx) {
 }
 
 const API_BASE = window.location.origin;
-const MIN_STOCK = 5;
 const DISCOUNT = 0.10;
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -261,7 +260,7 @@ async function apiPost(path, body) {
 }
 
 function produtoDisponivel(produto) {
-  return Math.max(0, (Number(produto.stock) || 0) - MIN_STOCK);
+  return Math.max(0, Number(produto.stock) || 0);
 }
 
 function categoriaNome(id) {
@@ -414,7 +413,7 @@ function adicionarAoCarrinho(idProduto) {
   const item = carrinho.find(row => String(row.id) === String(idProduto));
   const novaQuantidade = (item?.quantidade || 0) + 1;
   if (novaQuantidade > produtoDisponivel(produto)) {
-    toast("Estoque insuficiente para manter a reserva minima de 5 unidades.", "warn");
+    toast("Estoque insuficiente para este produto.", "warn");
     return;
   }
 

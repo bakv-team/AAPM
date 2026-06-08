@@ -48,6 +48,10 @@ class EstoquePayload(BaseModel):
     quantidade: int
 
 
+class ProdutoStatusPayload(BaseModel):
+    ativo: bool
+
+
 class ItemVendaPayload(BaseModel):
     produto_id: int
     quantidade: int
@@ -545,10 +549,21 @@ def listar_produtos_api(
     q: str = "",
     category_id: int | None = Query(default=None),
     stock: str = "",
+    status_filtro: str = Query("active", alias="status"),
     db: Session = Depends(get_db),
     usuario=Depends(get_usuario_logado),
 ):
-    query = db.query(Produto).filter(Produto.ativo == True)
+    query = db.query(Produto)
+
+    status_normalizado = (status_filtro or "active").strip().lower()
+    if status_normalizado in ("active", "ativo", "ativos"):
+        query = query.filter(Produto.ativo == True)
+    elif status_normalizado in ("inactive", "inativo", "inativos"):
+        query = query.filter(Produto.ativo == False)
+    elif status_normalizado in ("all", "todos"):
+        pass
+    else:
+        raise HTTPException(status_code=400, detail="Status de produto invalido.")
 
     if q:
         query = query.filter(Produto.nome.ilike(f"%{q.strip()}%"))
@@ -559,7 +574,7 @@ def listar_produtos_api(
     produtos = query.order_by(Produto.nome).all()
 
     if stock == "in":
-        produtos = [p for p in produtos if p.estoque_atual > 5]
+        produtos = [p for p in produtos if p.estoque_atual > 0]
     elif stock == "low":
         produtos = [p for p in produtos if 0 < p.estoque_atual <= 5]
     elif stock == "out":
@@ -645,10 +660,10 @@ def criar_venda_api(
 
     for produto_id, quantidade in quantidades.items():
         produto = produtos_por_id[produto_id]
-        if produto.estoque_atual - quantidade < 5:
+        if produto.estoque_atual - quantidade < 0:
             raise HTTPException(
                 status_code=409,
-                detail=f"Estoque insuficiente para {produto.nome}. Mantenha ao menos 5 unidades.",
+                detail=f"Estoque insuficiente para {produto.nome}.",
             )
 
     try:
@@ -1505,8 +1520,8 @@ async def criar_produto_api(
     if existente:
         raise HTTPException(status_code=409, detail="Ja existe um produto com este nome.")
 
-    if estoque_atual < 5:
-        raise HTTPException(status_code=400, detail="O estoque nao pode ser menor que 5.")
+    if estoque_atual < 0:
+        raise HTTPException(status_code=400, detail="O estoque nao pode ser negativo.")
 
     categoria_id = categoria_id or None
     if categoria_id:
@@ -1565,8 +1580,8 @@ async def editar_produto_api(
     if conflito:
         raise HTTPException(status_code=409, detail="Ja existe outro produto com este nome.")
 
-    if estoque_atual < 5:
-        raise HTTPException(status_code=400, detail="O estoque nao pode ser menor que 5.")
+    if estoque_atual < 0:
+        raise HTTPException(status_code=400, detail="O estoque nao pode ser negativo.")
 
     categoria_id = categoria_id or None
     if categoria_id:
@@ -1613,15 +1628,11 @@ def adicionar_estoque_api(
     if payload.quantidade <= 0:
         raise HTTPException(status_code=400, detail="A quantidade deve ser maior que zero.")
 
-    novo_estoque = produto.estoque_atual + payload.quantidade
-    if novo_estoque < 5:
-        raise HTTPException(status_code=400, detail="O estoque nao pode ser menor que 5.")
-
     usuario_id = _usuario_id_atual(admin, db)
     if not usuario_id:
         raise HTTPException(status_code=401, detail="Usuario nao identificado.")
 
-    produto.estoque_atual = novo_estoque
+    produto.estoque_atual += payload.quantidade
     db.add(Movimentacao(
         tipo=Tipo_movimentacao.ENTRADA,
         quantidade=payload.quantidade,
@@ -1630,6 +1641,24 @@ def adicionar_estoque_api(
         produto_id=produto.id,
         usuario_id=usuario_id,
     ))
+    db.commit()
+    db.refresh(produto)
+
+    return _produto_json(produto)
+
+
+@router.put("/products/{produto_id}/status")
+def alterar_status_produto_api(
+    produto_id: int,
+    payload: ProdutoStatusPayload,
+    db: Session = Depends(get_db),
+    admin=Depends(get_admin),
+):
+    produto = db.query(Produto).filter(Produto.id == produto_id).first()
+    if not produto:
+        raise HTTPException(status_code=404, detail="Produto nao encontrado.")
+
+    produto.ativo = payload.ativo
     db.commit()
     db.refresh(produto)
 

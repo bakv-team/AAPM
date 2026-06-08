@@ -189,6 +189,7 @@ window.API = (function () {
     if (filters.q) qs.set("q", filters.q);
     if (filters.category) qs.set("category_id", filters.category);
     if (filters.stock) qs.set("stock", filters.stock);
+    if (filters.status) qs.set("status", filters.status);
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return apiGet(`/api/v1/pdv/products${suffix}`);
   }
@@ -214,6 +215,9 @@ window.API = (function () {
   }
   async function deleteProduct(id) {
     return apiDelete(`/api/v1/pdv/products/${id}`);
+  }
+  async function setProductActive(id, ativo) {
+    return apiPut(`/api/v1/pdv/products/${id}/status`, { ativo });
   }
 
   // ----- Associados -----
@@ -291,7 +295,7 @@ window.API = (function () {
     BASE_URL,
     apiGet, apiPost, apiPut, apiDelete,
     getCategories, createCategory, updateCategory, deleteCategory,
-    getProducts, getProductImages, createProduct, updateProduct, addProductStock, getStockMovements, deleteProduct,
+    getProducts, getProductImages, createProduct, updateProduct, addProductStock, getStockMovements, deleteProduct, setProductActive,
     getCustomers, createCustomer, deleteCustomer,
     getOrders, createOrder,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts, getSmartInsights, askSmartAssistant,
@@ -677,22 +681,35 @@ window.CHARTS = (function () {
 window.ProductsPage = (function () {
   let page = 1;
   const perPage = 8;
-  let filters = { q: "", category: "", stock: "" };
+  let filters = { q: "", category: "", stock: "", status: "active" };
   let imageLibraryItems = [];
+  let productsPageItems = [];
 
   function getFiltered() {
-    return window.DB.products.filter(p => {
+    return productsPageItems.filter(p => {
       const cat = window.DB.getCategory(p.categoryId);
       if (filters.q && !(`${p.name} ${p.sku || ""} ${cat?.name || ""}`.toLowerCase().includes(filters.q.toLowerCase()))) return false;
       if (filters.category && p.categoryId !== filters.category) return false;
       if (filters.stock) {
-        const s = UI.stockStatus(p);
-        if (filters.stock === "in"  && s.pill !== "green") return false;
-        if (filters.stock === "low" && s.pill !== "yellow") return false;
-        if (filters.stock === "out" && s.pill !== "red") return false;
+        if (filters.stock === "in"  && p.stock <= 0) return false;
+        if (filters.stock === "low" && !(p.stock > 0 && p.stock <= 5)) return false;
+        if (filters.stock === "out" && p.stock > 0) return false;
       }
       return true;
     });
+  }
+
+  async function loadProductsByStatus() {
+    try {
+      productsPageItems = await window.API.getProducts({ status: filters.status });
+      if (filters.status === "active") {
+        window.DB.products = productsPageItems.slice();
+      }
+    } catch (err) {
+      console.error("Falha ao carregar produtos por status:", err);
+      UI.toast("Nao foi possivel carregar os produtos.", "error");
+      productsPageItems = window.DB.products.slice();
+    }
   }
 
   function render() {
@@ -705,16 +722,23 @@ window.ProductsPage = (function () {
     const items = filtered.slice((page - 1) * perPage, page * perPage);
 
     if (!items.length) {
-      body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum produto encontrado.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum produto encontrado.</td></tr>`;
     } else {
       body.innerHTML = items.map(p => {
         const cat = window.DB.getCategory(p.categoryId);
         const catIndex = window.DB.categories.findIndex(c => c.id === p.categoryId);
         const color = UI.palette[(catIndex >= 0 ? catIndex : 0) % UI.palette.length];
         const s = UI.stockStatus(p);
+        const active = p.ativo !== false;
         const thumb = p.imageUrl
           ? `<div class="prod-thumb image"><img src="${p.imageUrl}" alt=""></div>`
           : `<div class="prod-thumb" style="background:linear-gradient(135deg, ${color}, ${color}aa)"><i class="fa-solid ${cat?.icon || "fa-box"}"></i></div>`;
+        const actions = active
+          ? `
+                <button class="act-btn edit" data-action="edit" data-id="${p.id}" data-testid="edit-product-${p.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                <button class="act-btn delete" data-action="delete" data-id="${p.id}" data-testid="delete-product-${p.id}" title="Inativar"><i class="fa-solid fa-ban"></i></button>
+            `
+          : `<button class="act-btn view" data-action="activate" data-id="${p.id}" title="Ativar"><i class="fa-solid fa-check"></i></button>`;
         return `
           <tr data-id="${p.id}">
             <td>
@@ -727,10 +751,10 @@ window.ProductsPage = (function () {
             <td><strong>${UI.money(p.price)}</strong></td>
             <td>${p.stock}</td>
             <td><span class="pill ${s.pill}">${s.label}</span></td>
+            <td><span class="pill ${active ? "green" : "red"}">${active ? "Ativo" : "Inativo"}</span></td>
             <td class="right">
               <div class="actions-cell">
-                <button class="act-btn edit" data-action="edit" data-id="${p.id}" data-testid="edit-product-${p.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                <button class="act-btn delete" data-action="delete" data-id="${p.id}" data-testid="delete-product-${p.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                ${actions}
               </div>
             </td>
           </tr>
@@ -770,30 +794,57 @@ window.ProductsPage = (function () {
         const id = btn.dataset.id;
         if (btn.dataset.action === "edit") openProductForm(id);
         else if (btn.dataset.action === "delete") deleteProduct(id);
+        else if (btn.dataset.action === "activate") activateProduct(id);
       });
     });
   }
 
   async function deleteProduct(id) {
-    const p = window.DB.getProduct(id);
+    const p = productsPageItems.find(item => String(item.id) === String(id)) || window.DB.getProduct(id);
     if (!p) return;
     const ok = await UI.confirmDialog({
-      title: "Excluir produto",
-      text: `Tem certeza que deseja excluir "${p.name}"? Essa ação não pode ser desfeita.`,
-      okLabel: "Excluir"
+      title: "Inativar produto",
+      text: `Tem certeza que deseja inativar "${p.name}"? Ele saira do PDV ate ser ativado novamente.`,
+      okLabel: "Inativar"
     });
     if (!ok) return;
 
     try {
       await window.API.deleteProduct(id);
       window.DB.products = window.DB.products.filter(x => x.id !== id);
-      UI.toast(`Produto "${p.name}" excluído.`, "success");
+      if (filters.status === "all") p.ativo = false;
+      else productsPageItems = productsPageItems.filter(x => String(x.id) !== String(id));
+      UI.toast(`Produto "${p.name}" inativado.`, "success");
       render();
       if (window.Dashboard) window.Dashboard.refresh();
       if (window.StockPage) window.StockPage.render();
     } catch (err) {
       console.error("Falha ao excluir produto:", err);
       UI.toast("Não foi possível excluir o produto.", "error");
+    }
+  }
+
+  async function activateProduct(id) {
+    const p = productsPageItems.find(item => String(item.id) === String(id));
+    if (!p) return;
+
+    try {
+      const updated = await window.API.setProductActive(id, true);
+      const existing = window.DB.products.find(item => String(item.id) === String(id));
+      if (existing) Object.assign(existing, updated);
+      else window.DB.products.push(updated);
+      if (filters.status === "inactive") {
+        productsPageItems = productsPageItems.filter(item => String(item.id) !== String(id));
+      } else {
+        Object.assign(p, updated);
+      }
+      UI.toast(`Produto "${updated.name}" ativado.`, "success");
+      render();
+      if (window.Dashboard) window.Dashboard.refresh();
+      if (window.StockPage) window.StockPage.render();
+    } catch (err) {
+      console.error("Falha ao ativar produto:", err);
+      UI.toast("Nao foi possivel ativar o produto.", "error");
     }
   }
 
@@ -889,7 +940,8 @@ window.ProductsPage = (function () {
     catSel.innerHTML = window.DB.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 
     if (id) {
-      const p = window.DB.getProduct(id);
+      const p = productsPageItems.find(item => String(item.id) === String(id)) || window.DB.getProduct(id);
+      if (!p || p.ativo === false) return;
       titleEl.textContent = "Editar produto";
       document.getElementById("productId").value = p.id;
       document.getElementById("productName").value = p.name;
@@ -923,16 +975,19 @@ window.ProductsPage = (function () {
       existingImage: document.getElementById("productExistingImage").value || ""
     };
     if (!data.name) { UI.toast("Informe o nome do produto.", "error"); return; }
-    if (data.stock < 5) { UI.toast("O estoque não pode ser menor que 5.", "error"); return; }
+    if (data.stock < 0) { UI.toast("O estoque nao pode ser negativo.", "error"); return; }
 
     try {
       if (id) {
         const updated = await window.API.updateProduct(id, data);
         Object.assign(window.DB.getProduct(id), updated);
+        const localProduct = productsPageItems.find(p => String(p.id) === String(id));
+        if (localProduct) Object.assign(localProduct, updated);
         UI.toast(`Produto "${data.name}" atualizado.`, "success");
       } else {
         const created = await window.API.createProduct(data);
         window.DB.products.push(created);
+        if (filters.status !== "inactive") productsPageItems.push(created);
         UI.toast(`Produto "${data.name}" criado.`, "success");
       }
     } catch (err) {
@@ -948,6 +1003,7 @@ window.ProductsPage = (function () {
 
   function init() {
     const sel = document.getElementById("productCategoryFilter");
+    productsPageItems = window.DB.products.slice();
 
     sel.innerHTML = `<option value="">Todas categorias</option>` +
       window.DB.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
@@ -959,6 +1015,12 @@ window.ProductsPage = (function () {
     document.getElementById("productStockFilter").addEventListener("change", e => {
       filters.stock = e.target.value; page = 1; render();
     });
+    document.getElementById("productStatusFilter").addEventListener("change", async e => {
+      filters.status = e.target.value;
+      page = 1;
+      await loadProductsByStatus();
+      render();
+    });
 
     document.getElementById("newProductBtn").addEventListener("click", () => openProductForm());
     document.getElementById("productForm").addEventListener("submit", saveProduct);
@@ -969,9 +1031,9 @@ window.ProductsPage = (function () {
     });
 
     document.getElementById("exportProducts").addEventListener("click", () => {
-      const rows = [["Nome", "SKU", "Categoria", "Preço", "Estoque"]];
-      window.DB.products.forEach(p => {
-        rows.push([p.name, p.sku || "", window.DB.getCategory(p.categoryId)?.name || "", p.price.toFixed(2).replace(".", ","), p.stock]);
+      const rows = [["Nome", "SKU", "Categoria", "Preço", "Estoque", "Situacao"]];
+      getFiltered().forEach(p => {
+        rows.push([p.name, p.sku || "", window.DB.getCategory(p.categoryId)?.name || "", p.price.toFixed(2).replace(".", ","), p.stock, p.ativo !== false ? "Ativo" : "Inativo"]);
       });
       UI.downloadCSV("produtos.csv", rows);
       UI.toast("Exportação CSV gerada.", "success");
@@ -1453,11 +1515,6 @@ window.StockPage = (function () {
 
     if (!product || !Number.isInteger(quantity) || quantity <= 0) {
       UI.toast("Informe uma quantidade maior que zero.", "error");
-      return;
-    }
-
-    if (product.stock + quantity < 5) {
-      UI.toast("O estoque não pode ficar menor que 5.", "error");
       return;
     }
 

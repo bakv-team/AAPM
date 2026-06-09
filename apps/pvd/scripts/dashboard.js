@@ -568,6 +568,107 @@ window.CHARTS = (function () {
     });
   }
 
+  function dashboardTicket(canvasId = "chartDashboardTicket") {
+    destroy(canvasId);
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    const data = window.DB.daily.slice(-7).map(d => ({
+      ...d,
+      date: d.date instanceof Date ? d.date : new Date(`${d.date}T00:00:00`),
+      ticket: d.orders ? d.revenue / d.orders : 0
+    }));
+    const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 260);
+    grad.addColorStop(0, "rgba(22,199,132,0.32)");
+    grad.addColorStop(1, "rgba(22,199,132,0)");
+
+    instances[canvasId] = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: data.map(d => UI.dayShort(d.date)),
+        datasets: [{
+          label: "Ticket médio",
+          data: data.map(d => d.ticket),
+          borderColor: "#16C784",
+          backgroundColor: grad,
+          fill: true,
+          tension: 0.38,
+          borderWidth: 3,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: "#16C784",
+          pointHoverBorderColor: "#fff",
+          pointHoverBorderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...tooltipStyle(), callbacks: { label: c => UI.money(c.parsed.y) } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: TEXT_COLOR() } },
+          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => shortMoneyTick(v) } }
+        }
+      }
+    });
+  }
+
+  function dashboardAssociates(canvasId = "chartDashboardAssociates", legendId = "legendDashboardAssociates") {
+    destroy(canvasId);
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    const associateNames = new Set(
+      window.DB.customers
+        .filter(c => c.isAssociado || c.is_associado)
+        .map(c => String(c.name || c.nome || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const totals = window.DB.orders.reduce((acc, order) => {
+      if (order.status === "cancelado") return acc;
+      const name = String(order.customerName || "").trim().toLowerCase();
+      if (associateNames.has(name)) acc.associados += 1;
+      else acc.outros += 1;
+      return acc;
+    }, { associados: 0, outros: 0 });
+    const data = [
+      { name: "Associados", value: totals.associados, color: "#2D7BFF" },
+      { name: "Não associados", value: totals.outros, color: "#F5A623" }
+    ];
+
+    instances[canvasId] = new Chart(ctx, {
+      type: "polarArea",
+      data: {
+        labels: data.map(d => d.name),
+        datasets: [{
+          data: data.map(d => d.value),
+          backgroundColor: data.map(d => `${d.color}cc`),
+          borderColor: data.map(d => d.color),
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...tooltipStyle(), callbacks: { label: c => `${c.label}: ${UI.num(c.raw ?? c.parsed?.r ?? c.parsed)} pedido(s)` } }
+        },
+        scales: {
+          r: {
+            ticks: { display: false, backdropColor: "transparent" },
+            grid: { color: GRID() },
+            angleLines: { color: GRID() }
+          }
+        }
+      }
+    });
+    renderLegend(legendId, data);
+  }
+
   function aggregateByCategory() {
     const totals = {};
     window.DB.orders.forEach(o => {
@@ -657,6 +758,131 @@ window.CHARTS = (function () {
     });
   }
 
+  function categoryRadar(canvasId = "chartCategoryRadar", legendId = "legendCategory2") {
+    destroy(canvasId);
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    const data = aggregateByCategory();
+
+    instances[canvasId] = new Chart(ctx, {
+      type: "radar",
+      data: {
+        labels: data.map(d => shortLabel(d.name, 20)),
+        datasets: [{
+          label: "Receita",
+          data: data.map(d => d.value),
+          borderColor: "#7C5CFF",
+          backgroundColor: "rgba(124,92,255,0.18)",
+          pointBackgroundColor: data.map(d => d.color),
+          pointBorderColor: "#fff",
+          pointHoverRadius: 5,
+          borderWidth: 2.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...tooltipStyle(), callbacks: { title: items => data[items[0]?.dataIndex]?.name || items[0]?.label || "", label: c => UI.money(c.parsed.r) } }
+        },
+        scales: {
+          r: {
+            beginAtZero: true,
+            angleLines: { color: GRID() },
+            grid: { color: GRID() },
+            pointLabels: { color: TEXT_COLOR(), font: { size: 11, family: "Outfit" } },
+            ticks: { display: false, backdropColor: "transparent" }
+          }
+        }
+      }
+    });
+    renderLegend(legendId, data);
+  }
+
+  function topProductsRevenue(canvasId = "chartTopProductsRevenue") {
+    destroy(canvasId);
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    const totals = {};
+    window.DB.orders.forEach(order => {
+      if (order.status === "cancelado") return;
+      order.items.forEach(item => {
+        const product = window.DB.getProduct(item.productId);
+        const name = product?.name || item.name || "Produto";
+        totals[name] = (totals[name] || 0) + (Number(item.qty) || 0) * (Number(item.price) || 0);
+      });
+    });
+    const data = Object.entries(totals)
+      .map(([name, value], index) => ({ name, value: Math.round(value), color: UI.palette[index % UI.palette.length] }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 7);
+
+    instances[canvasId] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: data.map(d => shortLabel(d.name, 20)),
+        datasets: [{
+          label: "Receita",
+          data: data.map(d => d.value),
+          backgroundColor: data.map(d => d.color),
+          borderRadius: 10,
+          maxBarThickness: 34
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...tooltipStyle(), callbacks: { title: items => data[items[0]?.dataIndex]?.name || items[0]?.label || "", label: c => UI.money(c.parsed.x) } }
+        },
+        scales: {
+          x: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => shortMoneyTick(v) } },
+          y: { grid: { display: false }, ticks: { color: TEXT_COLOR() } }
+        }
+      }
+    });
+  }
+
+  function stockHealth(canvasId = "chartStockHealth", legendId = "legendStockHealth") {
+    destroy(canvasId);
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    const data = [
+      { name: "Em falta", value: window.DB.products.filter(p => p.stock <= 0).length, color: "#FF4D6D" },
+      { name: "Estoque baixo", value: window.DB.products.filter(p => p.stock > 0 && p.stock <= 5).length, color: "#F5A623" },
+      { name: "Estoque seguro", value: window.DB.products.filter(p => p.stock > 5).length, color: "#16C784" }
+    ];
+
+    instances[canvasId] = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: data.map(d => d.name),
+        datasets: [{
+          data: data.map(d => d.value),
+          backgroundColor: data.map(d => d.color),
+          borderWidth: 0,
+          hoverOffset: 8,
+          spacing: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "62%",
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...tooltipStyle(), callbacks: { label: c => `${c.label}: ${UI.num(c.parsed)} produto(s)` } }
+        }
+      }
+    });
+    renderLegend(legendId, data);
+  }
+
   function hourly(canvasId = "chartHourly") {
     destroy(canvasId);
     const ctx = document.getElementById(canvasId);
@@ -687,9 +913,13 @@ window.CHARTS = (function () {
 
   function refreshAll() {
     salesLine(currentRange);
+    dashboardTicket();
+    dashboardAssociates();
     categoryPie("chartCategoryPie", "legendCategory");
-    categoryPie("chartCategoryDonut", "legendCategory2");
+    categoryRadar("chartCategoryRadar", "legendCategory2");
     categoryBar();
+    topProductsRevenue();
+    stockHealth();
     hourly();
   }
 
@@ -704,7 +934,7 @@ window.CHARTS = (function () {
   let currentRange = 7;
   function setRange(r) { currentRange = r; salesLine(r); }
 
-  return { salesLine, categoryPie, categoryBar, hourly, refreshAll, resizeAll, setRange, aggregateByCategory };
+  return { salesLine, dashboardTicket, dashboardAssociates, categoryPie, categoryBar, categoryRadar, topProductsRevenue, stockHealth, hourly, refreshAll, resizeAll, setRange, aggregateByCategory };
 })();
 
 
@@ -1823,6 +2053,66 @@ window.Dashboard = (function () {
     `).join("");
   }
 
+  function renderDashboardInsights() {
+    const el = document.getElementById("dashboardInsights");
+    if (!el) return;
+
+    const today = window.DB.daily[window.DB.daily.length - 1] || { revenue: 0, orders: 0, items: 0 };
+    const ticket = today.orders ? today.revenue / today.orders : 0;
+    const lowStock = window.DB.products.filter(p => p.stock > 0 && p.stock <= 5);
+    const outStock = window.DB.products.filter(p => p.stock <= 0);
+    const categories = window.CHARTS.aggregateByCategory().filter(c => c.value > 0).sort((a, b) => b.value - a.value);
+    const peak = (window.DB.hourly || []).slice().sort((a, b) => (b.orders || 0) - (a.orders || 0))[0];
+    const topProduct = (window.DB.topProducts || [])[0];
+    const totalCategoryRevenue = categories.reduce((sum, item) => sum + item.value, 0) || 1;
+    const leadingCategory = categories[0];
+    const leadingPct = leadingCategory ? (leadingCategory.value / totalCategoryRevenue) * 100 : 0;
+
+    const insights = [
+      {
+        icon: "fa-receipt",
+        tone: "info",
+        title: "Ticket médio de hoje",
+        text: today.orders ? `${UI.money(ticket)} por pedido concluído.` : "Ainda sem pedidos concluídos hoje."
+      },
+      {
+        icon: "fa-ranking-star",
+        tone: "success",
+        title: "Produto destaque",
+        text: topProduct ? `${topProduct.name} lidera com ${UI.money(topProduct.revenue || 0)} em receita.` : "Os produtos destaque aparecem após as primeiras vendas."
+      },
+      {
+        icon: "fa-clock",
+        tone: "info",
+        title: "Horário de pico",
+        text: peak && peak.orders ? `Maior movimento por volta de ${peak.hour}h, com ${UI.num(peak.orders)} pedido(s).` : "Ainda não há pico de vendas identificado."
+      },
+      {
+        icon: "fa-layer-group",
+        tone: "success",
+        title: "Categoria líder",
+        text: leadingCategory ? `${leadingCategory.name} representa ${leadingPct.toFixed(1)}% da receita por categoria.` : "Categorias serão destacadas conforme as vendas entrarem."
+      },
+      {
+        icon: "fa-triangle-exclamation",
+        tone: lowStock.length || outStock.length ? "warn" : "success",
+        title: "Atenção ao estoque",
+        text: outStock.length
+          ? `${outStock.length} produto(s) sem estoque e ${lowStock.length} com estoque baixo.`
+          : lowStock.length
+            ? `${lowStock.length} produto(s) precisam de reposição preventiva.`
+            : "Estoque sem alertas críticos no momento."
+      }
+    ];
+
+    el.innerHTML = insights.map(item => `
+      <article class="dashboard-insight ${item.tone}">
+        <i class="fa-solid ${item.icon}"></i>
+        <div><strong>${item.title}</strong><span>${item.text}</span></div>
+      </article>
+    `).join("");
+  }
+
   function refresh() {
     const m = todayMetrics();
 
@@ -1848,6 +2138,7 @@ window.Dashboard = (function () {
 
     renderTopProducts();
     renderRecentOrders();
+    renderDashboardInsights();
     window.CHARTS.refreshAll();
   }
 
@@ -1954,6 +2245,45 @@ window.Dashboard = (function () {
     });
   }
 
+  function setupChartScrollObserver(root = document) {
+    const page = root.matches?.("#page-dashboard, #page-grafico")
+      ? root
+      : root.querySelector?.("#page-dashboard, #page-grafico");
+    if (!page) return;
+
+    const cards = [...page.querySelectorAll(".chart-wrap")]
+      .map(chart => chart.closest(".card"))
+      .filter(Boolean);
+    if (!cards.length) return;
+
+    cards.forEach((card, index) => {
+      card.classList.add("chart-scroll-reveal");
+      card.style.setProperty("--chart-scroll-delay", `${Math.min(index, 5) * 90}ms`);
+      if (card.dataset.chartScrollObserved) return;
+      card.dataset.chartScrollObserved = "1";
+    });
+
+    if (!("IntersectionObserver" in window)) {
+      cards.forEach(card => card.classList.add("chart-scroll-in"));
+      return;
+    }
+
+    if (!window.__aapmChartScrollObserver) {
+      window.__aapmChartScrollObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("chart-scroll-in");
+          window.__aapmChartScrollObserver.unobserve(entry.target);
+        });
+      }, { rootMargin: "0px 0px -14% 0px", threshold: 0.16 });
+    }
+
+    cards.forEach(card => {
+      if (card.classList.contains("chart-scroll-in")) return;
+      window.__aapmChartScrollObserver.observe(card);
+    });
+  }
+
   function navigate(route) {
     if (!ROUTE_META[route]) route = "dashboard";
 
@@ -1964,6 +2294,7 @@ window.Dashboard = (function () {
     if (pg) {
       pg.classList.add("active");
       setupMotionObserver(pg);
+      setupChartScrollObserver(pg);
     }
 
     document.getElementById("pageTitle").textContent = ROUTE_META[route].title;
@@ -2308,11 +2639,14 @@ window.Dashboard = (function () {
   function renderNotifications() {
     const list = document.getElementById("notifList");
     if (!list) return;
-    if (!window.DB.notifications.length) {
+    const visible = filterUnreadNotifications(window.DB.notifications);
+    window.DB.notifications = visible;
+    document.querySelector("#notifBtn .dot")?.classList.toggle("hidden", !visible.length);
+    if (!visible.length) {
       list.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
       return;
     }
-    list.innerHTML = window.DB.notifications.map(n => `
+    list.innerHTML = visible.map(n => `
       <li class="${n.type}">
         <i class="fa-solid ${n.icon}"></i>
         <div>${n.text}<time>${n.time}</time></div>
@@ -2320,10 +2654,40 @@ window.Dashboard = (function () {
     `).join("");
   }
 
+  const NOTIF_READ_STORAGE_KEY = "aapm_read_notifications";
+
+  function notificationKey(item) {
+    return [item?.id || "", item?.text || "", item?.time || ""].join("|");
+  }
+
+  function getReadNotificationKeys() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(NOTIF_READ_STORAGE_KEY) || "[]"));
+    } catch (err) {
+      return new Set();
+    }
+  }
+
+  function setReadNotificationKeys(keys) {
+    localStorage.setItem(NOTIF_READ_STORAGE_KEY, JSON.stringify([...keys].slice(-80)));
+  }
+
+  function filterUnreadNotifications(items) {
+    const read = getReadNotificationKeys();
+    return (items || []).filter(item => !read.has(notificationKey(item)));
+  }
+
+  function markCurrentNotificationsRead() {
+    const read = getReadNotificationKeys();
+    window.DB.notifications.forEach(item => read.add(notificationKey(item)));
+    setReadNotificationKeys(read);
+    window.DB.notifications = [];
+  }
+
   async function runPreventiveChecks() {
     try {
       const health = await window.API.getSystemHealth();
-      const warnings = health?.warnings || [];
+      const warnings = filterUnreadNotifications(health?.warnings || []);
       if (!warnings.length) return;
       const severe = warnings.find(item => item.type === "error") || warnings[0];
       UI.toast(severe.text || "Ha alertas preventivos no sistema.", severe.type === "error" ? "error" : "warn");
@@ -2598,7 +2962,7 @@ window.Dashboard = (function () {
     });
     document.getElementById("markNotifRead")?.addEventListener("click", event => {
       event.preventDefault();
-      window.DB.notifications = [];
+      markCurrentNotificationsRead();
       renderNotifications();
       document.querySelector("#notifBtn .dot")?.classList.add("hidden");
       UI.toast("Notificacoes marcadas como lidas.", "success");
@@ -2717,6 +3081,7 @@ window.Dashboard = (function () {
     updateSidebarBadges();
     runPreventiveChecks();
     setupMotionObserver();
+    setupChartScrollObserver();
 
     // Initial route via hash
     const route = (location.hash || "#dashboard").replace("#", "");

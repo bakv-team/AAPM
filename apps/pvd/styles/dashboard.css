@@ -1223,6 +1223,75 @@ textarea {
   font-weight: 700;
 }
 
+.dashboard-insights-card {
+  margin-top: 0;
+}
+
+.dashboard-insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+
+.dashboard-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.dashboard-insight i {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+}
+
+.dashboard-insight.info i {
+  background: linear-gradient(135deg, var(--blue), #22D3EE);
+}
+
+.dashboard-insight.success i {
+  background: linear-gradient(135deg, var(--green), #22D3EE);
+}
+
+.dashboard-insight.warn i {
+  background: linear-gradient(135deg, var(--orange), #FF4D6D);
+}
+
+.dashboard-insight div {
+  min-width: 0;
+}
+
+.dashboard-insight strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.dashboard-insight span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+[data-theme="dark"] .dashboard-insight {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 /* ============ TOOLBAR ============ */
 .toolbar {
   display: flex;
@@ -4555,6 +4624,26 @@ a:active,
   transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+#page-dashboard .chart-scroll-reveal,
+#page-grafico .chart-scroll-reveal {
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(34px) scale(0.985);
+  transition:
+    opacity 1.05s ease var(--chart-scroll-delay, 0ms),
+    filter 1.05s ease var(--chart-scroll-delay, 0ms),
+    transform 1.05s cubic-bezier(0.16, 1, 0.3, 1) var(--chart-scroll-delay, 0ms),
+    box-shadow 0.25s ease;
+  will-change: opacity, filter, transform;
+}
+
+#page-dashboard .chart-scroll-reveal.chart-scroll-in,
+#page-grafico .chart-scroll-reveal.chart-scroll-in {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0) scale(1);
+}
+
 @keyframes page-enter {
   from {
     opacity: 0;
@@ -4609,6 +4698,13 @@ a:active,
 
   .motion-reveal {
     opacity: 1;
+    transform: none;
+  }
+
+  #page-dashboard .chart-scroll-reveal,
+  #page-grafico .chart-scroll-reveal {
+    opacity: 1;
+    filter: none;
     transform: none;
   }
 }

@@ -370,6 +370,23 @@
               </div>
             </div>
           </div>
+
+          <div class="grid-2 dashboard-extra-grid">
+            <div class="card glass">
+              <div class="card-head"><div><h3>Ticket médio — últimos 7 dias</h3><p class="muted">Valor médio por pedido concluído</p></div></div>
+              <div class="chart-wrap"><canvas id="chartDashboardTicket"></canvas></div>
+            </div>
+            <div class="card glass">
+              <div class="card-head"><div><h3>Associados x não associados</h3><p class="muted">Participação nas vendas registradas</p></div></div>
+              <div class="chart-wrap"><canvas id="chartDashboardAssociates"></canvas></div>
+              <ul class="legend" id="legendDashboardAssociates"></ul>
+            </div>
+          </div>
+
+          <div class="card glass dashboard-insights-card">
+            <div class="card-head"><div><h3>Insights rápidos</h3><p class="muted">Leituras automáticas para orientar a operação de hoje</p></div></div>
+            <div class="dashboard-insights" id="dashboardInsights"></div>
+          </div>
         </section>
 
         <!-- ============================= PAGE: ADMIN (PRODUTOS) ============================= -->
@@ -412,7 +429,12 @@
 
           <div class="grid-2">
             <div class="card glass"><div class="card-head"><div><h3>Receita por categoria</h3><p class="muted">Distribuição percentual</p></div></div><div class="chart-wrap"><canvas id="chartCategoryBar"></canvas></div></div>
-            <div class="card glass"><div class="card-head"><div><h3>Composição de vendas</h3><p class="muted">Categorias x receita</p></div></div><div class="chart-wrap"><canvas id="chartCategoryDonut"></canvas></div><ul class="legend" id="legendCategory2"></ul></div>
+            <div class="card glass"><div class="card-head"><div><h3>Radar de categorias</h3><p class="muted">Força relativa da receita</p></div></div><div class="chart-wrap"><canvas id="chartCategoryRadar"></canvas></div><ul class="legend" id="legendCategory2"></ul></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass"><div class="card-head"><div><h3>Produtos mais fortes</h3><p class="muted">Receita por produto vendido</p></div></div><div class="chart-wrap"><canvas id="chartTopProductsRevenue"></canvas></div></div>
+            <div class="card glass"><div class="card-head"><div><h3>Saúde do estoque</h3><p class="muted">Produtos em falta, baixos e seguros</p></div></div><div class="chart-wrap"><canvas id="chartStockHealth"></canvas></div><ul class="legend" id="legendStockHealth"></ul></div>
           </div>
 
           <div class="card glass">

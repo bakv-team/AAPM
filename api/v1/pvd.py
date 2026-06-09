@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 import csv
 import io
 import json
@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 from email.message import EmailMessage
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
@@ -38,6 +39,16 @@ _AI_RUNTIME_STATUS = {
 PRODUCT_IMAGE_DIR = Path("database/static/uploads")
 PRODUCT_IMAGE_PREFIX = "uploads"
 PRODUCT_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def _carregar_timezone():
+    try:
+        return ZoneInfo(os.getenv("AAPM_TIMEZONE", "America/Sao_Paulo"))
+    except ZoneInfoNotFoundError:
+        return timezone(timedelta(hours=-3))
+
+
+LOCAL_TIMEZONE = _carregar_timezone()
 
 
 class CategoriaPayload(BaseModel):
@@ -177,6 +188,14 @@ def _movimentacao_json(movimento: Movimentacao) -> dict:
         "userId": str(movimento.usuario_id),
         "userName": movimento.usuario.nome if movimento.usuario else "Usuario",
     }
+
+
+def _agora_local() -> datetime:
+    return datetime.now(LOCAL_TIMEZONE).replace(tzinfo=None)
+
+
+def _hoje_local() -> date:
+    return _agora_local().date()
 
 
 def _venda_json(venda: Venda) -> dict:
@@ -698,6 +717,7 @@ def criar_venda_api(
             if obs_limpa and not obs_limpa.lower().startswith("cliente:"):
                 observacoes.append(obs_limpa)
 
+        agora = _agora_local()
         venda = Venda(
             cliente_id=cliente.id if cliente else None,
             usuario_id=usuario_id,
@@ -705,10 +725,12 @@ def criar_venda_api(
             desconto=total_bruto - total_liquido,
             valor_total=total_bruto,
             valor_final=total_liquido,
+            data=agora,
             desconto_percentual=desconto_percentual,
             total_bruto=total_bruto,
             total_liquido=total_liquido,
             observacao=" ".join(observacoes).strip(),
+            criado_em=agora,
         )
         db.add(venda)
         db.flush()
@@ -729,6 +751,7 @@ def criar_venda_api(
                 quantidade=quantidade,
                 preco_unitario=produto.preco,
                 observacao=f"Venda #{venda.id:04d}",
+                criado_em=agora,
                 produto_id=produto.id,
                 usuario_id=usuario_id,
             ))
@@ -868,7 +891,7 @@ def vendas_por_dia_api(
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
-    hoje = date.today()
+    hoje = _hoje_local()
     inicio = hoje - timedelta(days=dias - 1)
     rows = []
 
@@ -897,7 +920,7 @@ def vendas_por_hora_api(
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
-    hoje = date.today()
+    hoje = _hoje_local()
     vendas = (
         db.query(Venda)
         .filter(Venda.criado_em >= _inicio_do_dia(hoje), Venda.criado_em <= _fim_do_dia(hoje))
@@ -919,7 +942,7 @@ def metricas_dashboard_api(
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
-    hoje = date.today()
+    hoje = _hoje_local()
     ontem = hoje - timedelta(days=1)
     inicio_mes = hoje.replace(day=1)
 
@@ -1000,7 +1023,7 @@ def aapm_smart_insights_api(
     except (TypeError, ValueError):
         lucro_unidade = 3.5
 
-    hoje = date.today()
+    hoje = _hoje_local()
     historico = vendas_por_dia_api(dias=30, db=db, admin=admin)
     ultimos_validos = [row for row in historico if row["orders"] or row["items"] or row["revenue"]]
     janela = ultimos_validos[-7:] if ultimos_validos else historico[-7:]
@@ -1270,7 +1293,7 @@ def sistema_health_api(
     warnings = _system_warnings(db)
     return {
         "ok": not warnings,
-        "checkedAt": datetime.now().isoformat(timespec="seconds"),
+        "checkedAt": _agora_local().isoformat(timespec="seconds"),
         "warnings": warnings,
         "ai": _ai_config_status(),
         "counts": counts,
@@ -1282,7 +1305,7 @@ def notificacoes_api(
     db: Session = Depends(get_db),
     usuario=Depends(get_usuario_logado),
 ):
-    hoje = date.today()
+    hoje = _hoje_local()
     baixo_estoque = db.query(Produto).filter(Produto.ativo == True, Produto.estoque_atual <= 5).count()
     vendas_hoje = db.query(Venda).filter(Venda.criado_em >= _inicio_do_dia(hoje), Venda.criado_em <= _fim_do_dia(hoje)).count()
     ultima_venda = db.query(Venda).order_by(Venda.criado_em.desc()).first()
@@ -1301,7 +1324,7 @@ def notificacoes_api(
 
 
 def _periodo_relatorio(period: str) -> tuple[date, date, int, str]:
-    hoje = date.today()
+    hoje = _hoje_local()
     period = (period or "month").strip().lower()
     periodos = {
         "today": (hoje, hoje, 1, "hoje"),
@@ -1326,7 +1349,7 @@ def baixar_relatorio_api(
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
-    hoje = date.today().isoformat()
+    hoje = _hoje_local().isoformat()
     inicio, fim, dias, periodo_slug = _periodo_relatorio(period)
 
     if tipo == "sales":
@@ -1638,6 +1661,7 @@ def adicionar_estoque_api(
         quantidade=payload.quantidade,
         preco_unitario=produto.preco,
         observacao="Reposicao manual de estoque",
+        criado_em=_agora_local(),
         produto_id=produto.id,
         usuario_id=usuario_id,
     ))

@@ -1742,6 +1742,10 @@ window.StockMovementsPage = (function () {
 
 
 window.Dashboard = (function () {
+  const REALTIME_REFRESH_MS = 5000;
+  let refreshTimer = null;
+  let refreshInFlight = false;
+
   function todayMetrics() {
     if (window.DB.metrics) return window.DB.metrics;
     if (!window.DB.daily.length) {
@@ -1847,6 +1851,42 @@ window.Dashboard = (function () {
     window.CHARTS.refreshAll();
   }
 
+  async function refreshFromApi() {
+    if (refreshInFlight) return;
+    refreshInFlight = true;
+    try {
+      const [prods, orders, daily, hourly, notifications, metrics, topProducts] = await Promise.all([
+        window.API.getProducts(),
+        window.API.getOrders(),
+        window.API.getDailySales(30),
+        window.API.getHourlySales(),
+        window.API.getNotifications(),
+        window.API.getDashboardMetrics(),
+        window.API.getTopProducts()
+      ]);
+      window.DB.products = prods;
+      window.DB.orders = orders;
+      window.DB.daily = daily;
+      window.DB.hourly = hourly;
+      window.DB.notifications = notifications;
+      window.DB.metrics = metrics;
+      window.DB.topProducts = topProducts;
+
+      refresh();
+      renderNotifications();
+      updateSidebarBadges();
+
+      const route = (location.hash || "#dashboard").replace("#", "");
+      if (route === "pedidos") window.OrdersPage?.render();
+      if (route === "estoque") window.StockPage?.render();
+      if (route === "movimentacoes") window.StockMovementsPage?.render();
+    } catch (error) {
+      console.warn("Falha ao atualizar dados em tempo real:", error);
+    } finally {
+      refreshInFlight = false;
+    }
+  }
+
   function init() {
     refresh();
     // Range selector
@@ -1857,9 +1897,16 @@ window.Dashboard = (function () {
         window.CHARTS.setRange(parseInt(b.dataset.range, 10));
       });
     });
+
+    if (!refreshTimer) {
+      refreshTimer = window.setInterval(refreshFromApi, REALTIME_REFRESH_MS);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) refreshFromApi();
+      });
+    }
   }
 
-  return { init, refresh };
+  return { init, refresh, refreshFromApi };
 })();
 
 

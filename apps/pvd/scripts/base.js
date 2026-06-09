@@ -158,6 +158,29 @@ let associateLookupTimer = null;
 let pagamentoAtual = "pix";
 let page = 1;
 const perPage = 8;
+const PDV_NOTIF_READ_STORAGE_KEY = "aapm_read_notifications";
+let pdvNotifications = [];
+
+function notificationKey(item) {
+  return [item?.id || "", item?.text || "", item?.time || ""].join("|");
+}
+
+function getReadNotificationKeys() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(PDV_NOTIF_READ_STORAGE_KEY) || "[]"));
+  } catch (error) {
+    return new Set();
+  }
+}
+
+function setReadNotificationKeys(keys) {
+  localStorage.setItem(PDV_NOTIF_READ_STORAGE_KEY, JSON.stringify([...keys].slice(-80)));
+}
+
+function filterUnreadNotifications(items) {
+  const read = getReadNotificationKeys();
+  return (items || []).filter(item => !read.has(notificationKey(item)));
+}
 
 function setupMotionObserver(root = document) {
   const targets = root.querySelectorAll(".content, .cart, .card, .payment-option, .cart-associate");
@@ -661,7 +684,9 @@ async function validarAssociado() {
 async function carregarNotificacoes() {
   if (!pdvNotifList) return;
   try {
-    const itens = await apiGet("/api/v1/pdv/notifications");
+    pdvNotifications = filterUnreadNotifications(await apiGet("/api/v1/pdv/notifications"));
+    const itens = pdvNotifications;
+    pdvNotifBtn?.querySelector(".dot")?.classList.toggle("hidden", !itens.length);
     if (!itens.length) {
       pdvNotifList.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
       return;
@@ -961,6 +986,10 @@ function bindEventos() {
   });
   pdvMarkNotifRead?.addEventListener("click", event => {
     event.preventDefault();
+    const read = getReadNotificationKeys();
+    pdvNotifications.forEach(item => read.add(notificationKey(item)));
+    setReadNotificationKeys(read);
+    pdvNotifications = [];
     if (pdvNotifList) {
       pdvNotifList.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
     }

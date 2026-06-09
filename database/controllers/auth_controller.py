@@ -17,6 +17,7 @@ from database.auth import (
     criar_token_recuperacao_senha,
     decodificar_token_recuperacao_senha,
     hash_senha,
+    normalizar_permissoes,
     verificar_senha,
 )
 
@@ -141,6 +142,7 @@ def _base_url_recuperacao(request: Request) -> str:
 def tela_login(request: Request, erro: str | None = None):
     mensagens_erro = {
         "credenciais": "E-mail ou senha incorretos.",
+        "email_nao_cadastrado": "E-mail nao cadastrado. Verifique o endereco ou solicite o cadastro.",
         "inativo": "Usuario inativo. Contate o administrador.",
     }
     return templates.TemplateResponse(
@@ -173,16 +175,17 @@ def login(
     """
 
     # Busca o usuário no banco pelo email
+    email_normalizado = email.strip().lower()
     usuario = db.query(Usuario).filter(
-        Usuario.email == email
+        Usuario.email == email_normalizado
     ).first()
+
+    if usuario is None:
+        return RedirectResponse(url="/auth/login?erro=email_nao_cadastrado", status_code=303)
 
     # Verifica usuário E senha em passos separados para evitar
     # "timing attacks" (atacante deduz se o email existe pelo tempo de resposta)
-    senha_correta = (
-        usuario is not None and
-        verificar_senha(senha, usuario.senha_hash)
-    )
+    senha_correta = verificar_senha(senha, usuario.senha_hash)
 
 # 1. Se a senha estiver errada:
     if not senha_correta:
@@ -198,13 +201,14 @@ def login(
         "sub": usuario.email,
         "nome": usuario.nome,
         "role": usuario.role,
-        "id": usuario.id
+        "id": usuario.id,
+        "permissoes": normalizar_permissoes(usuario.permissoes),
     }
 
     token = criar_token(token_data)
 
-    # Cria a resposta de redirecionamento conforme o perfil
-    destino = "/dashboard" if usuario.role == "admin" else "/pdv"
+    # Cria a resposta de redirecionamento conforme o perfil e permissoes do dashboard.
+    destino = "/dashboard" if usuario.role == "admin" or normalizar_permissoes(usuario.permissoes) else "/pdv"
     response = RedirectResponse(url=destino, status_code=302)
 
     # Define o cookie com o token JWT

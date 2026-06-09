@@ -7609,3 +7609,187 @@ body.checkout-returning .app-shell {
         0 14px 30px rgba(0, 0, 0, 0.34),
         inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
 }
+
+/* Final text guard: keep long product/category names inside cards and compact rows. */
+.products-grid,
+.products-grid .product-card,
+.products-grid .product-card .card-content,
+.products-grid .product-card .product-card-main,
+.prod-cell,
+.prod-name,
+.actions-cell,
+.pill,
+.card,
+.glass,
+.report-card,
+.customer-card,
+.category-card {
+    min-width: 0 !important;
+}
+
+.products-grid .product-card .card-title,
+.products-grid .product-card .card-category,
+.products-grid .product-card .stock-chip,
+.products-grid .product-card .price,
+.products-grid .product-card .card-button,
+.prod-name strong,
+.prod-name span,
+.pill,
+.report-card span,
+.report-card small,
+.customer-card h4,
+.customer-card p,
+.category-card h4,
+.category-card p {
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+}
+
+.products-grid .product-card .card-title {
+    hyphens: auto;
+}
+
+.products-grid .product-card .card-category,
+.products-grid .product-card .stock-chip,
+.prod-name strong,
+.prod-name span,
+.pill {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.products-grid .product-card .card-category,
+.products-grid .product-card .stock-chip,
+.pill {
+    white-space: nowrap !important;
+}
+
+.products-grid .product-card .card-button {
+    white-space: normal !important;
+    text-align: center !important;
+}
+
+/* PDV sales cards: stable rows and aligned content for large names, stock and prices. */
+.products-grid {
+    align-items: stretch !important;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)) !important;
+    gap: clamp(12px, 1.4vw, 18px) !important;
+}
+
+.products-grid .product-card {
+    display: grid !important;
+    grid-template-rows: 112px minmax(0, 1fr) !important;
+    min-height: 302px !important;
+    height: 100% !important;
+}
+
+.products-grid .product-card .card-image {
+    height: 112px !important;
+}
+
+.products-grid .product-card .card-image img {
+    object-fit: contain !important;
+    background: #ffffff !important;
+}
+
+.products-grid .product-card .card-content {
+    display: grid !important;
+    grid-template-rows: minmax(76px, auto) 24px 28px 38px !important;
+    align-content: stretch !important;
+    gap: 8px !important;
+    min-height: 0 !important;
+}
+
+.products-grid .product-card .product-card-main {
+    display: grid !important;
+    grid-template-rows: 22px minmax(36px, auto) !important;
+    gap: 6px !important;
+    min-height: 0 !important;
+}
+
+.products-grid .product-card .card-category,
+.products-grid .product-card .stock-chip {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 5px 8px !important;
+    overflow: hidden !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+.products-grid .product-card .card-title {
+    display: -webkit-box !important;
+    min-height: 36px !important;
+    max-height: 38px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    line-height: 1.25 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+}
+
+.products-grid .product-card .price {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    align-self: center !important;
+    color: var(--text) !important;
+    font-size: clamp(14px, 1.2vw, 17px) !important;
+    font-weight: 900 !important;
+    line-height: 1.1 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+.products-grid .product-card .card-button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+    align-self: end !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+}
+
+.section-title {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: baseline !important;
+    gap: 8px !important;
+}
+
+.section-title .product-count {
+    font-size: 0.86em !important;
+    white-space: nowrap !important;
+}
+
+@media (min-width: 1180px) {
+    .products-grid {
+        grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)) !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .products-grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)) !important;
+    }
+}
+
+@media (max-width: 560px) {
+    .products-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .products-grid .product-card {
+        min-height: 286px !important;
+    }
+}

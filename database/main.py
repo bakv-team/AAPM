@@ -2,18 +2,19 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from database.controllers import auth_controller
 from database.controllers import admin_controller
 from api.v1 import pvd
-from database.database import get_db
+from database.database import engine, get_db
 from database.models.usuario import Usuario
 
 
 
-from database.auth import get_usuario_logado, get_usuario_opcional
+from database.auth import get_usuario_logado, get_usuario_opcional, normalizar_permissoes
 
 app = FastAPI(title="AAPM")
 
@@ -36,6 +37,15 @@ async def disable_apps_static_cache(request: Request, call_next):
 app.include_router(auth_controller.router)
 app.include_router(admin_controller.router)
 app.include_router(pvd.router)
+
+
+@app.on_event("startup")
+def garantir_colunas_usuario():
+    inspector = inspect(engine)
+    colunas = {coluna["name"] for coluna in inspector.get_columns("usuarios")}
+    if "permissoes" not in colunas:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN permissoes VARCHAR(255) NOT NULL DEFAULT ''"))
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -74,7 +84,7 @@ def tela_home(
             "login.html",
             {"request": request})
     
-    destino = "/dashboard" if usuario.get("role") == "admin" else "/pdv"
+    destino = "/dashboard" if usuario.get("role") == "admin" or normalizar_permissoes(usuario.get("permissoes")) else "/pdv"
     return RedirectResponse(url=destino, status_code=302)
 
 
@@ -87,11 +97,12 @@ def tela_dashboard(
     if usuario is None:
         return RedirectResponse(url="/auth/login", status_code=302)
 
-    if usuario.get("role") != "admin":
+    if usuario.get("role") != "admin" and not normalizar_permissoes(usuario.get("permissoes")):
         return RedirectResponse(url="/pdv", status_code=302)
 
     usuarios = []
-    usuarios = db.query(Usuario).order_by(Usuario.nome).all()
+    if usuario.get("role") == "admin":
+        usuarios = db.query(Usuario).order_by(Usuario.nome).all()
 
     return dashboard_templates.TemplateResponse(
         request,
@@ -99,6 +110,7 @@ def tela_dashboard(
         {
             "request": request,
             "usuario": usuario,
+            "permissoes_usuario": normalizar_permissoes(usuario.get("permissoes")),
             "usuarios": usuarios,
         }
     )
@@ -118,6 +130,7 @@ def tela_pdv(
         {
             "request": request,
             "usuario": usuario,
+            "permissoes_usuario": normalizar_permissoes(usuario.get("permissoes")),
         }
     )
 

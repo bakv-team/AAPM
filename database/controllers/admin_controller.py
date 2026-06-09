@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from database.auth import get_admin, hash_senha
+from database.auth import get_admin, hash_senha, permissoes_to_string
 from database.database import get_db
 from database.models.usuario import Usuario
 
@@ -29,6 +29,7 @@ def criar_usuario(
     email: str = Form(...),
     senha: str = Form(...),
     role: str = Form(...),
+    permissoes: list[str] = Form(default=[]),
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
@@ -44,6 +45,7 @@ def criar_usuario(
         email=email.strip().lower(),
         senha_hash=hash_senha(senha),
         role=role,
+        permissoes=permissoes_to_string([] if role == "admin" else permissoes),
         ativo=True,
     )
 
@@ -65,6 +67,7 @@ def editar_usuario(
     email: str = Form(...),
     role: str = Form(...),
     senha: str = Form(""),
+    permissoes: list[str] = Form(default=[]),
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
@@ -83,6 +86,7 @@ def editar_usuario(
     editando.nome = nome.strip()
     editando.email = email.strip().lower()
     editando.role = role
+    editando.permissoes = permissoes_to_string([] if role == "admin" else permissoes)
 
     if senha.strip():
         editando.senha_hash = hash_senha(senha)

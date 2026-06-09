@@ -186,6 +186,8 @@ const resetPasswordToggle =
 document.getElementById("resetPasswordToggle");
 const resetConfirmInput =
 document.getElementById("resetConfirmInput");
+const loginEmailError =
+document.getElementById("loginEmailError");
 const loginPasswordError =
 document.getElementById("loginPasswordError");
 
@@ -303,6 +305,12 @@ passwordInput?.addEventListener("input", () => {
   passwordInput.removeAttribute("aria-invalid");
   passwordInput.closest(".input-box")?.classList.remove("has-error");
   loginPasswordError?.remove();
+});
+
+loginEmailInput?.addEventListener("input", () => {
+  loginEmailInput.removeAttribute("aria-invalid");
+  loginEmailInput.closest(".input-box")?.classList.remove("has-error");
+  loginEmailError?.remove();
 });
 
 resetPasswordToggle?.addEventListener("click",()=>{

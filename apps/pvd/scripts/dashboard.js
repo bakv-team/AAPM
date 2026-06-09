@@ -997,9 +997,13 @@ window.ProductsPage = (function () {
         const actions = active
           ? `
                 <button class="act-btn edit" data-action="edit" data-id="${p.id}" data-testid="edit-product-${p.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                <button class="act-btn delete" data-action="delete" data-id="${p.id}" data-testid="delete-product-${p.id}" title="Inativar"><i class="fa-solid fa-ban"></i></button>
+                <button class="act-btn deactivate" data-action="deactivate" data-id="${p.id}" data-testid="deactivate-product-${p.id}" title="Desativar"><i class="fa-solid fa-ban"></i></button>
+                <button class="act-btn delete" data-action="delete" data-id="${p.id}" data-testid="delete-product-${p.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             `
-          : `<button class="act-btn view" data-action="activate" data-id="${p.id}" title="Ativar"><i class="fa-solid fa-check"></i></button>`;
+          : `
+                <button class="act-btn view" data-action="activate" data-id="${p.id}" data-testid="activate-product-${p.id}" title="Ativar"><i class="fa-solid fa-check"></i></button>
+                <button class="act-btn delete" data-action="delete" data-id="${p.id}" data-testid="delete-product-${p.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+            `;
         return `
           <tr data-id="${p.id}">
             <td>
@@ -1054,28 +1058,56 @@ window.ProductsPage = (function () {
       btn.addEventListener("click", () => {
         const id = btn.dataset.id;
         if (btn.dataset.action === "edit") openProductForm(id);
+        else if (btn.dataset.action === "deactivate") deactivateProduct(id);
         else if (btn.dataset.action === "delete") deleteProduct(id);
         else if (btn.dataset.action === "activate") activateProduct(id);
       });
     });
   }
 
+  async function deactivateProduct(id) {
+    const p = productsPageItems.find(item => String(item.id) === String(id)) || window.DB.getProduct(id);
+    if (!p) return;
+    const ok = await UI.confirmDialog({
+      title: "Desativar produto",
+      text: `Tem certeza que deseja desativar "${p.name}"? Ele sairá do PDV, mas poderá ser ativado novamente.`,
+      okLabel: "Desativar"
+    });
+    if (!ok) return;
+
+    try {
+      const updated = await window.API.setProductActive(id, false);
+      window.DB.products = window.DB.products.filter(item => String(item.id) !== String(id));
+      if (filters.status === "active") {
+        productsPageItems = productsPageItems.filter(item => String(item.id) !== String(id));
+      } else {
+        Object.assign(p, updated);
+      }
+      UI.toast(`Produto "${updated.name}" desativado.`, "success");
+      render();
+      if (window.Dashboard) window.Dashboard.refresh();
+      if (window.StockPage) window.StockPage.render();
+    } catch (err) {
+      console.error("Falha ao desativar produto:", err);
+      UI.toast("Nao foi possivel desativar o produto.", "error");
+    }
+  }
+
   async function deleteProduct(id) {
     const p = productsPageItems.find(item => String(item.id) === String(id)) || window.DB.getProduct(id);
     if (!p) return;
     const ok = await UI.confirmDialog({
-      title: "Inativar produto",
-      text: `Tem certeza que deseja inativar "${p.name}"? Ele saira do PDV ate ser ativado novamente.`,
-      okLabel: "Inativar"
+      title: "Excluir produto",
+      text: `Tem certeza que deseja excluir "${p.name}"? O historico de vendas sera preservado.`,
+      okLabel: "Excluir"
     });
     if (!ok) return;
 
     try {
       await window.API.deleteProduct(id);
-      window.DB.products = window.DB.products.filter(x => x.id !== id);
-      if (filters.status === "all") p.ativo = false;
-      else productsPageItems = productsPageItems.filter(x => String(x.id) !== String(id));
-      UI.toast(`Produto "${p.name}" inativado.`, "success");
+      window.DB.products = window.DB.products.filter(x => String(x.id) !== String(id));
+      productsPageItems = productsPageItems.filter(x => String(x.id) !== String(id));
+      UI.toast(`Produto "${p.name}" excluido.`, "success");
       render();
       if (window.Dashboard) window.Dashboard.refresh();
       if (window.StockPage) window.StockPage.render();
@@ -1760,15 +1792,25 @@ window.EmployeesPage = (function () {
   function openForm(employee = null) {
     const form = document.getElementById("employeeForm");
     const password = document.getElementById("employeePassword");
+    const roleSelect = document.getElementById("employeeRole");
     if (!form || !password) return;
 
     form.reset();
+    document.querySelectorAll("#employeePermissionsFieldset input[type='checkbox']").forEach(input => {
+      input.checked = false;
+      input.disabled = false;
+    });
     if (employee) {
       form.action = `/usuarios/${employee.id}/editar`;
       document.getElementById("employeeModalTitle").textContent = "Editar funcionário";
       document.getElementById("employeeName").value = employee.name || "";
       document.getElementById("employeeEmail").value = employee.email || "";
       document.getElementById("employeeRole").value = employee.role || "funcionario";
+      const permissions = new Set((employee.permissions || "").split(",").filter(Boolean));
+      document.querySelectorAll("#employeePermissionsFieldset input[type='checkbox']").forEach(input => {
+        input.checked = permissions.has(input.value) || (permissions.has("stock_movements") && (input.value === "stock" || input.value === "movements"));
+      });
+      syncLinkedPermissionInputs();
       password.required = false;
       password.placeholder = "Deixe em branco para manter";
     } else {
@@ -1778,7 +1820,40 @@ window.EmployeesPage = (function () {
       password.required = true;
       password.placeholder = "";
     }
+    syncPermissionFieldset(roleSelect?.value || "funcionario");
     UI.openModal("employeeModal");
+  }
+
+  function syncLinkedPermissionInputs(source = null) {
+    const fieldset = document.getElementById("employeePermissionsFieldset");
+    if (!fieldset) return;
+    const key = source?.dataset.linkedPermission;
+    if (!key) {
+      const grouped = new Map();
+      fieldset.querySelectorAll("input[data-linked-permission]").forEach(input => {
+        const group = grouped.get(input.dataset.linkedPermission) || [];
+        group.push(input);
+        grouped.set(input.dataset.linkedPermission, group);
+      });
+      grouped.forEach(inputs => {
+        const checked = inputs.some(input => input.checked);
+        inputs.forEach(input => {
+          input.checked = checked;
+        });
+      });
+      return;
+    }
+    fieldset.querySelectorAll(`input[data-linked-permission="${key}"]`).forEach(input => {
+      input.checked = source.checked;
+    });
+  }
+
+  function syncPermissionFieldset(role) {
+    const isAdmin = role === "admin";
+    document.querySelectorAll("#employeePermissionsFieldset input[type='checkbox']").forEach(input => {
+      input.disabled = isAdmin;
+      if (isAdmin) input.checked = false;
+    });
   }
 
   function init() {
@@ -1796,8 +1871,19 @@ window.EmployeesPage = (function () {
         id: button.dataset.id,
         name: button.dataset.name,
         email: button.dataset.email,
-        role: button.dataset.role
+        role: button.dataset.role,
+        permissions: button.dataset.permissions || ""
       }));
+    });
+
+    document.getElementById("employeeRole")?.addEventListener("change", event => {
+      syncPermissionFieldset(event.target.value);
+    });
+
+    document.getElementById("employeePermissionsFieldset")?.addEventListener("change", event => {
+      if (event.target.matches("input[data-linked-permission]")) {
+        syncLinkedPermissionInputs(event.target);
+      }
     });
 
     document.querySelectorAll("[data-employee-confirm]").forEach(form => {
@@ -2203,6 +2289,23 @@ window.Dashboard = (function () {
 
 
 (function () {
+  const USER_ROLE = window.AAPM_USER_ROLE || document.body.dataset.userRole || "";
+  const USER_PERMISSIONS = new Set(window.AAPM_DASHBOARD_PERMISSIONS || (document.body.dataset.userPermissions || "").split(",").filter(Boolean));
+  const IS_ADMIN = USER_ROLE === "admin";
+  const ROUTE_REQUIREMENTS = {
+    smart: "smart",
+    dashboard: "dashboard",
+    grafico: "charts",
+    pedidos: "orders",
+    clientes: "customers",
+    funcionarios: "admin",
+    relatorios: "reports",
+    configuracoes: "settings",
+    admin: "products",
+    categorias: "categories",
+    estoque: ["stock", "stock_movements"],
+    movimentacoes: ["movements", "stock_movements"]
+  };
   const ROUTE_META = {
     smart:         { title: "AAPM Smart",            sub: "Inteligencia artificial de vendas" },
     dashboard:     { title: "Dashboard",             sub: "Visão geral das vendas e operações." },
@@ -2217,6 +2320,32 @@ window.Dashboard = (function () {
     relatorios:    { title: "Relatórios",            sub: "Exportações e análises detalhadas." },
     configuracoes: { title: "Configurações",         sub: "Preferências da loja e do painel." }
   };
+
+  function can(permission) {
+    if ((permission === "stock" || permission === "movements") && USER_PERMISSIONS.has("stock_movements")) return true;
+    return IS_ADMIN || USER_PERMISSIONS.has(permission);
+  }
+
+  function canRoute(route) {
+    const requirement = ROUTE_REQUIREMENTS[route];
+    if (!requirement) return IS_ADMIN;
+    if (requirement === "admin") return IS_ADMIN;
+    if (Array.isArray(requirement)) return requirement.some(can);
+    return can(requirement);
+  }
+
+  function firstAllowedRoute() {
+    return Object.keys(ROUTE_META).find(canRoute) || "admin";
+  }
+
+  function applyPermissionUI() {
+    document.querySelectorAll("[data-admin-only='true']").forEach(element => {
+      if (!IS_ADMIN) element.hidden = true;
+    });
+    document.querySelectorAll("[data-requires-permission]").forEach(element => {
+      if (!can(element.dataset.requiresPermission)) element.hidden = true;
+    });
+  }
 
   function setupMotionObserver(root = document) {
     const targets = root.querySelectorAll(".kpi, .glass, .card, .customer-card, .category-card, .report-card, .table-wrap");
@@ -2286,6 +2415,7 @@ window.Dashboard = (function () {
 
   function navigate(route) {
     if (!ROUTE_META[route]) route = "dashboard";
+    if (!canRoute(route)) route = firstAllowedRoute();
 
     document.body.classList.add("route-changing");
     document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.route === route));
@@ -2305,15 +2435,15 @@ window.Dashboard = (function () {
 
     // Page-specific refreshes
     try {
-      if (route === "dashboard")  window.Dashboard.refresh();
-      if (route === "grafico")    window.Dashboard.refresh();
-      if (route === "admin")      window.ProductsPage.render();
-      if (route === "pedidos")    window.OrdersPage.render();
-      if (route === "clientes")   window.CustomersPage.render();
-      if (route === "funcionarios" && window.EmployeesPage) window.EmployeesPage.render();
-      if (route === "categorias") window.CategoriesPage.render();
-      if (route === "estoque")    window.StockPage.render();
-      if (route === "movimentacoes") window.StockMovementsPage.render();
+      if (route === "dashboard" && can("dashboard"))  window.Dashboard.refresh();
+      if (route === "grafico" && can("charts"))    window.Dashboard.refresh();
+      if (route === "admin" && can("products"))      window.ProductsPage.render();
+      if (route === "pedidos" && can("orders"))    window.OrdersPage.render();
+      if (route === "clientes" && can("customers"))   window.CustomersPage.render();
+      if (route === "funcionarios" && IS_ADMIN && window.EmployeesPage) window.EmployeesPage.render();
+      if (route === "categorias" && can("categories")) window.CategoriesPage.render();
+      if (route === "estoque" && (can("stock") || can("stock_movements")))    window.StockPage.render();
+      if (route === "movimentacoes" && (can("movements") || can("stock_movements"))) window.StockMovementsPage.render();
     } catch (err) {
       console.error(`Falha ao renderizar rota ${route}:`, err);
       UI.toast("Nao foi possivel atualizar esta tela.", "warn");
@@ -3010,7 +3140,7 @@ window.Dashboard = (function () {
     // Global search routes to products if there's a query
     document.getElementById("globalSearch").addEventListener("input", e => {
       const q = e.target.value.trim();
-      if (!q) return;
+      if (!q || !can("products")) return;
       document.getElementById("productSearch").value = q;
       navigate("admin");
       window.ProductsPage.render();
@@ -3018,29 +3148,47 @@ window.Dashboard = (function () {
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
+    applyPermissionUI();
     try {
-      const [cats, prods, customers, orders, daily, hourly, notifications, metrics, topProducts, smart] = await Promise.all([
-        window.API.getCategories(),
-        window.API.getProducts(),
-        window.API.getCustomers(),
-        window.API.getOrders(),
-        window.API.getDailySales(30),
-        window.API.getHourlySales(),
-        window.API.getNotifications(),
-        window.API.getDashboardMetrics(),
-        window.API.getTopProducts(),
-        window.API.getSmartInsights()
-      ]);
-      window.DB.categories = cats;
-      window.DB.products = prods;
-      window.DB.customers = customers;
-      window.DB.orders = orders;
-      window.DB.daily = daily;
-      window.DB.hourly = hourly;
-      window.DB.notifications = notifications;
-      window.DB.metrics = metrics;
-      window.DB.topProducts = topProducts;
-      window.DB.smart = smart;
+      if (IS_ADMIN) {
+        const [cats, prods, customers, orders, daily, hourly, notifications, metrics, topProducts, smart] = await Promise.all([
+          window.API.getCategories(),
+          window.API.getProducts(),
+          window.API.getCustomers(),
+          window.API.getOrders(),
+          window.API.getDailySales(30),
+          window.API.getHourlySales(),
+          window.API.getNotifications(),
+          window.API.getDashboardMetrics(),
+          window.API.getTopProducts(),
+          window.API.getSmartInsights()
+        ]);
+        window.DB.categories = cats;
+        window.DB.products = prods;
+        window.DB.customers = customers;
+        window.DB.orders = orders;
+        window.DB.daily = daily;
+        window.DB.hourly = hourly;
+        window.DB.notifications = notifications;
+        window.DB.metrics = metrics;
+        window.DB.topProducts = topProducts;
+        window.DB.smart = smart;
+      } else {
+        if (can("products") || can("categories") || can("stock") || can("movements") || can("stock_movements") || can("dashboard") || can("charts") || can("reports") || can("smart")) {
+          window.DB.categories = await window.API.getCategories();
+        }
+        if (can("products") || can("stock") || can("movements") || can("stock_movements") || can("dashboard") || can("charts") || can("reports") || can("smart")) {
+          window.DB.products = await window.API.getProducts();
+        }
+        window.DB.customers = can("customers") || can("reports") ? await window.API.getCustomers() : [];
+        window.DB.orders = can("orders") || can("dashboard") || can("charts") || can("reports") || can("smart") ? await window.API.getOrders() : [];
+        window.DB.daily = can("dashboard") || can("charts") || can("reports") || can("smart") ? await window.API.getDailySales(30) : [];
+        window.DB.hourly = can("dashboard") || can("charts") ? await window.API.getHourlySales() : [];
+        window.DB.notifications = [];
+        window.DB.metrics = can("dashboard") || can("charts") ? await window.API.getDashboardMetrics() : null;
+        window.DB.topProducts = can("dashboard") || can("charts") || can("smart") ? await window.API.getTopProducts() : [];
+        window.DB.smart = can("smart") ? await window.API.getSmartInsights() : null;
+      }
     } catch (err) {
       console.error("Falha ao carregar dados do backend:", err);
       window.DB.customers = [];
@@ -3066,17 +3214,17 @@ window.Dashboard = (function () {
     };
 
     // Init pages
-    safeInit("dashboard", () => window.Dashboard.init());
-    safeInit("produtos", () => window.ProductsPage.init());
-    safeInit("pedidos", () => window.OrdersPage.init());
-    safeInit("associados", () => window.CustomersPage.init());
-    safeInit("funcionarios", () => window.EmployeesPage.init());
-    safeInit("categorias", () => window.CategoriesPage.init());
-    safeInit("estoque", () => window.StockPage.init());
-    safeInit("movimentacoes", () => window.StockMovementsPage.init());
-    safeInit("AAPM Smart", () => SmartGoals.init());
-    safeInit("experiencia AAPM Smart", () => SmartExperience.init());
-    safeInit("assistente AAPM Smart", () => SmartAssistant.init());
+    if (IS_ADMIN || can("dashboard") || can("charts")) safeInit("dashboard", () => window.Dashboard.init());
+    if (can("products")) safeInit("produtos", () => window.ProductsPage.init());
+    if (can("orders")) safeInit("pedidos", () => window.OrdersPage.init());
+    if (can("customers")) safeInit("associados", () => window.CustomersPage.init());
+    if (IS_ADMIN) safeInit("funcionarios", () => window.EmployeesPage.init());
+    if (can("categories")) safeInit("categorias", () => window.CategoriesPage.init());
+    if (can("stock") || can("stock_movements")) safeInit("estoque", () => window.StockPage.init());
+    if (can("movements") || can("stock_movements")) safeInit("movimentacoes", () => window.StockMovementsPage.init());
+    if (can("smart")) safeInit("AAPM Smart", () => SmartGoals.init());
+    if (can("smart")) safeInit("experiencia AAPM Smart", () => SmartExperience.init());
+    if (can("smart")) safeInit("assistente AAPM Smart", () => SmartAssistant.init());
     renderNotifications();
     updateSidebarBadges();
     runPreventiveChecks();
@@ -3084,7 +3232,7 @@ window.Dashboard = (function () {
     setupChartScrollObserver();
 
     // Initial route via hash
-    const route = (location.hash || "#dashboard").replace("#", "");
+    const route = (location.hash || (IS_ADMIN ? "#dashboard" : `#${firstAllowedRoute()}`)).replace("#", "");
     navigate(route);
 
     // Periodic refresh of badges (simulate real-time)

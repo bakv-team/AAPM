@@ -121,15 +121,23 @@
 
                 <form action="/auth/" method="post" id="loginForm" data-temporary-error="{{ 'true' if erro_temporario else 'false' }}">
                     {% set erro_normalizado = (erro or "")|lower %}
-                    {% set credenciais_invalidas = erro and ("senha" in erro_normalizado or "e-mail" in erro_normalizado) %}
+                    {% set email_inexistente = erro and ("nao cadastrado" in erro_normalizado or "não cadastrado" in erro_normalizado) %}
+                    {% set credenciais_invalidas = erro and not email_inexistente and ("senha" in erro_normalizado or "e-mail" in erro_normalizado) %}
 
-                    <div class="input-box">
+                    <div class="input-box {% if email_inexistente %}has-error{% endif %}">
 
                         <i data-lucide="user"></i>
 
-                        <input type="email" name="email" id="loginEmailInput" placeholder="E-mail" required>
+                        <input type="email" name="email" id="loginEmailInput" placeholder="E-mail" required {% if email_inexistente %}aria-invalid="true" aria-describedby="loginEmailError"{% endif %}>
 
                     </div>
+
+                    {% if email_inexistente %}
+                    <p class="login-field-error" id="loginEmailError">
+                        <i data-lucide="circle-alert"></i>
+                        <span>Este e-mail nao existe no cadastro. Verifique ou solicite seu acesso.</span>
+                    </p>
+                    {% endif %}
 
                     <div class="input-box password-field {% if credenciais_invalidas %}has-error{% endif %}">
 

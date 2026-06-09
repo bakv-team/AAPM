@@ -62,7 +62,7 @@
                 </div>
 
                 <nav class="dashboard-nav" aria-label="Navegação entre painéis">
-                    {% if usuario.role == "admin" %}
+                    {% if usuario.role == "admin" or permissoes_usuario %}
                     <a href="/dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
                     {% endif %}
                     <a href="/pdv" class="active"><i class="fa-solid fa-cash-register"></i><span>Ponto de Venda</span></a>
@@ -273,7 +273,7 @@
             <p id="successOrderSummary">A venda foi salva com sucesso.</p>
             <div class="success-actions">
                 <a href="/pdv" class="checkout-primary"><i class="fa-solid fa-cash-register"></i><span>Voltar ao PDV</span></a>
-                {% if usuario.role == "admin" %}
+                {% if usuario.role == "admin" or permissoes_usuario %}
                 <a href="/dashboard" class="checkout-secondary"><i class="fa-solid fa-gauge-high"></i><span>Ir para o dashboard</span></a>
                 {% endif %}
             </div>

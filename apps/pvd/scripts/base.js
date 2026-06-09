@@ -213,6 +213,15 @@ function money(value) {
   return BRL.format(Number(value) || 0);
 }
 
+function escapeHTML(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function paymentLabel(payment) {
   const labels = {
     pix: "Pix",
@@ -382,17 +391,20 @@ function renderProdutos() {
       const disponivel = produtoDisponivel(produto);
       const disabled = disponivel <= 0 ? "disabled" : "";
       const estoqueLabel = disponivel > 0 ? `${disponivel} disponiveis` : "Indisponivel";
+      const nome = escapeHTML(produto.name);
+      const categoria = escapeHTML(categoriaNome(produto.categoryId));
+      const imagem = escapeHTML(produtoImagem(produto));
       return `
         <article class="card product-card">
           <div class="card-image">
-            <img src="${produtoImagem(produto)}" alt="${produto.name}" loading="lazy">
+            <img src="${imagem}" alt="${nome}" loading="lazy">
           </div>
           <div class="card-content">
             <div class="product-card-main">
-              <span class="card-category">${categoriaNome(produto.categoryId)}</span>
-              <h3 class="card-title">${produto.name}</h3>
+              <span class="card-category" title="${categoria}">${categoria}</span>
+              <h3 class="card-title" title="${nome}">${nome}</h3>
             </div>
-            <p class="stock-chip ${disponivel <= 0 ? "danger" : ""}">${estoqueLabel}</p>
+            <p class="stock-chip ${disponivel <= 0 ? "danger" : ""}" title="${escapeHTML(estoqueLabel)}">${escapeHTML(estoqueLabel)}</p>
             <p class="price">${money(produto.price)}</p>
             <button class="card-button" data-add-product="${produto.id}" ${disabled}>
               <i class="fa-solid fa-cart-plus"></i> Adicionar
@@ -411,7 +423,9 @@ function renderProdutos() {
     setupMotionObserver(productsGrid);
   });
 
-  if (productCount) productCount.textContent = `(${total})`;
+  if (productCount) {
+    productCount.textContent = total > perPage ? `(${items.length} de ${total})` : `(${total})`;
+  }
   if (resultCount) {
     const first = total ? start + 1 : 0;
     const last = Math.min(start + items.length, total);

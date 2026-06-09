@@ -17,7 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from database.auth import get_admin, get_usuario_logado, hash_senha, verificar_senha
+from database.auth import get_usuario_logado, hash_senha, require_permission, verificar_senha
 from database.controllers.produto_controller import _remover_imagem, _salvar_imagem
 from database.database import get_db
 from database.models.categoria import Categoria
@@ -462,7 +462,7 @@ def listar_categorias_api(
 def criar_categoria_api(
     payload: CategoriaPayload,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("categories")),
 ):
     nome = payload.nome.strip()
     if not nome:
@@ -485,7 +485,7 @@ def editar_categoria_api(
     categoria_id: int,
     payload: CategoriaPayload,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("categories")),
 ):
     categoria = db.query(Categoria).filter(Categoria.id == categoria_id).first()
     if not categoria or not categoria.ativo:
@@ -514,7 +514,7 @@ def editar_categoria_api(
 def remover_categoria_api(
     categoria_id: int,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("categories")),
 ):
     categoria = db.query(Categoria).filter(Categoria.id == categoria_id).first()
     if not categoria or not categoria.ativo:
@@ -539,7 +539,7 @@ def listar_movimentacoes_estoque_api(
     tipo: str = "",
     limit: int = Query(default=80, ge=1, le=200),
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("stock", "movements", "stock_movements")),
 ):
     query = db.query(Movimentacao).order_by(Movimentacao.criado_em.desc(), Movimentacao.id.desc())
 
@@ -570,7 +570,7 @@ def listar_produtos_api(
     stock: str = "",
     status_filtro: str = Query("active", alias="status"),
     db: Session = Depends(get_db),
-    usuario=Depends(get_usuario_logado),
+    usuario=Depends(require_permission("products", "stock", "movements", "stock_movements", "dashboard", "charts", "reports", "smart")),
 ):
     query = db.query(Produto)
 
@@ -603,7 +603,7 @@ def listar_produtos_api(
 
 
 @router.get("/product-images")
-def listar_imagens_produto_api(admin=Depends(get_admin)):
+def listar_imagens_produto_api(admin=Depends(require_permission("products"))):
     PRODUCT_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     imagens = []
     for caminho in sorted(PRODUCT_IMAGE_DIR.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
@@ -770,7 +770,7 @@ def criar_venda_api(
 def listar_clientes_api(
     q: str = Query("", max_length=100),
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("customers", "reports")),
 ):
     query = db.query(Cliente).filter(Cliente.ativo == True)
     termo = q.strip()
@@ -819,7 +819,7 @@ def consultar_associado_api(
 def criar_cliente_api(
     payload: ClientePayload,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("customers")),
 ):
     nome = payload.nome.strip()
     if not nome:
@@ -852,7 +852,7 @@ def criar_cliente_api(
 def remover_cliente_api(
     cliente_id: int,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("customers")),
 ):
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.ativo == True).first()
     if not cliente:
@@ -869,7 +869,7 @@ def listar_pedidos_api(
     q: str = Query("", max_length=100),
     status_filtro: str = Query("", alias="status"),
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("orders", "dashboard", "charts", "reports", "smart")),
 ):
     if status_filtro and status_filtro != "concluido":
         return []
@@ -889,7 +889,7 @@ def listar_pedidos_api(
 def vendas_por_dia_api(
     dias: int = Query(7, alias="range", ge=1, le=90),
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("dashboard", "charts", "reports", "smart")),
 ):
     hoje = _hoje_local()
     inicio = hoje - timedelta(days=dias - 1)
@@ -918,7 +918,7 @@ def vendas_por_dia_api(
 @router.get("/dashboard/hourly")
 def vendas_por_hora_api(
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("dashboard", "charts")),
 ):
     hoje = _hoje_local()
     vendas = (
@@ -940,7 +940,7 @@ def vendas_por_hora_api(
 @router.get("/dashboard/metrics")
 def metricas_dashboard_api(
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("dashboard", "charts")),
 ):
     hoje = _hoje_local()
     ontem = hoje - timedelta(days=1)
@@ -977,7 +977,7 @@ def metricas_dashboard_api(
 @router.get("/dashboard/top-products")
 def produtos_mais_vendidos_api(
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("dashboard", "charts", "smart")),
 ):
     rows = (
         db.query(
@@ -1012,7 +1012,7 @@ def aapm_smart_insights_api(
     meta_diaria: int = Query(30, ge=1, le=1000),
     lucro_unidade: float = Query(3.5, ge=0, le=10000),
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("smart")),
 ):
     try:
         meta_diaria = int(meta_diaria)
@@ -1260,7 +1260,7 @@ def _call_external_ai(message: str, insights: dict) -> str | None:
 def aapm_smart_assistant_api(
     payload: SmartAssistantPayload,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("smart")),
 ):
     message = (payload.message or "").strip()
     if not message:
@@ -1282,7 +1282,7 @@ def aapm_smart_assistant_api(
 @router.get("/system/health")
 def sistema_health_api(
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("settings")),
 ):
     counts = {
         "products": db.query(Produto).filter(Produto.ativo == True).count(),
@@ -1347,7 +1347,7 @@ def baixar_relatorio_api(
     tipo: str,
     period: str = Query("month"),
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("reports")),
 ):
     hoje = _hoje_local().isoformat()
     inicio, fim, dias, periodo_slug = _periodo_relatorio(period)
@@ -1533,7 +1533,7 @@ async def criar_produto_api(
     imagem: UploadFile = File(None),
     imagem_existente: str = Form(""),
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("products")),
 ):
     nome = nome.strip()
     if not nome:
@@ -1585,7 +1585,7 @@ async def editar_produto_api(
     imagem: UploadFile = File(None),
     imagem_existente: str = Form(""),
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("products")),
 ):
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not produto or not produto.ativo:
@@ -1642,7 +1642,7 @@ def adicionar_estoque_api(
     produto_id: int,
     payload: EstoquePayload,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("stock", "movements", "stock_movements")),
 ):
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not produto or not produto.ativo:
@@ -1676,7 +1676,7 @@ def alterar_status_produto_api(
     produto_id: int,
     payload: ProdutoStatusPayload,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("products")),
 ):
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not produto:
@@ -1693,13 +1693,18 @@ def alterar_status_produto_api(
 def remover_produto_api(
     produto_id: int,
     db: Session = Depends(get_db),
-    admin=Depends(get_admin),
+    admin=Depends(require_permission("products")),
 ):
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
-    if not produto or not produto.ativo:
+    if not produto:
         raise HTTPException(status_code=404, detail="Produto nao encontrado.")
 
-    produto.ativo = False
+    db.query(Movimentacao).filter(Movimentacao.produto_id == produto_id).delete(synchronize_session=False)
+    db.query(ItemVenda).filter(ItemVenda.produto_id == produto_id).update(
+        {ItemVenda.produto_id: None},
+        synchronize_session=False,
+    )
+    db.delete(produto)
     db.commit()
 
     return {"ok": True}

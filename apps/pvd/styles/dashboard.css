@@ -6693,9 +6693,10 @@ body {
 .dashboard-permission-card {
   position: relative;
   display: grid !important;
-  grid-template-columns: 22px 32px minmax(0, 1fr);
+  grid-template-columns: 28px 32px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  column-gap: 14px;
+  row-gap: 10px;
   min-height: 48px;
   padding: 8px 10px;
   border: 1px solid rgba(10, 23, 56, 0.09);
@@ -6759,7 +6760,7 @@ body {
   place-items: center;
   width: 32px;
   height: 32px;
-  justify-self: center;
+  justify-self: start;
   border-radius: 8px;
   color: var(--orange);
   background: rgba(255, 143, 31, 0.13);

@@ -11,7 +11,7 @@
 ![Licença](https://img.shields.io/badge/licença-MIT-orange)
 
 **Instituição:** SENAI Francisco Matarazzo — São Paulo/SP  
-**Última atualização:** Abril de 2026
+**Última atualização:** Junho de 2026
 
 </div>
 
@@ -54,11 +54,11 @@ A aplicação centraliza rotinas de venda, controle de produtos, categorias, cli
 | Dashboard | Indicadores operacionais, gráficos, métricas e notificações |
 | Produtos | Cadastro, edição, remoção lógica, imagens, categorias e filtros |
 | Categorias | Cadastro, edição, listagem e vínculos com produtos |
-| Vendas/PDV | Registro de vendas, itens, pagamento, desconto de associado e baixa de estoque |
+| Vendas/PDV | Registro de vendas, itens, pagamento, exceções de pagamento, desconto de associado e baixa de estoque |
 | Clientes | Cadastro e consulta de clientes/associados |
 | Estoque | Entradas, saídas e histórico de movimentações |
 | Relatórios | Exportações e consultas administrativas |
-| Usuários | Gestão administrativa de contas e permissões |
+| Usuários | Gestão administrativa de contas, permissões e visibilidade do dashboard |
 
 ### 1.3 Perfis de uso
 
@@ -233,9 +233,23 @@ uvicorn database.main:app --reload
 | `ItemVenda` | Produtos vinculados à venda |
 | `Movimentacao` | Entradas e saídas de estoque |
 
-### 7.2 Migrations
+### 7.2 Campos de exceção de pagamento
+
+O modelo `Venda` também guarda exceções de pagamento para pedidos autorizados com quitação futura, como acordos de Pix mensal.
+
+| Campo | Finalidade |
+|---|---|
+| `excecao_pagamento` | Indica se a venda possui exceção ativa |
+| `excecao_status` | Controla `pendente`, `pago` ou `sem_excecao` |
+| `excecao_prazo` | Prazo combinado para pagamento |
+| `excecao_observacao` | Observação do acordo registrado no PDV |
+| `excecao_pago_em` | Data em que a exceção foi marcada como paga |
+
+### 7.3 Migrations
 
 O projeto utiliza **Alembic** para manter o schema do banco versionado. As revisões ficam em `migrations/versions` e representam a evolução controlada das tabelas.
+
+Além das migrations, `database/main.py` contém uma rotina de compatibilidade no startup para adicionar automaticamente colunas incrementais necessárias em bancos SQLite já existentes, como permissões de usuário e campos de exceção de pagamento.
 
 ---
 
@@ -279,6 +293,8 @@ O projeto utiliza **Alembic** para manter o schema do banco versionado. As revis
 | `GET` | `/api/v1/pdv/stock/movements` | Lista movimentações |
 | `POST` | `/api/v1/pdv/sales` | Registra venda |
 | `GET` | `/api/v1/pdv/orders` | Lista pedidos |
+| `PUT` | `/api/v1/pdv/orders/{venda_id}/payment-exception` | Marca exceção de pagamento como paga ou pendente |
+| `GET` | `/api/v1/pdv/notifications` | Lista notificações operacionais, incluindo prazos de exceção próximos ou vencidos |
 | `GET` | `/api/v1/pdv/dashboard/metrics` | Métricas do painel |
 | `GET` | `/api/v1/pdv/reports/{tipo}` | Exportação de relatórios |
 
@@ -307,17 +323,37 @@ O dashboard usa `apps/pvd/scripts/dashboard.js` como ponto central de integraç�
 | `window.UI` | Formatação, modais, toasts e utilitários |
 | `window.CHARTS` | Gráficos e visualizações |
 
-### 10.2 Rotas internas do painel
+### 10.2 PDV e exceções de pagamento
+
+A tela de vendas em `apps/pvd/views/vendas.html` permite registrar exceções de pagamento abaixo das formas de pagamento. Quando ativada, a venda exige um prazo, aceita uma observação e aparece no dashboard como pedido pendente até ser marcada como paga.
+
+| Elemento | Comportamento |
+|---|---|
+| Exceção de pagamento | Ativa o acordo de pagamento futuro |
+| Prazo para pagar | Define o limite de pagamento da exceção |
+| Observação | Guarda detalhes do acordo, como Pix mensal ou parcelamento combinado |
+| Revisão da compra | Mostra o resumo da exceção antes de finalizar |
+
+### 10.3 Pedidos e acompanhamento
+
+Na página `#pedidos`, pedidos comuns ficam na tabela principal. Pedidos com exceção aparecem em uma tabela separada de **Exceções de pagamento**, com prazo, observação, status e ação para marcar como pago.
+
+As notificações do PDV e do dashboard alertam quando uma exceção pendente está próxima do prazo ou vencida, orientando o vendedor a falar com o cliente.
+
+### 10.4 Rotas internas do painel
 
 | Hash | Tela |
 |---|---|
-| `#admin` | Dashboard principal |
+| `#dashboard` | Dashboard principal |
+| `#smart` | AAPM Smart |
+| `#admin` | Produtos |
 | `#grafico` | Indicadores e gráficos |
 | `#pedidos` | Pedidos |
 | `#clientes` | Clientes/associados |
+| `#funcionarios` | Funcionários e permissões |
 | `#categorias` | Categorias |
-| `#produtos` | Produtos |
 | `#estoque` | Estoque |
+| `#movimentacoes` | Movimentações de estoque |
 | `#relatorios` | Relatórios |
 | `#configuracoes` | Configurações |
 
@@ -343,6 +379,23 @@ O dashboard usa `apps/pvd/scripts/dashboard.js` como ponto central de integraç�
 | Operador | Tela de PDV e rotinas de venda |
 | Não autenticado | Login e recuperação de senha |
 
+### 11.3 Permissões do dashboard
+
+Funcionários podem receber permissões específicas por aba do dashboard. A sidebar é renderizada conforme as permissões do usuário: abas não autorizadas não aparecem no menu lateral, evitando cliques em telas bloqueadas e mantendo a navegação limpa.
+
+| Permissão | Área liberada |
+|---|---|
+| `smart` | AAPM Smart |
+| `dashboard` | Dashboard principal |
+| `products` | Produtos |
+| `charts` | Painel gráfico |
+| `orders` | Pedidos e exceções de pagamento |
+| `customers` | Associados |
+| `categories` | Categorias |
+| `stock` | Estoque |
+| `movements` | Movimentações |
+| `reports` | Relatórios |
+
 ---
 
 ## 12. Testes
@@ -358,6 +411,7 @@ A pasta `tests/` está reservada para a cobertura automatizada do projeto. A pri
 | Autenticação | Login, senha inválida, usuário inativo e recuperação |
 | Produtos | CRUD, upload de imagem e filtros |
 | Vendas | Registro, baixa de estoque e desconto de associado |
+| Exceções de pagamento | Registro com prazo, listagem separada, notificação e marcação como pago |
 | Estoque | Entrada, saída e histórico |
 | Dashboard | Métricas e endpoints agregados |
 
@@ -397,6 +451,7 @@ A pasta `tests/` está reservada para a cobertura automatizada do projeto. A pri
 | Uploads | Imagens de produtos são salvas em `database/static/uploads` |
 | Banco | SQLite é adequado para uso local/institucional pequeno |
 | E-mail | Recuperação de senha depende de configuração SMTP |
+| Exceções de pagamento | Notificações avisam sobre prazos próximos ou vencidos |
 
 ### 14.2 Relatórios
 
@@ -414,6 +469,7 @@ Os relatórios administrativos são expostos pela API do PDV e podem ser exporta
 | Dashboard administrativo | Implementado |
 | Produtos e categorias | Implementado |
 | PDV/vendas | Implementado |
+| Exceções de pagamento | Implementado |
 | Clientes/associados | Implementado |
 | Estoque e movimentações | Implementado |
 | Relatórios | Em evolução |
@@ -425,7 +481,7 @@ Os relatórios administrativos são expostos pela API do PDV e podem ser exporta
 |---|---|
 | Testes | Cobrir fluxos críticos de autenticação, vendas e estoque |
 | Relatórios | Consolidar formatos e indicadores finais |
-| Permissões | Refinar limites por perfil operacional |
+| Permissões | Expandir auditoria e testes de limites por perfil operacional |
 | Produção | Ajustar segurança, SMTP, backup e variáveis de ambiente |
 
 ---
@@ -468,6 +524,6 @@ O projeto está estruturado para evolução incremental, com API versionada, ban
 <div align="center">
 
 **AAPM v1.0** • Desenvolvido pela equipe de estudantes para o SENAI Francisco Matarazzo — São Paulo/SP  
-Abril de 2026 • Status: Ativo em Desenvolvimento
+Junho de 2026 • Status: Ativo em Desenvolvimento
 
 </div>

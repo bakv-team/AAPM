@@ -12,7 +12,7 @@
             }
         } catch (error) {}
     </script>
-    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-responsive-stable-20260605-1">
+    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-payment-exceptions-20260613-1">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -170,6 +170,22 @@
                         </div>
                     </div>
 
+                    <div class="payment-exception-box" id="paymentExceptionBox">
+                        <label class="payment-exception-toggle">
+                            <input type="checkbox" id="paymentExceptionToggle" />
+                            <span><i class="fa-solid fa-hand-holding-dollar"></i></span>
+                            <strong>Exceção de pagamento</strong>
+                        </label>
+                        <div class="payment-exception-fields" id="paymentExceptionFields" hidden>
+                            <label>Prazo para pagar
+                                <input type="date" id="paymentExceptionDue" />
+                            </label>
+                            <label>Observação
+                                <textarea id="paymentExceptionNote" rows="2" placeholder="Ex.: Pix mensal, combinado em duas parcelas"></textarea>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="cart-summary">
                         <div class="summary-row">
                             <span>Subtotal</span>
@@ -228,6 +244,7 @@
                         <div><dt>Cliente</dt><dd id="checkoutCustomer">Cliente balcão</dd></div>
                         <div><dt>Associado</dt><dd id="checkoutAssociate">Não</dd></div>
                         <div><dt>Pagamento</dt><dd id="checkoutPayment">Pix</dd></div>
+                        <div id="checkoutExceptionRow" hidden><dt>Exceção</dt><dd id="checkoutException">Sem exceção</dd></div>
                         <div><dt>Operador</dt><dd>{{ usuario.nome or usuario.sub }}</dd></div>
                     </dl>
                     <div class="checkout-totals">
@@ -283,7 +300,7 @@
     <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
     <div class="background-image"></div>
 
-    <script src="/apps/pvd/scripts/base.js?v=checkout-theme-motion-20260605-1"></script>
+    <script src="/apps/pvd/scripts/base.js?v=pdv-payment-exceptions-20260613-1"></script>
 </body>
 
 </html>

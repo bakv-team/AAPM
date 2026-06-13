@@ -265,6 +265,9 @@ window.API = (function () {
   async function createOrder(payload) {
     return apiPost("/api/v1/pdv/sales", payload);
   }
+  async function markPaymentExceptionPaid(id) {
+    return apiPut(`/api/v1/pdv/orders/${id}/payment-exception`, { pago: true });
+  }
 
   // ----- Dashboard / Métricas -----
   async function getDashboardMetrics() {
@@ -319,7 +322,7 @@ window.API = (function () {
     getCategories, createCategory, updateCategory, deleteCategory,
     getProducts, getProductImages, createProduct, updateProduct, addProductStock, getStockMovements, deleteProduct, setProductActive,
     getCustomers, createCustomer, deleteCustomer,
-    getOrders, createOrder,
+    getOrders, createOrder, markPaymentExceptionPaid,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts, getSmartInsights, askSmartAssistant,
     getNotifications, getSystemHealth, getProfile, changePassword, sendSupport, downloadReport
   };
@@ -1380,6 +1383,40 @@ window.OrdersPage = (function () {
     `;
   }
 
+  function paymentExceptionMeta(order) {
+    return order.paymentException || {};
+  }
+
+  function paymentExceptionStatus(order) {
+    const exception = paymentExceptionMeta(order);
+    if (exception.status === "pago") return `<span class="pill green">Pago</span>`;
+    const due = exception.dueAt ? new Date(exception.dueAt) : null;
+    if (due && due < new Date()) return `<span class="pill red">Vencido</span>`;
+    return `<span class="pill yellow">Pendente</span>`;
+  }
+
+  async function markPaymentExceptionPaid(orderId) {
+    const order = window.DB.orders.find(item => String(item.id) === String(orderId));
+    if (!order) return;
+    const ok = await UI.confirmDialog({
+      title: "Marcar pagamento",
+      text: `Confirmar que o pedido ${order.number} foi pago?`,
+      okLabel: "Marcar como pago"
+    });
+    if (!ok) return;
+
+    try {
+      const updated = await window.API.markPaymentExceptionPaid(orderId);
+      const index = window.DB.orders.findIndex(item => String(item.id) === String(updated.id));
+      if (index >= 0) window.DB.orders[index] = updated;
+      UI.toast(`Pedido ${updated.number} marcado como pago.`, "success");
+      await render();
+    } catch (err) {
+      console.error("Falha ao marcar excecao como paga:", err);
+      UI.toast(err.message || "Nao foi possivel marcar como pago.", "error");
+    }
+  }
+
   function renderOrderItemsList(order) {
     const items = sortedOrderItems(order);
     const list = document.getElementById("orderItemsList");
@@ -1430,6 +1467,7 @@ window.OrdersPage = (function () {
 
   async function render() {
     const body = document.getElementById("ordersBody");
+    const exceptionsBody = document.getElementById("paymentExceptionsBody");
     if (!body) return;
 
     await refreshFromApi();
@@ -1438,26 +1476,52 @@ window.OrdersPage = (function () {
       if (filters.status && o.status !== filters.status) return false;
       return true;
     });
+    const regularRows = rows.filter(o => !paymentExceptionMeta(o).enabled);
+    const exceptionRows = rows.filter(o => paymentExceptionMeta(o).enabled);
 
-    if (!rows.length) {
+    if (!regularRows.length) {
       body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum pedido encontrado.</td></tr>`;
-      return;
+    } else {
+      body.innerHTML = regularRows.map(o => `
+        <tr>
+          <td><strong>${UI.escapeHTML(o.number)}</strong></td>
+          <td>${UI.escapeHTML(o.customerName)}</td>
+          <td>${renderItemsButton(o)}</td>
+          <td><strong>${UI.money(o.total)}</strong></td>
+          <td><span class="pill blue">${UI.escapeHTML(o.payment)}</span></td>
+          <td class="muted">${UI.dateBR(o.createdAt)}</td>
+          <td>${statusPill(o.status)}</td>
+        </tr>
+      `).join("");
     }
 
-    body.innerHTML = rows.map(o => `
-      <tr>
-        <td><strong>${UI.escapeHTML(o.number)}</strong></td>
-        <td>${UI.escapeHTML(o.customerName)}</td>
-        <td>${renderItemsButton(o)}</td>
-        <td><strong>${UI.money(o.total)}</strong></td>
-        <td><span class="pill blue">${UI.escapeHTML(o.payment)}</span></td>
-        <td class="muted">${UI.dateBR(o.createdAt)}</td>
-        <td>${statusPill(o.status)}</td>
-      </tr>
-    `).join("");
+    if (exceptionsBody) {
+      exceptionsBody.innerHTML = exceptionRows.length ? exceptionRows.map(o => {
+        const exception = paymentExceptionMeta(o);
+        const isPaid = exception.status === "pago";
+        return `
+          <tr>
+            <td><strong>${UI.escapeHTML(o.number)}</strong></td>
+            <td>${UI.escapeHTML(o.customerName)}</td>
+            <td><strong>${UI.money(o.total)}</strong></td>
+            <td class="muted">${exception.dueAt ? UI.dateBR(exception.dueAt) : "-"}</td>
+            <td>${UI.escapeHTML(exception.note || "-")}</td>
+            <td>${paymentExceptionStatus(o)}</td>
+            <td class="right">
+              <div class="actions-cell">
+                <button class="act-btn view" data-mark-exception-paid="${o.id}" title="Marcar como pago"${isPaid ? " disabled" : ""}><i class="fa-solid fa-check"></i></button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("") : `<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--text-mute)">Nenhuma exceção de pagamento encontrada.</td></tr>`;
+    }
 
     body.querySelectorAll("[data-order-items]").forEach(button => {
       button.addEventListener("click", () => openOrderItemsModal(button.dataset.orderItems));
+    });
+    exceptionsBody?.querySelectorAll("[data-mark-exception-paid]").forEach(button => {
+      button.addEventListener("click", () => markPaymentExceptionPaid(button.dataset.markExceptionPaid));
     });
   }
 

@@ -107,6 +107,10 @@ const searchInput = document.getElementById("searchInput");
 const btnToggleAssociado = document.getElementById("btnToggleAssociado");
 const btnFecharPedido = document.getElementById("btnFecharPedido");
 const paymentOptions = document.getElementById("paymentOptions");
+const paymentExceptionToggle = document.getElementById("paymentExceptionToggle");
+const paymentExceptionFields = document.getElementById("paymentExceptionFields");
+const paymentExceptionDue = document.getElementById("paymentExceptionDue");
+const paymentExceptionNote = document.getElementById("paymentExceptionNote");
 const customerNameInput = document.getElementById("customerNameInput");
 const associateStatus = document.getElementById("associateStatus");
 const categoryTitle = document.getElementById("categoryName");
@@ -137,6 +141,8 @@ const checkoutItemsCount = document.getElementById("checkoutItemsCount");
 const checkoutCustomer = document.getElementById("checkoutCustomer");
 const checkoutAssociate = document.getElementById("checkoutAssociate");
 const checkoutPayment = document.getElementById("checkoutPayment");
+const checkoutExceptionRow = document.getElementById("checkoutExceptionRow");
+const checkoutException = document.getElementById("checkoutException");
 const checkoutSubtotal = document.getElementById("checkoutSubtotal");
 const checkoutDiscount = document.getElementById("checkoutDiscount");
 const checkoutTotal = document.getElementById("checkoutTotal");
@@ -500,14 +506,38 @@ function totaisCarrinho() {
   return { totalBruto, desconto, totalLiquido: totalBruto - desconto };
 }
 
+function getPaymentException() {
+  const enabled = Boolean(paymentExceptionToggle?.checked);
+  return {
+    enabled,
+    due: enabled ? (paymentExceptionDue?.value || "") : "",
+    note: enabled ? (paymentExceptionNote?.value || "").trim() : ""
+  };
+}
+
+function validatePaymentException({ focus = false } = {}) {
+  const exception = getPaymentException();
+  if (!exception.enabled) return true;
+  if (!exception.due) {
+    toast("Informe o prazo da exceção de pagamento.", "warn");
+    if (focus) paymentExceptionDue?.focus();
+    return false;
+  }
+  return true;
+}
+
 function buildSalePayload() {
   const customerName = getCustomerName();
+  const exception = getPaymentException();
   return {
     pagamento: pagamentoAtual,
     associado: ehAssociado,
     cliente_nome: customerName,
     customerName,
     observacao: customerName ? `Cliente: ${customerName}` : null,
+    excecao_pagamento: exception.enabled,
+    excecao_prazo: exception.due,
+    excecao_observacao: exception.note,
     itens: carrinho.map(item => ({
       produto_id: Number(item.id),
       quantidade: cartItemQuantity(item)
@@ -723,11 +753,18 @@ function renderCheckoutReview() {
   const itemCount = items.reduce((sum, item) => sum + cartItemQuantity(item), 0);
   const totals = totaisCarrinho();
   const customerName = getCustomerName();
+  const exception = getPaymentException();
 
   if (checkoutItemsCount) checkoutItemsCount.textContent = `${itemCount} ${itemCount === 1 ? "item" : "itens"}`;
   if (checkoutCustomer) checkoutCustomer.textContent = customerName;
   if (checkoutAssociate) checkoutAssociate.textContent = ehAssociado ? "Sim, desconto aplicado" : "Não";
   if (checkoutPayment) checkoutPayment.textContent = paymentLabel(pagamentoAtual);
+  if (checkoutExceptionRow) checkoutExceptionRow.hidden = !exception.enabled;
+  if (checkoutException) {
+    checkoutException.textContent = exception.enabled
+      ? `Prazo ${new Date(`${exception.due}T12:00:00`).toLocaleDateString("pt-BR")}${exception.note ? ` - ${exception.note}` : ""}`
+      : "Sem exceção";
+  }
   if (checkoutSubtotal) checkoutSubtotal.textContent = money(totals.totalBruto);
   if (checkoutDiscount) checkoutDiscount.textContent = `-${money(totals.desconto)}`;
   if (checkoutTotal) checkoutTotal.textContent = money(totals.totalLiquido);
@@ -772,6 +809,7 @@ async function abrirCheckout() {
   }
 
   if (!validateCustomerName({ focus: true })) return;
+  if (!validatePaymentException({ focus: true })) return;
   await validarAssociado();
 
   renderCheckoutReview();
@@ -796,6 +834,7 @@ function fecharCheckout() {
 
 function abrirConfirmacaoCompra() {
   if (!validateCustomerName({ focus: true })) return;
+  if (!validatePaymentException({ focus: true })) return;
 
   if (confirmPurchaseModal?._closeTimer) window.clearTimeout(confirmPurchaseModal._closeTimer);
   confirmPurchaseModal?.classList.remove("hidden", "modal-closing");
@@ -895,6 +934,10 @@ async function confirmarPedido() {
     ehAssociado = false;
     associadoValidado = null;
     if (customerNameInput) customerNameInput.value = "";
+    if (paymentExceptionToggle) paymentExceptionToggle.checked = false;
+    if (paymentExceptionDue) paymentExceptionDue.value = "";
+    if (paymentExceptionNote) paymentExceptionNote.value = "";
+    if (paymentExceptionFields) paymentExceptionFields.hidden = true;
     setAssociateStatus("Se o cliente for associado, o desconto será aplicado automaticamente.", "muted");
     salvarCarrinho();
     await carregarDados();
@@ -1073,6 +1116,23 @@ function bindEventos() {
       pagamentoAtual = button.dataset.payment;
       if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
     });
+  });
+
+  paymentExceptionToggle?.addEventListener("change", () => {
+    const enabled = paymentExceptionToggle.checked;
+    if (paymentExceptionFields) paymentExceptionFields.hidden = !enabled;
+    if (enabled && paymentExceptionDue && !paymentExceptionDue.value) {
+      const due = new Date();
+      due.setMonth(due.getMonth() + 1);
+      paymentExceptionDue.value = due.toISOString().slice(0, 10);
+    }
+    if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
+  });
+  paymentExceptionDue?.addEventListener("change", () => {
+    if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
+  });
+  paymentExceptionNote?.addEventListener("input", () => {
+    if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
   });
 
   btnFecharPedido?.addEventListener("click", abrirCheckout);

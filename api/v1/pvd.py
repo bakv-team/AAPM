@@ -75,6 +75,13 @@ class VendaPayload(BaseModel):
     cliente_nome: str | None = None
     customerName: str | None = None
     observacao: str | None = ""
+    excecao_pagamento: bool = False
+    excecao_prazo: str | None = None
+    excecao_observacao: str | None = None
+
+
+class ExcecaoPagamentoPayload(BaseModel):
+    pago: bool = True
 
 
 class ClientePayload(BaseModel):
@@ -198,6 +205,19 @@ def _hoje_local() -> date:
     return _agora_local().date()
 
 
+def _parse_data_local(valor: str | None) -> datetime | None:
+    texto = (valor or "").strip()
+    if not texto:
+        return None
+    try:
+        return datetime.fromisoformat(texto).replace(tzinfo=None)
+    except ValueError:
+        try:
+            return datetime.combine(date.fromisoformat(texto), time(23, 59, 59))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Prazo de pagamento invalido.")
+
+
 def _venda_json(venda: Venda) -> dict:
     observacao = venda.observacao or ""
     pagamento = _extrair_pagamento(observacao)
@@ -207,6 +227,10 @@ def _venda_json(venda: Venda) -> dict:
     total_bruto = venda.total_bruto or getattr(venda, "valor_total", 0) or 0
     total_liquido = venda.total_liquido or getattr(venda, "valor_final", 0) or 0
     criado_em = venda.criado_em or getattr(venda, "data", None)
+    excecao_ativa = bool(getattr(venda, "excecao_pagamento", False))
+    excecao_status = getattr(venda, "excecao_status", "") or ("pendente" if excecao_ativa else "sem_excecao")
+    prazo = getattr(venda, "excecao_prazo", None)
+    pago_em = getattr(venda, "excecao_pago_em", None)
     return {
         "id": venda.id,
         "number": f"#{venda.id:04d}",
@@ -218,7 +242,14 @@ def _venda_json(venda: Venda) -> dict:
         "desconto_valor": venda.desconto_valor,
         "customerName": cliente_nome,
         "payment": pagamento,
-        "status": "concluido",
+        "status": "pendente" if excecao_ativa and excecao_status == "pendente" else "concluido",
+        "paymentException": {
+            "enabled": excecao_ativa,
+            "status": excecao_status,
+            "dueAt": prazo.isoformat() if prazo else None,
+            "paidAt": pago_em.isoformat() if pago_em else None,
+            "note": getattr(venda, "excecao_observacao", None) or "",
+        },
         "observacao": venda.observacao or "",
         "createdAt": criado_em.isoformat() if criado_em else None,
         "items": [
@@ -656,6 +687,12 @@ def criar_venda_api(
     if pagamento not in ("pix", "debito", "credito", "dinheiro"):
         raise HTTPException(status_code=400, detail="Forma de pagamento invalida.")
 
+    excecao_ativa = bool(payload.excecao_pagamento)
+    excecao_prazo = _parse_data_local(payload.excecao_prazo) if excecao_ativa else None
+    excecao_observacao = (payload.excecao_observacao or "").strip()
+    if excecao_ativa and not excecao_prazo:
+        raise HTTPException(status_code=400, detail="Informe o prazo para a excecao de pagamento.")
+
     cliente_nome = (payload.cliente_nome or payload.customerName or "").strip()
     if not cliente_nome or cliente_nome.lower() in ("cliente balcao", "cliente balcão"):
         raise HTTPException(status_code=400, detail="Informe o nome do cliente para fechar o pedido.")
@@ -712,6 +749,8 @@ def criar_venda_api(
         observacoes = [f"Pagamento: {pagamento}."]
         if cliente_nome:
             observacoes.append(f"Cliente: {cliente_nome}.")
+        if excecao_ativa:
+            observacoes.append("Excecao de pagamento ativa.")
         if payload.observacao:
             obs_limpa = payload.observacao.strip()
             if obs_limpa and not obs_limpa.lower().startswith("cliente:"):
@@ -730,6 +769,10 @@ def criar_venda_api(
             total_bruto=total_bruto,
             total_liquido=total_liquido,
             observacao=" ".join(observacoes).strip(),
+            excecao_pagamento=excecao_ativa,
+            excecao_status="pendente" if excecao_ativa else "sem_excecao",
+            excecao_prazo=excecao_prazo,
+            excecao_observacao=excecao_observacao[:255] if excecao_observacao else None,
             criado_em=agora,
         )
         db.add(venda)
@@ -871,18 +914,45 @@ def listar_pedidos_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("orders", "dashboard", "charts", "reports", "smart")),
 ):
-    if status_filtro and status_filtro != "concluido":
+    if status_filtro and status_filtro not in ("concluido", "pendente"):
         return []
 
     vendas = db.query(Venda).order_by(Venda.criado_em.desc()).limit(300).all()
     termo = q.strip().lower()
     rows = [_venda_json(venda) for venda in vendas]
+    if status_filtro:
+        rows = [row for row in rows if row["status"] == status_filtro]
     if termo:
         rows = [
             row for row in rows
             if termo in f"{row['number']} {row['customerName']} {row['payment']}".lower()
         ]
     return rows
+
+
+@router.put("/orders/{venda_id}/payment-exception")
+def atualizar_excecao_pagamento_api(
+    venda_id: int,
+    payload: ExcecaoPagamentoPayload,
+    db: Session = Depends(get_db),
+    admin=Depends(require_permission("orders")),
+):
+    venda = db.query(Venda).filter(Venda.id == venda_id).first()
+    if not venda:
+        raise HTTPException(status_code=404, detail="Pedido nao encontrado.")
+    if not getattr(venda, "excecao_pagamento", False):
+        raise HTTPException(status_code=400, detail="Este pedido nao possui excecao de pagamento.")
+
+    if payload.pago:
+        venda.excecao_status = "pago"
+        venda.excecao_pago_em = _agora_local()
+    else:
+        venda.excecao_status = "pendente"
+        venda.excecao_pago_em = None
+
+    db.commit()
+    db.refresh(venda)
+    return _venda_json(venda)
 
 
 @router.get("/dashboard/daily")
@@ -1309,9 +1379,33 @@ def notificacoes_api(
     baixo_estoque = db.query(Produto).filter(Produto.ativo == True, Produto.estoque_atual <= 5).count()
     vendas_hoje = db.query(Venda).filter(Venda.criado_em >= _inicio_do_dia(hoje), Venda.criado_em <= _fim_do_dia(hoje)).count()
     ultima_venda = db.query(Venda).order_by(Venda.criado_em.desc()).first()
+    limite_excecao = _agora_local() + timedelta(days=2)
+    excecoes_pendentes = (
+        db.query(Venda)
+        .filter(
+            Venda.excecao_pagamento == True,
+            Venda.excecao_status == "pendente",
+            Venda.excecao_prazo != None,
+            Venda.excecao_prazo <= limite_excecao,
+        )
+        .order_by(Venda.excecao_prazo.asc())
+        .limit(5)
+        .all()
+    )
 
     itens = []
     itens.extend(_system_warnings(db))
+    for venda in excecoes_pendentes:
+        prazo = venda.excecao_prazo
+        vencida = bool(prazo and prazo < _agora_local())
+        cliente = venda.cliente.nome if venda.cliente else _extrair_cliente(venda.observacao or "")
+        itens.append({
+            "id": f"payment-exception-{venda.id}-{venda.excecao_status}",
+            "type": "warn" if vencida else "info",
+            "icon": "fa-calendar-check",
+            "text": f"Excecao de pagamento do pedido #{venda.id:04d} {'venceu' if vencida else 'vence em breve'} para {cliente}. Fale com o cliente sobre o restante do pagamento.",
+            "time": prazo.strftime("%d/%m") if prazo else "Prazo",
+        })
     if vendas_hoje:
         itens.append({"id": "sales-today", "type": "success", "icon": "fa-circle-check", "text": f"{vendas_hoje} venda(s) registradas hoje.", "time": "Hoje"})
     if baixo_estoque:

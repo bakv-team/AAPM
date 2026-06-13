@@ -41,6 +41,12 @@ class Venda(Base):
     # Observação opcional do operador
     observacao = Column(String(255), nullable=True)
 
+    excecao_pagamento = Column(Boolean, nullable=False, default=False)
+    excecao_status = Column(String(30), nullable=False, default="sem_excecao")
+    excecao_prazo = Column(DateTime, nullable=True)
+    excecao_observacao = Column(String(255), nullable=True)
+    excecao_pago_em = Column(DateTime, nullable=True)
+
     criado_em = Column(DateTime, server_default=func.now())
 
     # Relacionamentos

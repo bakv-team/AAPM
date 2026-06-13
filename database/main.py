@@ -47,6 +47,21 @@ def garantir_colunas_usuario():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE usuarios ADD COLUMN permissoes VARCHAR(255) NOT NULL DEFAULT ''"))
 
+    if inspector.has_table("vendas"):
+        colunas_vendas = {coluna["name"] for coluna in inspector.get_columns("vendas")}
+        novas_colunas_vendas = {
+            "excecao_pagamento": "BOOLEAN NOT NULL DEFAULT 0",
+            "excecao_status": "VARCHAR(30) NOT NULL DEFAULT 'sem_excecao'",
+            "excecao_prazo": "DATETIME",
+            "excecao_observacao": "VARCHAR(255)",
+            "excecao_pago_em": "DATETIME",
+        }
+        faltantes = [(nome, ddl) for nome, ddl in novas_colunas_vendas.items() if nome not in colunas_vendas]
+        if faltantes:
+            with engine.begin() as conn:
+                for nome, ddl in faltantes:
+                    conn.execute(text(f"ALTER TABLE vendas ADD COLUMN {nome} {ddl}"))
+
 
 @app.exception_handler(StarletteHTTPException)
 async def tratar_rota_nao_encontrada(request: Request, exc: StarletteHTTPException):

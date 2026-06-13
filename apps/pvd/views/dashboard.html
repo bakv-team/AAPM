@@ -18,11 +18,34 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-dashboard-permissions-20260609-2" />
+    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-dashboard-permissions-20260613-1" />
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
   </head>
   {% set is_admin = usuario.role == 'admin' %}
   {% set perms = permissoes_usuario or [] %}
+  {% set can_smart = is_admin or 'smart' in perms %}
+  {% set can_dashboard = is_admin or 'dashboard' in perms %}
+  {% set can_products = is_admin or 'products' in perms %}
+  {% set can_charts = is_admin or 'charts' in perms %}
+  {% set can_orders = is_admin or 'orders' in perms %}
+  {% set can_customers = is_admin or 'customers' in perms %}
+  {% set can_categories = is_admin or 'categories' in perms %}
+  {% set can_stock = is_admin or 'stock' in perms or 'stock_movements' in perms %}
+  {% set can_movements = is_admin or 'movements' in perms or 'stock_movements' in perms %}
+  {% set can_reports = is_admin or 'reports' in perms %}
+  {% set initial_route = 'dashboard' if is_admin else (
+    'smart' if can_smart else
+    'dashboard' if can_dashboard else
+    'admin' if can_products else
+    'grafico' if can_charts else
+    'pedidos' if can_orders else
+    'clientes' if can_customers else
+    'categorias' if can_categories else
+    'estoque' if can_stock else
+    'movimentacoes' if can_movements else
+    'relatorios' if can_reports else
+    'dashboard'
+  ) %}
   <body data-user-role="{{ usuario.role }}" data-user-permissions="{{ ','.join(perms) }}">
     <script>
       window.AAPM_USER_ROLE = "{{ usuario.role }}";
@@ -49,28 +72,52 @@
           </button>
         </div>
 
+        {% if can_smart %}
         <div class="smart-nav-wrap">
-          <button class="nav-item smart-nav" data-route="smart" data-requires-permission="smart"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AAPM Smart</span></button>
+          <button class="nav-item smart-nav{% if initial_route == 'smart' %} active{% endif %}" data-route="smart" data-requires-permission="smart"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AAPM Smart</span></button>
         </div>
+        {% endif %}
 
         <nav class="nav" aria-label="Navegação principal">
+          {% if can_dashboard or can_products or can_charts %}
           <p class="nav-label">Principal</p>
-          <button class="nav-item active" data-route="dashboard" data-requires-permission="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></button>
-          <button class="nav-item" data-route="admin" data-requires-permission="products"><i class="fa-solid fa-table-cells-large"></i><span>Produtos</span></button>
-          <button class="nav-item" data-route="grafico" data-requires-permission="charts"><i class="fa-solid fa-chart-column"></i><span>Painel Gráfico</span></button>
+          {% if can_dashboard %}
+          <button class="nav-item{% if initial_route == 'dashboard' %} active{% endif %}" data-route="dashboard" data-requires-permission="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></button>
+          {% endif %}
+          {% if can_products %}
+          <button class="nav-item{% if initial_route == 'admin' %} active{% endif %}" data-route="admin" data-requires-permission="products"><i class="fa-solid fa-table-cells-large"></i><span>Produtos</span></button>
+          {% endif %}
+          {% if can_charts %}
+          <button class="nav-item{% if initial_route == 'grafico' %} active{% endif %}" data-route="grafico" data-requires-permission="charts"><i class="fa-solid fa-chart-column"></i><span>Painel Gráfico</span></button>
+          {% endif %}
+          {% endif %}
 
+          {% if can_orders or can_customers or is_admin or can_categories or can_stock or can_movements %}
           <p class="nav-label">Operacional</p>
-          <button class="nav-item" data-route="pedidos" data-requires-permission="orders"><i class="fa-solid fa-receipt"></i><span>Pedidos</span><span class="badge-soft" id="navOrdersBadge">0</span></button>
-          <button class="nav-item" data-route="clientes" data-requires-permission="customers"><i class="fa-solid fa-id-card"></i><span>Associados</span></button>
+          {% if can_orders %}
+          <button class="nav-item{% if initial_route == 'pedidos' %} active{% endif %}" data-route="pedidos" data-requires-permission="orders"><i class="fa-solid fa-receipt"></i><span>Pedidos</span><span class="badge-soft" id="navOrdersBadge">0</span></button>
+          {% endif %}
+          {% if can_customers %}
+          <button class="nav-item{% if initial_route == 'clientes' %} active{% endif %}" data-route="clientes" data-requires-permission="customers"><i class="fa-solid fa-id-card"></i><span>Associados</span></button>
+          {% endif %}
           {% if is_admin %}
           <button class="nav-item" data-route="funcionarios"><i class="fa-solid fa-user-shield"></i><span>Funcionários</span></button>
           {% endif %}
-          <button class="nav-item" data-route="categorias" data-requires-permission="categories"><i class="fa-solid fa-tags"></i><span>Categorias</span></button>
-          <button class="nav-item" data-route="estoque" data-requires-permission="stock"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque</span><span class="badge-warn" id="navLowStock">0</span></button>
-          <button class="nav-item" data-route="movimentacoes" data-requires-permission="movements"><i class="fa-solid fa-arrow-right-arrow-left"></i><span>Movimentações</span></button>
+          {% if can_categories %}
+          <button class="nav-item{% if initial_route == 'categorias' %} active{% endif %}" data-route="categorias" data-requires-permission="categories"><i class="fa-solid fa-tags"></i><span>Categorias</span></button>
+          {% endif %}
+          {% if can_stock %}
+          <button class="nav-item{% if initial_route == 'estoque' %} active{% endif %}" data-route="estoque" data-requires-permission="stock"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque</span><span class="badge-warn" id="navLowStock">0</span></button>
+          {% endif %}
+          {% if can_movements %}
+          <button class="nav-item{% if initial_route == 'movimentacoes' %} active{% endif %}" data-route="movimentacoes" data-requires-permission="movements"><i class="fa-solid fa-arrow-right-arrow-left"></i><span>Movimentações</span></button>
+          {% endif %}
+          {% endif %}
 
+          {% if can_reports %}
           <p class="nav-label">Análise</p>
-          <button class="nav-item" data-route="relatorios" data-requires-permission="reports"><i class="fa-solid fa-file-invoice"></i><span>Relatórios</span></button>
+          <button class="nav-item{% if initial_route == 'relatorios' %} active{% endif %}" data-route="relatorios" data-requires-permission="reports"><i class="fa-solid fa-file-invoice"></i><span>Relatórios</span></button>
+          {% endif %}
         </nav>
 
         <div class="sidebar-footer">
@@ -132,7 +179,7 @@
         </div>
 
         <!-- ============================= PAGE: AAPM SMART ============================= -->
-        <section class="page smart-experience" id="page-smart" data-requires-permission="smart">
+        <section class="page smart-experience{% if initial_route == 'smart' %} active{% endif %}" id="page-smart" data-requires-permission="smart">
           <div class="smart-hero smart-hero-3d glass">
             <div>
               <span class="smart-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> Modelo local v1</span>
@@ -338,7 +385,7 @@
         </section>
 
         <!-- ============================= PAGE: DASHBOARD ============================= -->
-        <section class="page active" id="page-dashboard" data-requires-permission="dashboard">
+        <section class="page{% if initial_route == 'dashboard' %} active{% endif %}" id="page-dashboard" data-requires-permission="dashboard">
           <div class="kpis">
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Receita do dia</span><span class="kpi-icon orange"><i class="fa-solid fa-money-bill-trend-up"></i></span></div><h2 class="kpi-value" id="kpiRevenue">R$ 0</h2><p class="kpi-trend up" id="kpiRevenueTrend">+0%</p></div>
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Itens vendidos</span><span class="kpi-icon blue"><i class="fa-solid fa-cart-shopping"></i></span></div><h2 class="kpi-value" id="kpiItems">0</h2><p class="kpi-trend up" id="kpiItemsTrend">+0%</p></div>
@@ -396,7 +443,7 @@
         </section>
 
         <!-- ============================= PAGE: ADMIN (PRODUTOS) ============================= -->
-        <section class="page" id="page-admin" data-requires-permission="products">
+        <section class="page{% if initial_route == 'admin' %} active{% endif %}" id="page-admin" data-requires-permission="products">
           <div class="toolbar glass">
             <div class="toolbar-left">
               <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="productSearch" placeholder="Buscar produto..." /></div>
@@ -425,7 +472,7 @@
         </section>
 
         <!-- ============================= PAGE: GRÁFICO ============================= -->
-        <section class="page" id="page-grafico" data-requires-permission="charts">
+        <section class="page{% if initial_route == 'grafico' %} active{% endif %}" id="page-grafico" data-requires-permission="charts">
           <div class="kpis">
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Receita do dia</span><span class="kpi-icon orange"><i class="fa-solid fa-coins"></i></span></div><h2 class="kpi-value" id="gRevenue">R$ 0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gRevenuePct">0%</span> vs ontem</p></div>
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Itens vendidos</span><span class="kpi-icon blue"><i class="fa-solid fa-box"></i></span></div><h2 class="kpi-value" id="gItems">0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gItemsPct">0%</span></p></div>
@@ -450,7 +497,7 @@
         </section>
 
         <!-- ============================= PAGE: PEDIDOS ============================= -->
-        <section class="page" id="page-pedidos" data-requires-permission="orders">
+        <section class="page{% if initial_route == 'pedidos' %} active{% endif %}" id="page-pedidos" data-requires-permission="orders">
           <div class="toolbar glass">
             <div class="toolbar-left">
               <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="orderSearch" placeholder="Buscar pedido ou associado..." /></div>
@@ -460,10 +507,18 @@
           <div class="card glass no-pad"><div class="table-wrap">
             <table class="data-table"><thead><tr><th>Pedido</th><th>Associado/Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Data</th><th>Status</th></tr></thead><tbody id="ordersBody"></tbody></table>
           </div></div>
+          <div class="card glass no-pad payment-exceptions-panel">
+            <div class="card-head padded">
+              <div><h3>Exceções de pagamento</h3><p class="muted">Pedidos com prazo combinado para quitar o pagamento.</p></div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Prazo</th><th>Observação</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="paymentExceptionsBody"></tbody></table>
+            </div>
+          </div>
         </section>
 
         <!-- ============================= PAGE: ASSOCIADOS ============================= -->
-        <section class="page" id="page-clientes" data-requires-permission="customers">
+        <section class="page{% if initial_route == 'clientes' %} active{% endif %}" id="page-clientes" data-requires-permission="customers">
           <div class="toolbar glass">
             <div class="toolbar-left"><div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="customerSearch" placeholder="Buscar associado por nome, matrícula ou telefone..." /></div></div>
             <div class="toolbar-right"><button class="primary-btn" id="newCustomerBtn"><i class="fa-solid fa-user-plus"></i> Novo associado</button></div>
@@ -473,7 +528,7 @@
 
         {% if usuario.role == 'admin' %}
         <!-- ============================= PAGE: FUNCIONARIOS ============================= -->
-        <section class="page" id="page-funcionarios">
+        <section class="page{% if initial_route == 'funcionarios' %} active{% endif %}" id="page-funcionarios">
           {% set usuarios_ativos = usuarios | selectattr('ativo') | list | length %}
           {% set admins_total = usuarios | selectattr('role', 'equalto', 'admin') | list | length %}
           <div class="kpis">
@@ -569,7 +624,7 @@
         {% endif %}
 
         <!-- ============================= PAGE: CATEGORIAS ============================= -->
-        <section class="page" id="page-categorias" data-requires-permission="categories">
+        <section class="page{% if initial_route == 'categorias' %} active{% endif %}" id="page-categorias" data-requires-permission="categories">
           <div class="toolbar glass">
             <div class="toolbar-left"><h3 style="margin:0">Categorias do PDV</h3></div>
             <div class="toolbar-right"><button class="primary-btn" id="newCategoryBtn"><i class="fa-solid fa-plus"></i> Nova categoria</button></div>
@@ -578,7 +633,7 @@
         </section>
 
         <!-- ============================= PAGE: ESTOQUE ============================= -->
-        <section class="page" id="page-estoque" data-requires-permission="stock">
+        <section class="page{% if initial_route == 'estoque' %} active{% endif %}" id="page-estoque" data-requires-permission="stock">
           <div class="kpis">
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">SKUs ativos</span><span class="kpi-icon blue"><i class="fa-solid fa-barcode"></i></span></div><h2 class="kpi-value" id="skuCount">0</h2></div>
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Valor em estoque</span><span class="kpi-icon orange"><i class="fa-solid fa-warehouse"></i></span></div><h2 class="kpi-value" id="stockValue">R$ 0</h2></div>
@@ -591,7 +646,7 @@
         </section>
 
         <!-- ============================= PAGE: MOVIMENTACOES ============================= -->
-        <section class="page" id="page-movimentacoes" data-requires-permission="movements">
+        <section class="page{% if initial_route == 'movimentacoes' %} active{% endif %}" id="page-movimentacoes" data-requires-permission="movements">
           <div class="card glass no-pad">
             <div class="card-head padded">
               <div><h3>Histórico de movimentações</h3><p class="muted">Entradas por reposição e saídas geradas pelas vendas</p></div>
@@ -606,7 +661,7 @@
         </section>
 
         <!-- ============================= PAGE: RELATÓRIOS ============================= -->
-        <section class="page" id="page-relatorios" data-requires-permission="reports">
+        <section class="page{% if initial_route == 'relatorios' %} active{% endif %}" id="page-relatorios" data-requires-permission="reports">
           <div class="card glass reports-panel">
             <div class="card-head">
               <div><h3>Relatorios</h3><p class="muted">Exporte leituras por periodo, operacao e area do PDV.</p></div>
@@ -1018,7 +1073,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- App -->
-    <script src="/apps/pvd/scripts/dashboard.js?v=aapm-dashboard-permissions-20260609-2"></script>
+    <script src="/apps/pvd/scripts/dashboard.js?v=aapm-payment-exceptions-20260613-1"></script>
   </body>
 </html>
 

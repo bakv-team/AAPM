@@ -161,6 +161,7 @@ let termoBusca = "";
 let ehAssociado = false;
 let associadoValidado = null;
 let associateLookupTimer = null;
+let topProductIds = new Set();
 let pagamentoAtual = "pix";
 let page = 1;
 const perPage = 8;
@@ -329,6 +330,14 @@ function produtoImagem(produto) {
   return produto.imageUrl || "/apps/pvd/assets/icones/logosemtexto.png";
 }
 
+function precoAssociado(produto) {
+  return cartItemPrice(produto) * (1 - DISCOUNT);
+}
+
+function isTopProduct(produto) {
+  return topProductIds.has(String(produto?.id));
+}
+
 function normalizarCarrinho() {
   carrinho = carrinho
     .map(item => {
@@ -410,20 +419,40 @@ function renderProdutos() {
       const disabled = disponivel <= 0 ? "disabled" : "";
       const estoqueLabel = disponivel > 0 ? `${disponivel} disponiveis` : "Indisponivel";
       const nome = escapeHTML(produto.name);
+      const descricao = escapeHTML(produto.description || produto.descricao || "Produto disponivel no PDV.");
       const categoria = escapeHTML(categoriaNome(produto.categoryId));
       const imagem = escapeHTML(produtoImagem(produto));
+      const precoOriginal = cartItemPrice(produto);
+      const precoFinal = ehAssociado ? precoAssociado(produto) : precoOriginal;
+      const bestSeller = isTopProduct(produto);
+      const cardClasses = [
+        "card",
+        "product-card",
+        ehAssociado ? "has-associate-price" : "",
+        bestSeller ? "is-best-seller" : ""
+      ].filter(Boolean).join(" ");
+      const priceHTML = ehAssociado
+        ? `
+            <div class="price price-discounted" aria-label="Preco com desconto de associado">
+              <span class="old-price">${money(precoOriginal)}</span>
+              <strong>${money(precoFinal)}</strong>
+              <em>Associado -10%</em>
+            </div>
+          `
+        : `<p class="price"><strong>${money(precoOriginal)}</strong></p>`;
       return `
-        <article class="card product-card">
+        <article class="${cardClasses}">
+          ${bestSeller ? `<span class="top-seller-badge"><i class="fa-solid fa-fire"></i> Mais vendido</span>` : ""}
           <div class="card-image">
             <img src="${imagem}" alt="${nome}" loading="lazy">
           </div>
           <div class="card-content">
             <div class="product-card-main">
-              <span class="card-category" title="${categoria}">${categoria}</span>
               <h3 class="card-title" title="${nome}">${nome}</h3>
+              <p class="card-description" title="${descricao}">${descricao}</p>
             </div>
             <p class="stock-chip ${disponivel <= 0 ? "danger" : ""}" title="${escapeHTML(estoqueLabel)}">${escapeHTML(estoqueLabel)}</p>
-            <p class="price">${money(produto.price)}</p>
+            ${priceHTML}
             <button class="card-button" data-add-product="${produto.id}" ${disabled}>
               <i class="fa-solid fa-cart-plus"></i> Adicionar
             </button>
@@ -720,6 +749,7 @@ async function validarAssociado() {
     setCustomerFieldInvalid(false);
     setAssociateStatus("Se o cliente for associado, o desconto será aplicado automaticamente.", "muted");
     renderCarrinho();
+    renderProdutos();
     return;
   }
 
@@ -740,6 +770,7 @@ async function validarAssociado() {
     ehAssociado = false;
   }
   renderCarrinho();
+  renderProdutos();
 }
 
 async function carregarNotificacoes() {
@@ -876,7 +907,7 @@ function fecharConfirmacaoCompra() {
 function emitirNotaPreview() {
   renderCheckoutReview();
   const noteHTML = renderPrintableNote();
-  const printWindow = window.open("", "_blank", "width=1100,height=800");
+  const printWindow = window.open("", "_blank", "width=420,height=760");
 
   if (!printWindow) {
     window.print();
@@ -892,87 +923,121 @@ function emitirNotaPreview() {
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>AAPM - Nota de produtos</title>
       <style>
-        @page { margin: 12mm; }
+        @page {
+          size: 80mm auto;
+          margin: 5mm;
+        }
         * { box-sizing: border-box; }
         body {
           margin: 0;
-          color: #111827;
-          background: #ffffff;
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: 10px;
-          line-height: 1.35;
-        }
-        .print-note-head {
-          display: flex;
-          justify-content: space-between;
-          gap: 24px;
-          padding-bottom: 10px;
-          margin-bottom: 10px;
-          border-bottom: 2px solid #111827;
-        }
-        .print-note-head strong,
-        .print-note-info strong,
-        .print-note-totals strong {
-          display: block;
-          color: #111827;
-          font-size: 11px;
-        }
-        .print-note-head span,
-        .print-note-info span,
-        .print-note-totals span,
-        .print-note-table td span {
-          display: block;
-          color: #4b5563;
-          font-size: 8px;
-        }
-        .print-note-info {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 8px;
-          margin-bottom: 12px;
-        }
-        .print-note-info div {
-          padding: 7px;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-        }
-        .print-note-table {
-          width: 100%;
-          border-collapse: collapse;
-          table-layout: fixed;
-        }
-        .print-note-table th,
-        .print-note-table td {
-          padding: 6px 5px;
-          border: 1px solid #d1d5db;
-          vertical-align: top;
-          word-break: break-word;
-        }
-        .print-note-table th {
-          color: #111827;
+          place-items: start center;
+          min-height: 100vh;
+          padding: 18px 0;
+          color: #151515;
           background: #f3f4f6;
-          font-size: 8px;
-          text-align: left;
+          font-family: "Courier New", Courier, monospace;
+          font-size: 11px;
+          line-height: 1.32;
+        }
+        .machine-receipt {
+          width: 302px;
+          max-width: 100%;
+          padding: 16px 14px 18px;
+          background: #fff;
+          color: #151515;
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+        }
+        .receipt-center {
+          text-align: center;
+        }
+        .receipt-title {
+          display: block;
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: 0;
           text-transform: uppercase;
         }
-        .print-note-table .num {
+        .receipt-subtitle,
+        .receipt-small {
+          display: block;
+          color: #3f3f46;
+          font-size: 10px;
+        }
+        .receipt-divider {
+          height: 1px;
+          margin: 10px 0;
+          border: 0;
+          border-top: 1px dashed #555;
+        }
+        .receipt-row,
+        .receipt-total-row,
+        .receipt-item-line {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 8px;
+          align-items: baseline;
+        }
+        .receipt-row span:first-child,
+        .receipt-item-name {
+          overflow-wrap: anywhere;
+        }
+        .receipt-row strong,
+        .receipt-total-row strong,
+        .receipt-item-line strong {
           text-align: right;
           white-space: nowrap;
         }
-        .print-note-totals {
+        .receipt-meta {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 3px;
+        }
+        .receipt-items {
+          display: grid;
           gap: 8px;
+        }
+        .receipt-item {
+          display: grid;
+          gap: 2px;
+        }
+        .receipt-item-meta {
+          color: #52525b;
+          font-size: 10px;
+        }
+        .receipt-total-row {
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .receipt-total-row.grand {
+          margin-top: 6px;
+          padding-top: 8px;
+          border-top: 2px solid #151515;
+          font-size: 16px;
+          text-transform: uppercase;
+        }
+        .receipt-footer {
           margin-top: 12px;
+          text-align: center;
         }
-        .print-note-totals div {
-          padding: 8px;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
+        .receipt-barcode {
+          margin: 10px auto 6px;
+          width: 190px;
+          height: 34px;
+          background:
+            repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 5px, #111 5px 6px, transparent 6px 10px);
         }
-        .print-note-totals .grand-total {
-          border-color: #111827;
-          background: #f9fafb;
+        @media print {
+          body {
+            display: block;
+            min-height: 0;
+            padding: 0;
+            background: #fff;
+          }
+          .machine-receipt {
+            width: 100%;
+            padding: 0;
+            box-shadow: none;
+          }
         }
       </style>
     </head>
@@ -1010,80 +1075,67 @@ function renderPrintableNote() {
     const unitPrice = cartItemPrice(item);
     const itemGross = unitPrice * quantity;
     const itemDiscount = totals.desconto ? (itemGross / grossTotal) * totals.desconto : 0;
-    const itemFreight = Number(item.frete ?? item.freight ?? 0) || 0;
-    const itemTotal = itemGross - itemDiscount + itemFreight;
     const sku = productFiscalField(item, ["sku", "codigo", "code"], `PROD-${String(item.id || index + 1).padStart(4, "0")}`);
-    const ncm = productFiscalField(item, ["ncm", "NCM"], "Não informado");
-    const gtin = productFiscalField(item, ["gtin", "ean", "eanGtin", "codigo_barras", "barcode"], "SEM GTIN");
-    const unit = productFiscalField(item, ["unidade", "unidadeComercial", "commercialUnit", "unit"], "UN");
+    const itemTotal = itemGross - itemDiscount;
 
     return `
-      <tr>
-        <td>
-          <strong>${escapeHTML(sku)}</strong>
-          <span>Código interno</span>
-        </td>
-        <td>
-          <strong>${escapeHTML(cartItemName(item))}</strong>
-          <span>Descrição</span>
-        </td>
-        <td>${escapeHTML(ncm)}</td>
-        <td>${escapeHTML(gtin)}</td>
-        <td>${escapeHTML(unit)}</td>
-        <td class="num">${quantity}</td>
-        <td class="num">${money(unitPrice)}</td>
-        <td class="num">${money(itemGross)}</td>
-        <td class="num">${money(itemDiscount)}</td>
-        <td class="num">${money(itemFreight)}</td>
-        <td class="num"><strong>${money(itemTotal)}</strong></td>
-      </tr>
+      <div class="receipt-item">
+        <div class="receipt-item-line">
+          <span class="receipt-item-name">${escapeHTML(cartItemName(item))}</span>
+          <strong>${money(itemTotal)}</strong>
+        </div>
+        <span class="receipt-item-meta">${escapeHTML(sku)} - ${quantity} x ${money(unitPrice)}${itemDiscount ? ` - desc. ${money(itemDiscount)}` : ""}</span>
+      </div>
     `;
   }).join("");
 
   const noteHTML = `
-    <header class="print-note-head">
-      <div>
-        <strong>AAPM - Ponto de Venda</strong>
-        <span>Nota de produtos comprados</span>
-      </div>
-      <div>
-        <strong>${escapeHTML(orderCode)}</strong>
-        <span>${now.toLocaleString("pt-BR")}</span>
-      </div>
-    </header>
+    <section class="machine-receipt">
+      <header class="receipt-center">
+        <strong class="receipt-title">AAPM SENAI-FM</strong>
+        <span class="receipt-subtitle">PONTO DE VENDA</span>
+        <span class="receipt-small">COMPROVANTE NAO FISCAL</span>
+      </header>
 
-    <section class="print-note-info">
-      <div><span>Cliente</span><strong>${escapeHTML(customerName)}</strong></div>
-      <div><span>Pagamento</span><strong>${escapeHTML(paymentLabel(pagamentoAtual))}</strong></div>
-      <div><span>Associado</span><strong>${ehAssociado ? "Sim" : "Não"}</strong></div>
-      <div><span>Operador</span><strong>${escapeHTML(document.body.dataset.operatorName || "AAPM")}</strong></div>
+      <hr class="receipt-divider">
+
+      <section class="receipt-meta">
+        <div class="receipt-row"><span>Pedido</span><strong>${escapeHTML(orderCode)}</strong></div>
+        <div class="receipt-row"><span>Data</span><strong>${now.toLocaleDateString("pt-BR")}</strong></div>
+        <div class="receipt-row"><span>Hora</span><strong>${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</strong></div>
+        <div class="receipt-row"><span>Operador</span><strong>${escapeHTML(document.body.dataset.operatorName || "AAPM")}</strong></div>
+        <div class="receipt-row"><span>Cliente</span><strong>${escapeHTML(customerName)}</strong></div>
+      </section>
+
+      <hr class="receipt-divider">
+
+      <section class="receipt-meta">
+        <div class="receipt-row"><span>Pagamento</span><strong>${escapeHTML(paymentLabel(pagamentoAtual)).toUpperCase()}</strong></div>
+        <div class="receipt-row"><span>Associado</span><strong>${ehAssociado ? "SIM - 10%" : "NAO"}</strong></div>
+      </section>
+
+      <hr class="receipt-divider">
+
+      <section class="receipt-items">
+        ${rows || `<div class="receipt-center receipt-small">Nenhum produto informado.</div>`}
+      </section>
+
+      <hr class="receipt-divider">
+
+      <footer class="receipt-meta">
+        <div class="receipt-total-row"><span>Subtotal</span><strong>${money(totals.totalBruto)}</strong></div>
+        <div class="receipt-total-row"><span>Desconto</span><strong>-${money(totals.desconto)}</strong></div>
+        <div class="receipt-total-row grand"><span>Total</span><strong>${money(totals.totalLiquido)}</strong></div>
+      </footer>
+
+      <div class="receipt-footer">
+        <div class="receipt-barcode" aria-hidden="true"></div>
+        <span class="receipt-small">${escapeHTML(orderCode)}</span>
+        <hr class="receipt-divider">
+        <strong>OBRIGADO PELA COMPRA</strong>
+        <span class="receipt-small">AAPM - SENAI Francisco Matarazzo</span>
+      </div>
     </section>
-
-    <table class="print-note-table">
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Descrição</th>
-          <th>NCM</th>
-          <th>EAN/GTIN</th>
-          <th>Unid.</th>
-          <th class="num">Qtd.</th>
-          <th class="num">Valor Unit.</th>
-          <th class="num">Valor Total</th>
-          <th class="num">Desconto</th>
-          <th class="num">Frete</th>
-          <th class="num">Total Item</th>
-        </tr>
-      </thead>
-      <tbody>${rows || `<tr><td colspan="11">Nenhum produto informado.</td></tr>`}</tbody>
-    </table>
-
-    <footer class="print-note-totals">
-      <div><span>Subtotal</span><strong>${money(totals.totalBruto)}</strong></div>
-      <div><span>Descontos</span><strong>${money(totals.desconto)}</strong></div>
-      <div><span>Frete</span><strong>${money(0)}</strong></div>
-      <div class="grand-total"><span>Total da compra</span><strong>${money(totals.totalLiquido)}</strong></div>
-    </footer>
   `;
   printNote.innerHTML = noteHTML;
   return noteHTML;
@@ -1198,6 +1250,10 @@ async function carregarDados() {
   ]);
   categorias = cats;
   produtos = prods;
+  const topIds = prods
+    .filter(produto => produto.isTopSeller || produto.is_top_seller)
+    .map(produto => String(produto.id));
+  topProductIds = new Set(topIds);
   normalizarCarrinho();
   renderCategorias();
   renderProdutos();
@@ -1332,6 +1388,13 @@ function bindEventos() {
   customerNameInput?.addEventListener("input", () => {
     window.clearTimeout(associateLookupTimer);
     setCustomerFieldInvalid(false);
+    if (ehAssociado) {
+      ehAssociado = false;
+      associadoValidado = null;
+      setAssociateStatus("Verificando se o cliente é associado...", "loading");
+      renderCarrinho();
+      renderProdutos();
+    }
     associateLookupTimer = window.setTimeout(validarAssociado, 450);
   });
 

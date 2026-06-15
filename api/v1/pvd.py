@@ -663,7 +663,36 @@ def listar_produtos_pdv_api(
         .order_by(Produto.nome)
         .all()
     )
-    return [_produto_json(produto) for produto in produtos]
+    hoje = _hoje_local()
+    top_rows = (
+        db.query(
+            ItemVenda.produto_id,
+            func.coalesce(func.sum(ItemVenda.quantidade), 0).label("qty"),
+            func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0).label("revenue"),
+        )
+        .join(Venda, Venda.id == ItemVenda.venda_id)
+        .filter(ItemVenda.produto_id != None)
+        .filter(Venda.criado_em >= _inicio_do_dia(hoje), Venda.criado_em <= _fim_do_dia(hoje))
+        .group_by(ItemVenda.produto_id)
+        .order_by(
+            func.coalesce(func.sum(ItemVenda.quantidade), 0).desc(),
+            func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0).desc(),
+        )
+        .limit(2)
+        .all()
+    )
+    top_ids = set()
+    if top_rows:
+        top_product_id, top_qty, _ = top_rows[0]
+        next_qty = top_rows[1][1] if len(top_rows) > 1 else 0
+        if top_product_id and int(top_qty or 0) > 5 and int(top_qty or 0) > int(next_qty or 0):
+            top_ids.add(top_product_id)
+    resposta = []
+    for produto in produtos:
+        data = _produto_json(produto)
+        data["isTopSeller"] = produto.id in top_ids
+        resposta.append(data)
+    return resposta
 
 
 @router.post("/sales", status_code=status.HTTP_201_CREATED)

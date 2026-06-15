@@ -396,6 +396,10 @@ window.UI = (function () {
 
   // Toast notification
   function toast(message, type = "info") {
+    if (window.AAPMSound?.shouldPlayToast?.() !== false) {
+      window.AAPMSound?.play(window.AAPMSound.soundForToast(type));
+    }
+
     const wrap = document.getElementById("toastWrap");
     if (!wrap) return;
     const t = document.createElement("div");
@@ -1148,6 +1152,8 @@ window.ProductsPage = (function () {
       await window.API.deleteProduct(id);
       window.DB.products = window.DB.products.filter(x => String(x.id) !== String(id));
       productsPageItems = productsPageItems.filter(x => String(x.id) !== String(id));
+      window.AAPMSound?.play("remove");
+      window.AAPMSound?.suppressNextToast();
       UI.toast(`Produto "${p.name}" excluido.`, "success");
       render();
       if (window.Dashboard) window.Dashboard.refresh();
@@ -1322,6 +1328,8 @@ window.ProductsPage = (function () {
         const created = await window.API.createProduct(data);
         window.DB.products.push(created);
         if (filters.status !== "inactive") productsPageItems.push(created);
+        window.AAPMSound?.play("add");
+        window.AAPMSound?.suppressNextToast();
         UI.toast(`Produto "${data.name}" criado.`, "success");
       }
     } catch (err) {
@@ -2877,6 +2885,10 @@ window.Dashboard = (function () {
     if (!list) return;
     const visible = filterUnreadNotifications(window.DB.notifications);
     window.DB.notifications = visible;
+    if (visible.length && renderNotifications._lastCount !== visible.length) {
+      window.AAPMSound?.play(visible.some(item => item.type === "error" || item.type === "warn") ? "alert" : "notification");
+    }
+    renderNotifications._lastCount = visible.length;
     document.querySelector("#notifBtn .dot")?.classList.toggle("hidden", !visible.length);
     if (!visible.length) {
       list.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
@@ -3136,6 +3148,16 @@ window.Dashboard = (function () {
     };
     applySavedTheme();
     syncThemeIcon();
+
+    const soundEffectsToggle = document.getElementById("soundEffectsToggle");
+    if (soundEffectsToggle) {
+      soundEffectsToggle.checked = window.AAPMSound?.isEnabled?.() !== false;
+      soundEffectsToggle.addEventListener("change", () => {
+        window.AAPMSound?.setEnabled?.(soundEffectsToggle.checked);
+        if (soundEffectsToggle.checked) window.AAPMSound?.suppressNextToast?.();
+        UI.toast(soundEffectsToggle.checked ? "Efeitos sonoros ativados." : "Efeitos sonoros desativados.", "info");
+      });
+    }
 
     themeToggle?.addEventListener("click", () => {
       const willUseDark = document.documentElement.getAttribute("data-theme") !== "dark";

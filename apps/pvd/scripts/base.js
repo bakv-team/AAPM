@@ -265,6 +265,10 @@ function icon(className) {
 }
 
 function toast(message, type = "info") {
+  if (window.AAPMSound?.shouldPlayToast?.() !== false) {
+    window.AAPMSound?.play(window.AAPMSound.soundForToast(type));
+  }
+
   const wrap = document.getElementById("toastWrap");
   if (!wrap) return;
 
@@ -481,6 +485,8 @@ function adicionarAoCarrinho(idProduto) {
 
   salvarCarrinho();
   renderCarrinho();
+  window.AAPMSound?.play("add");
+  window.AAPMSound?.suppressNextToast();
   toast(`${produto.name} adicionado ao carrinho.`, "success");
 }
 
@@ -492,8 +498,10 @@ function alterarQuantidade(idProduto, delta) {
   const novaQuantidade = item.quantidade + delta;
   if (novaQuantidade <= 0) {
     carrinho = carrinho.filter(row => String(row.id) !== String(idProduto));
+    window.AAPMSound?.play("remove");
   } else if (novaQuantidade <= produtoDisponivel(produto)) {
     item.quantidade = novaQuantidade;
+    if (delta > 0) window.AAPMSound?.play("add");
   } else {
     toast("Quantidade maior que o estoque disponivel para venda.", "warn");
   }
@@ -506,6 +514,7 @@ function removerDoCarrinho(idProduto) {
   carrinho = carrinho.filter(row => String(row.id) !== String(idProduto));
   salvarCarrinho();
   renderCarrinho();
+  window.AAPMSound?.play("remove");
 }
 
 function totaisCarrinho() {
@@ -738,6 +747,10 @@ async function carregarNotificacoes() {
   try {
     pdvNotifications = filterUnreadNotifications(await apiGet("/api/v1/pdv/notifications"));
     const itens = pdvNotifications;
+    if (itens.length && carregarNotificacoes._lastCount !== itens.length) {
+      window.AAPMSound?.play(itens.some(item => item.type === "error" || item.type === "warn") ? "alert" : "notification");
+    }
+    carregarNotificacoes._lastCount = itens.length;
     pdvNotifBtn?.querySelector(".dot")?.classList.toggle("hidden", !itens.length);
     if (!itens.length) {
       pdvNotifList.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
@@ -1119,6 +1132,8 @@ function mostrarCompraFinalizada(venda, customerName = "Cliente balcão") {
     checkoutScreen?.classList.add("hidden");
     checkoutScreen?.classList.remove("checkout-complete-closing");
     document.body.classList.remove("checkout-open", "checkout-returning");
+    window.AAPMSound?.play("checkout");
+    window.AAPMSound?.suppressNextToast();
     toast(`Nova venda registrada para ${comprador}.`, "success");
   }, 620);
 }

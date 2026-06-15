@@ -218,6 +218,10 @@ function clearTemporaryLoginError(){
 }
 
 function toast(message, type = "warn"){
+  if(window.AAPMSound?.shouldPlayToast?.() !== false){
+    window.AAPMSound?.play(window.AAPMSound.soundForToast(type));
+  }
+
   const wrap = document.getElementById("toastWrap");
   if(!wrap || !message){
     return;
@@ -273,6 +277,7 @@ form?.addEventListener("submit",(e)=>{
   const btn =
   form.querySelector(".login-btn");
 
+  window.AAPMSound?.unlock().then(() => window.AAPMSound?.play("login"));
   startLoginLoading();
 
   if(btn){
@@ -392,6 +397,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const notfoundMessage = document.getElementById("toastWrap")?.dataset.notfoundMessage;
   if(notfoundMessage){
     toast(notfoundMessage, "warn");
+  }
+
+  if(document.querySelector(".login-field-error, .auth-feedback.error")){
+    window.AAPMSound?.unlock().then(() => window.AAPMSound?.play("error"));
   }
 
   const animated = document.querySelectorAll(

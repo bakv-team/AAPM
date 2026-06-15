@@ -12,7 +12,7 @@
             }
         } catch (error) {}
     </script>
-    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-payment-exceptions-20260613-1">
+    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-product-card-readable-20260615-1">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 
-<body data-user-role="{{ usuario.role }}">
+<body data-user-role="{{ usuario.role }}" data-operator-name="{{ usuario.nome or usuario.sub }}">
     <div class="app-shell" id="pdvShell">
         <canvas id="particles"></canvas>
 
@@ -300,7 +300,7 @@
     <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
     <div class="background-image"></div>
 
-    <script src="/apps/pvd/scripts/base.js?v=pdv-payment-exceptions-20260613-1"></script>
+    <script src="/apps/pvd/scripts/base.js?v=pdv-print-note-window-20260615-1"></script>
 </body>
 
 </html>

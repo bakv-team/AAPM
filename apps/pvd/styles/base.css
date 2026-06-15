@@ -5612,6 +5612,15 @@ body::after {
         min-height: 0 !important;
     }
 
+    #printNote {
+        display: block !important;
+    }
+
+    #printNote + *,
+    .checkout-shell {
+        display: none !important;
+    }
+
     .checkout-close,
     .checkout-actions,
     .checkout-note-btn {
@@ -5621,6 +5630,109 @@ body::after {
     .checkout-card {
         box-shadow: none !important;
         border-color: #d7dce8 !important;
+    }
+}
+
+.print-note {
+    display: none;
+}
+
+@media print {
+    @page {
+        margin: 12mm;
+    }
+
+    .print-note {
+        display: block !important;
+        color: #111827 !important;
+        background: #ffffff !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 10px !important;
+        line-height: 1.35 !important;
+    }
+
+    .print-note-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #111827;
+    }
+
+    .print-note-head strong,
+    .print-note-info strong,
+    .print-note-totals strong {
+        display: block;
+        color: #111827 !important;
+        font-size: 11px;
+    }
+
+    .print-note-head span,
+    .print-note-info span,
+    .print-note-totals span,
+    .print-note-table td span {
+        display: block;
+        color: #4b5563 !important;
+        font-size: 8px;
+    }
+
+    .print-note-info {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .print-note-info div {
+        padding: 7px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+    }
+
+    .print-note-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .print-note-table th,
+    .print-note-table td {
+        padding: 6px 5px;
+        border: 1px solid #d1d5db;
+        vertical-align: top;
+        word-break: break-word;
+    }
+
+    .print-note-table th {
+        color: #111827 !important;
+        background: #f3f4f6 !important;
+        font-size: 8px;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .print-note-table .num {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .print-note-totals {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .print-note-totals div {
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+    }
+
+    .print-note-totals .grand-total {
+        border-color: #111827;
+        background: #f9fafb !important;
     }
 }
 
@@ -7885,5 +7997,249 @@ body.checkout-returning .app-shell {
 
     .products-grid .product-card {
         min-height: 286px !important;
+    }
+}
+
+/* PDV catalog final layout: keep product cards compact instead of stretching a single item full width. */
+.content {
+    padding: clamp(18px, 2vw, 24px) !important;
+}
+
+.products-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(176px, 220px)) !important;
+    justify-content: start !important;
+    align-items: stretch !important;
+    gap: clamp(12px, 1.25vw, 18px) !important;
+    width: 100% !important;
+    margin-top: clamp(14px, 1.7vw, 22px) !important;
+}
+
+.products-grid .product-card {
+    width: 100% !important;
+    max-width: 220px !important;
+    min-height: 286px !important;
+    border-radius: 14px !important;
+}
+
+.products-grid .product-card .card-image {
+    height: 108px !important;
+}
+
+.products-grid .product-card .card-content {
+    grid-template-rows: minmax(70px, auto) 24px 26px 38px !important;
+    padding: 12px !important;
+    gap: 8px !important;
+}
+
+.products-grid .product-card .product-card-main {
+    grid-template-rows: 22px minmax(34px, auto) !important;
+}
+
+.pagination {
+    margin-top: clamp(18px, 2vw, 28px) !important;
+    padding-top: clamp(14px, 1.8vw, 22px) !important;
+}
+
+@media (min-width: 1500px) {
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(190px, 232px)) !important;
+    }
+
+    .products-grid .product-card {
+        max-width: 232px !important;
+    }
+}
+
+@media (max-width: 1180px) {
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)) !important;
+    }
+
+    .products-grid .product-card {
+        max-width: none !important;
+    }
+}
+
+@media (max-width: 760px) {
+    .content {
+        padding: 16px !important;
+    }
+
+    .products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+    }
+
+    .products-grid .product-card {
+        min-height: 274px !important;
+    }
+
+    .products-grid .product-card .card-image {
+        height: 96px !important;
+    }
+}
+
+@media (max-width: 460px) {
+    .content {
+        padding: 14px !important;
+    }
+
+    .products-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .products-grid .product-card {
+        min-height: 0 !important;
+    }
+}
+
+/* PDV compact product cards: denser information without losing tap targets. */
+.products-grid .product-card {
+    max-width: 210px !important;
+    min-height: 258px !important;
+}
+
+.products-grid .product-card .card-image {
+    height: 96px !important;
+}
+
+.products-grid .product-card .card-content {
+    grid-template-rows: minmax(60px, auto) 20px 23px 34px !important;
+    padding: 10px !important;
+    gap: 6px !important;
+}
+
+.products-grid .product-card .product-card-main {
+    grid-template-rows: 20px minmax(30px, auto) !important;
+    gap: 5px !important;
+}
+
+.products-grid .product-card .card-category,
+.products-grid .product-card .stock-chip {
+    padding: 4px 7px !important;
+    font-size: 9px !important;
+    line-height: 1.05 !important;
+}
+
+.products-grid .product-card .card-title {
+    min-height: 30px !important;
+    max-height: 32px !important;
+    font-size: 13px !important;
+    line-height: 1.16 !important;
+}
+
+.products-grid .product-card .price {
+    font-size: 15px !important;
+    line-height: 1 !important;
+}
+
+.products-grid .product-card .card-button {
+    min-height: 34px !important;
+    padding: 7px 10px !important;
+    border-radius: 11px !important;
+    font-size: 12px !important;
+    gap: 7px !important;
+}
+
+.products-grid .product-card .card-button i {
+    font-size: 11px !important;
+}
+
+@media (min-width: 1500px) {
+    .products-grid .product-card {
+        max-width: 220px !important;
+    }
+}
+
+@media (max-width: 760px) {
+    .products-grid .product-card {
+        min-height: 248px !important;
+    }
+
+    .products-grid .product-card .card-image {
+        height: 90px !important;
+    }
+}
+
+/* PDV product card polish: compact chips and balanced vertical rhythm. */
+.products-grid .product-card {
+    display: flex !important;
+    flex-direction: column !important;
+    max-width: 220px !important;
+    min-height: 286px !important;
+}
+
+.products-grid .product-card .card-image {
+    height: 96px !important;
+    flex: 0 0 96px !important;
+}
+
+.products-grid .product-card .card-content {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    padding: 12px 10px 10px !important;
+    gap: 8px !important;
+}
+
+.products-grid .product-card .product-card-main {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 7px !important;
+    min-height: 0 !important;
+}
+
+.products-grid .product-card .card-category {
+    width: auto !important;
+    max-width: 100% !important;
+    min-height: 20px !important;
+    align-self: center !important;
+    padding: 5px 16px !important;
+    border-radius: 999px !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+}
+
+.products-grid .product-card .card-title {
+    min-height: 34px !important;
+    max-height: 38px !important;
+    font-size: 14px !important;
+    line-height: 1.22 !important;
+}
+
+.products-grid .product-card .stock-chip {
+    width: auto !important;
+    max-width: 100% !important;
+    min-height: 22px !important;
+    align-self: center !important;
+    margin: 2px 0 0 !important;
+    padding: 5px 18px !important;
+    border-radius: 999px !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+}
+
+.products-grid .product-card .price {
+    margin-top: auto !important;
+    font-size: 17px !important;
+    line-height: 1.1 !important;
+}
+
+.products-grid .product-card .card-button {
+    min-height: 38px !important;
+    padding: 9px 12px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+}
+
+@media (max-width: 760px) {
+    .products-grid .product-card {
+        min-height: 270px !important;
     }
 }

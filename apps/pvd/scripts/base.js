@@ -250,6 +250,14 @@ function cartItemQuantity(item) {
   return Math.max(1, Number(item?.quantidade ?? item?.qty ?? 1) || 1);
 }
 
+function productFiscalField(item, keys, fallback = "-") {
+  for (const key of keys) {
+    const value = item?.[key];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return fallback;
+}
+
 function icon(className) {
   const element = document.createElement("i");
   element.className = className;
@@ -854,7 +862,218 @@ function fecharConfirmacaoCompra() {
 
 function emitirNotaPreview() {
   renderCheckoutReview();
-  window.print();
+  const noteHTML = renderPrintableNote();
+  const printWindow = window.open("", "_blank", "width=1100,height=800");
+
+  if (!printWindow) {
+    window.print();
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>AAPM - Nota de produtos</title>
+      <style>
+        @page { margin: 12mm; }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          color: #111827;
+          background: #ffffff;
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 10px;
+          line-height: 1.35;
+        }
+        .print-note-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 24px;
+          padding-bottom: 10px;
+          margin-bottom: 10px;
+          border-bottom: 2px solid #111827;
+        }
+        .print-note-head strong,
+        .print-note-info strong,
+        .print-note-totals strong {
+          display: block;
+          color: #111827;
+          font-size: 11px;
+        }
+        .print-note-head span,
+        .print-note-info span,
+        .print-note-totals span,
+        .print-note-table td span {
+          display: block;
+          color: #4b5563;
+          font-size: 8px;
+        }
+        .print-note-info {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+        .print-note-info div {
+          padding: 7px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+        }
+        .print-note-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+        .print-note-table th,
+        .print-note-table td {
+          padding: 6px 5px;
+          border: 1px solid #d1d5db;
+          vertical-align: top;
+          word-break: break-word;
+        }
+        .print-note-table th {
+          color: #111827;
+          background: #f3f4f6;
+          font-size: 8px;
+          text-align: left;
+          text-transform: uppercase;
+        }
+        .print-note-table .num {
+          text-align: right;
+          white-space: nowrap;
+        }
+        .print-note-totals {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 12px;
+        }
+        .print-note-totals div {
+          padding: 8px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+        }
+        .print-note-totals .grand-total {
+          border-color: #111827;
+          background: #f9fafb;
+        }
+      </style>
+    </head>
+    <body>${noteHTML}</body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 250);
+}
+
+function renderPrintableNote() {
+  if (!checkoutScreen) return "";
+
+  let printNote = document.getElementById("printNote");
+  if (!printNote) {
+    printNote = document.createElement("section");
+    printNote.id = "printNote";
+    printNote.className = "print-note";
+    checkoutScreen.appendChild(printNote);
+  }
+
+  const items = carrinho.filter(Boolean);
+  const totals = totaisCarrinho();
+  const customerName = getCustomerName();
+  const now = new Date();
+  const orderCode = `PDV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+  const grossTotal = totals.totalBruto || 1;
+
+  const rows = items.map((item, index) => {
+    const quantity = cartItemQuantity(item);
+    const unitPrice = cartItemPrice(item);
+    const itemGross = unitPrice * quantity;
+    const itemDiscount = totals.desconto ? (itemGross / grossTotal) * totals.desconto : 0;
+    const itemFreight = Number(item.frete ?? item.freight ?? 0) || 0;
+    const itemTotal = itemGross - itemDiscount + itemFreight;
+    const sku = productFiscalField(item, ["sku", "codigo", "code"], `PROD-${String(item.id || index + 1).padStart(4, "0")}`);
+    const ncm = productFiscalField(item, ["ncm", "NCM"], "Não informado");
+    const gtin = productFiscalField(item, ["gtin", "ean", "eanGtin", "codigo_barras", "barcode"], "SEM GTIN");
+    const unit = productFiscalField(item, ["unidade", "unidadeComercial", "commercialUnit", "unit"], "UN");
+
+    return `
+      <tr>
+        <td>
+          <strong>${escapeHTML(sku)}</strong>
+          <span>Código interno</span>
+        </td>
+        <td>
+          <strong>${escapeHTML(cartItemName(item))}</strong>
+          <span>Descrição</span>
+        </td>
+        <td>${escapeHTML(ncm)}</td>
+        <td>${escapeHTML(gtin)}</td>
+        <td>${escapeHTML(unit)}</td>
+        <td class="num">${quantity}</td>
+        <td class="num">${money(unitPrice)}</td>
+        <td class="num">${money(itemGross)}</td>
+        <td class="num">${money(itemDiscount)}</td>
+        <td class="num">${money(itemFreight)}</td>
+        <td class="num"><strong>${money(itemTotal)}</strong></td>
+      </tr>
+    `;
+  }).join("");
+
+  const noteHTML = `
+    <header class="print-note-head">
+      <div>
+        <strong>AAPM - Ponto de Venda</strong>
+        <span>Nota de produtos comprados</span>
+      </div>
+      <div>
+        <strong>${escapeHTML(orderCode)}</strong>
+        <span>${now.toLocaleString("pt-BR")}</span>
+      </div>
+    </header>
+
+    <section class="print-note-info">
+      <div><span>Cliente</span><strong>${escapeHTML(customerName)}</strong></div>
+      <div><span>Pagamento</span><strong>${escapeHTML(paymentLabel(pagamentoAtual))}</strong></div>
+      <div><span>Associado</span><strong>${ehAssociado ? "Sim" : "Não"}</strong></div>
+      <div><span>Operador</span><strong>${escapeHTML(document.body.dataset.operatorName || "AAPM")}</strong></div>
+    </section>
+
+    <table class="print-note-table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Descrição</th>
+          <th>NCM</th>
+          <th>EAN/GTIN</th>
+          <th>Unid.</th>
+          <th class="num">Qtd.</th>
+          <th class="num">Valor Unit.</th>
+          <th class="num">Valor Total</th>
+          <th class="num">Desconto</th>
+          <th class="num">Frete</th>
+          <th class="num">Total Item</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="11">Nenhum produto informado.</td></tr>`}</tbody>
+    </table>
+
+    <footer class="print-note-totals">
+      <div><span>Subtotal</span><strong>${money(totals.totalBruto)}</strong></div>
+      <div><span>Descontos</span><strong>${money(totals.desconto)}</strong></div>
+      <div><span>Frete</span><strong>${money(0)}</strong></div>
+      <div class="grand-total"><span>Total da compra</span><strong>${money(totals.totalLiquido)}</strong></div>
+    </footer>
+  `;
+  printNote.innerHTML = noteHTML;
+  return noteHTML;
 }
 
 function abrirPopover(popover, trigger) {

@@ -6951,3 +6951,30 @@ body {
     justify-content: center;
   }
 }
+
+/* Final button hover guard: theme-aware fills that stay inside the button bounds. */
+:where(.primary-btn, .ghost-btn, .danger-btn, .seg-btn, .act-btn, .icon-btn, .pager button, .report-tab, .order-items-btn, .image-upload-btn, .image-library-btn) {
+  box-sizing: border-box;
+  overflow: hidden;
+  background-clip: padding-box;
+  transform-origin: center;
+}
+
+:where(.primary-btn, .ghost-btn, .danger-btn, .seg-btn, .act-btn, .icon-btn, .pager button, .report-tab, .order-items-btn, .image-upload-btn, .image-library-btn):hover {
+  outline: 1px solid transparent;
+}
+
+:where(.ghost-btn, .seg-btn, .act-btn, .icon-btn, .pager button, .report-tab, .order-items-btn, .image-upload-btn, .image-library-btn):hover {
+  background-color: rgba(255, 255, 255, 0.86) !important;
+  color: var(--text) !important;
+  transform: translateY(-1px) !important;
+}
+
+[data-theme="dark"] :where(.ghost-btn, .seg-btn, .act-btn, .icon-btn, .pager button, .report-tab, .order-items-btn, .image-upload-btn, .image-library-btn):hover {
+  background-color: rgba(12, 18, 44, 0.92) !important;
+  color: #f3f6ff !important;
+}
+
+:where(.primary-btn, .danger-btn):hover {
+  transform: translateY(-1px) !important;
+}

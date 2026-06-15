@@ -477,9 +477,15 @@ window.UI = (function () {
 
 window.CHARTS = (function () {
   const instances = {};
+  const defaultChartAnimation = window.Chart ? Chart.defaults.animation : undefined;
 
   const TEXT_COLOR = () => getComputedStyle(document.body).getPropertyValue("--text-2").trim() || "#324269";
   const GRID = () => "rgba(10,23,56,0.08)";
+
+  function setAnimationsEnabled(enabled) {
+    if (!window.Chart) return;
+    Chart.defaults.animation = enabled ? defaultChartAnimation : false;
+  }
 
   function destroy(id) {
     if (instances[id]) { instances[id].destroy(); delete instances[id]; }
@@ -895,20 +901,52 @@ window.CHARTS = (function () {
     grad.addColorStop(0, "rgba(45,123,255,0.35)");
     grad.addColorStop(1, "rgba(45,123,255,0)");
     instances[canvasId] = new Chart(ctx, {
-      type: "bar",
+      type: "line",
       data: {
         labels: window.DB.hourly.map(h => h.hour + "h"),
         datasets: [
-          { label: "Receita (R$)", data: window.DB.hourly.map(h => h.revenue), backgroundColor: "#FF6B35", borderRadius: 8, maxBarThickness: 22, order: 2 },
-          { label: "Pedidos", data: window.DB.hourly.map(h => h.orders * 30), type: "line", borderColor: "#2D7BFF", backgroundColor: grad, fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, order: 1, yAxisID: "y" }
+          {
+            label: "Receita (R$)",
+            data: window.DB.hourly.map(h => h.revenue),
+            borderColor: "#FF6B35",
+            backgroundColor: "rgba(255, 107, 53, 0.14)",
+            fill: true,
+            tension: 0.38,
+            borderWidth: 3,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            yAxisID: "y"
+          },
+          {
+            label: "Pedidos",
+            data: window.DB.hourly.map(h => h.orders),
+            borderColor: "#2D7BFF",
+            backgroundColor: grad,
+            fill: true,
+            tension: 0.38,
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            yAxisID: "y1"
+          }
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: true, position: "bottom", labels: { color: TEXT_COLOR(), usePointStyle: true, padding: 14 } }, tooltip: tooltipStyle() },
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: true, position: "bottom", labels: { color: TEXT_COLOR(), usePointStyle: true, padding: 14 } },
+          tooltip: {
+            ...tooltipStyle(),
+            callbacks: {
+              label: c => c.dataset.label === "Receita (R$)" ? `${c.dataset.label}: ${UI.money(c.parsed.y)}` : `${c.dataset.label}: ${UI.num(c.parsed.y)}`
+            }
+          }
+        },
         scales: {
           x: { grid: { display: false }, ticks: { color: TEXT_COLOR() } },
-          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => shortMoneyTick(v) } }
+          y: { grid: { color: GRID() }, ticks: { color: TEXT_COLOR(), callback: v => shortMoneyTick(v) } },
+          y1: { position: "right", beginAtZero: true, grid: { display: false }, ticks: { color: TEXT_COLOR(), precision: 0 } }
         }
       }
     });
@@ -937,7 +975,7 @@ window.CHARTS = (function () {
   let currentRange = 7;
   function setRange(r) { currentRange = r; salesLine(r); }
 
-  return { salesLine, dashboardTicket, dashboardAssociates, categoryPie, categoryBar, categoryRadar, topProductsRevenue, stockHealth, hourly, refreshAll, resizeAll, setRange, aggregateByCategory };
+  return { salesLine, dashboardTicket, dashboardAssociates, categoryPie, categoryBar, categoryRadar, topProductsRevenue, stockHealth, hourly, refreshAll, resizeAll, setRange, setAnimationsEnabled, aggregateByCategory };
 })();
 
 
@@ -1503,6 +1541,7 @@ window.OrdersPage = (function () {
           <tr>
             <td><strong>${UI.escapeHTML(o.number)}</strong></td>
             <td>${UI.escapeHTML(o.customerName)}</td>
+            <td>${renderItemsButton(o)}</td>
             <td><strong>${UI.money(o.total)}</strong></td>
             <td class="muted">${exception.dueAt ? UI.dateBR(exception.dueAt) : "-"}</td>
             <td>${UI.escapeHTML(exception.note || "-")}</td>
@@ -1514,12 +1553,12 @@ window.OrdersPage = (function () {
             </td>
           </tr>
         `;
-      }).join("") : `<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--text-mute)">Nenhuma exceção de pagamento encontrada.</td></tr>`;
+      }).join("") : `<tr><td colspan="8" style="text-align:center;padding:36px;color:var(--text-mute)">Nenhuma exceção de pagamento encontrada.</td></tr>`;
     }
 
-    body.querySelectorAll("[data-order-items]").forEach(button => {
+    [body, exceptionsBody].filter(Boolean).forEach(tableBody => tableBody.querySelectorAll("[data-order-items]").forEach(button => {
       button.addEventListener("click", () => openOrderItemsModal(button.dataset.orderItems));
-    });
+    }));
     exceptionsBody?.querySelectorAll("[data-mark-exception-paid]").forEach(button => {
       button.addEventListener("click", () => markPaymentExceptionPaid(button.dataset.markExceptionPaid));
     });
@@ -1869,7 +1908,7 @@ window.EmployeesPage = (function () {
       document.getElementById("employeeModalTitle").textContent = "Editar funcionário";
       document.getElementById("employeeName").value = employee.name || "";
       document.getElementById("employeeEmail").value = employee.email || "";
-      document.getElementById("employeeRole").value = employee.role || "funcionario";
+      document.getElementById("employeeRole").value = employee.role === "admin" ? "admin" : "funcionario";
       const permissions = new Set((employee.permissions || "").split(",").filter(Boolean));
       document.querySelectorAll("#employeePermissionsFieldset input[type='checkbox']").forEach(input => {
         input.checked = permissions.has(input.value) || (permissions.has("stock_movements") && (input.value === "stock" || input.value === "movements"));
@@ -2313,7 +2352,9 @@ window.Dashboard = (function () {
       window.DB.metrics = metrics;
       window.DB.topProducts = topProducts;
 
+      window.CHARTS?.setAnimationsEnabled?.(false);
       refresh();
+      window.CHARTS?.setAnimationsEnabled?.(true);
       renderNotifications();
       updateSidebarBadges();
 
@@ -2323,6 +2364,7 @@ window.Dashboard = (function () {
       if (route === "movimentacoes") window.StockMovementsPage?.render();
     } catch (error) {
       console.warn("Falha ao atualizar dados em tempo real:", error);
+      window.CHARTS?.setAnimationsEnabled?.(true);
     } finally {
       refreshInFlight = false;
     }

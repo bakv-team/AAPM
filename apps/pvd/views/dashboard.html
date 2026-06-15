@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-dashboard-permissions-20260613-1" />
+    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-hover-guard-20260615-1" />
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
   </head>
   {% set is_admin = usuario.role == 'admin' %}
@@ -512,7 +512,7 @@
               <div><h3>Exceções de pagamento</h3><p class="muted">Pedidos com prazo combinado para quitar o pagamento.</p></div>
             </div>
             <div class="table-wrap">
-              <table class="data-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Prazo</th><th>Observação</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="paymentExceptionsBody"></tbody></table>
+              <table class="data-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Prazo</th><th>Observação</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="paymentExceptionsBody"></tbody></table>
             </div>
           </div>
         </section>
@@ -544,7 +544,6 @@
               <select id="employeeRoleFilter" class="select">
                 <option value="">Todos perfis</option>
                 <option value="admin">Administradores</option>
-                <option value="operador">Operadores</option>
                 <option value="funcionario">Funcionários</option>
               </select>
               <select id="employeeStatusFilter" class="select">
@@ -907,7 +906,6 @@
           <label class="span-2">E-mail de acesso<input type="email" id="employeeEmail" name="email" required /></label>
           <label>Perfil<select id="employeeRole" name="role" required>
             <option value="funcionario">Funcionário</option>
-            <option value="operador">Operador</option>
             <option value="admin">Administrador</option>
           </select></label>
           <label>Senha<input type="password" id="employeePassword" name="senha" minlength="6" required /></label>
@@ -1073,7 +1071,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- App -->
-    <script src="/apps/pvd/scripts/dashboard.js?v=aapm-payment-exceptions-20260613-1"></script>
+    <script src="/apps/pvd/scripts/dashboard.js?v=aapm-hourly-line-20260615-1"></script>
   </body>
 </html>
 

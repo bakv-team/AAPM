@@ -1,0 +1,1080 @@
+ <!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0A1738" />
+    <meta name="description" content="Aurora PDV - Painel administrativo" />
+    <title>AAPM - Painel Administrativo</title>
+
+    <script>
+      try {
+        if (localStorage.getItem("aapm_theme") === "dark") {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      } catch (error) {}
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-hover-guard-20260615-1" />
+    <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
+  </head>
+  {% set is_admin = usuario.role == 'admin' %}
+  {% set perms = permissoes_usuario or [] %}
+  {% set can_smart = is_admin or 'smart' in perms %}
+  {% set can_dashboard = is_admin or 'dashboard' in perms %}
+  {% set can_products = is_admin or 'products' in perms %}
+  {% set can_charts = is_admin or 'charts' in perms %}
+  {% set can_orders = is_admin or 'orders' in perms %}
+  {% set can_customers = is_admin or 'customers' in perms %}
+  {% set can_categories = is_admin or 'categories' in perms %}
+  {% set can_stock = is_admin or 'stock' in perms or 'stock_movements' in perms %}
+  {% set can_movements = is_admin or 'movements' in perms or 'stock_movements' in perms %}
+  {% set can_reports = is_admin or 'reports' in perms %}
+  {% set initial_route = 'dashboard' if is_admin else (
+    'smart' if can_smart else
+    'dashboard' if can_dashboard else
+    'admin' if can_products else
+    'grafico' if can_charts else
+    'pedidos' if can_orders else
+    'clientes' if can_customers else
+    'categorias' if can_categories else
+    'estoque' if can_stock else
+    'movimentacoes' if can_movements else
+    'relatorios' if can_reports else
+    'dashboard'
+  ) %}
+  <body data-user-role="{{ usuario.role }}" data-user-permissions="{{ ','.join(perms) }}">
+    <script>
+      window.AAPM_USER_ROLE = "{{ usuario.role }}";
+      window.AAPM_DASHBOARD_PERMISSIONS = {{ perms|tojson }};
+    </script>
+     
+    <!-- ====================== APP SHELL ====================== -->
+    <div class="app-shell" id="appShell">
+      <canvas id="particles" class="dashboard-particles" aria-hidden="true"></canvas>
+      <div class="dashboard-background-image" aria-hidden="true"></div>
+      <div class="dashboard-blur dashboard-blur-blue" aria-hidden="true"></div>
+      <div class="dashboard-blur dashboard-blur-orange" aria-hidden="true"></div>
+
+      <!-- =============== SIDEBAR =============== -->
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <img class="brand-logo" src="/apps/pvd/assets/icones/logosemtexto.png" alt="" aria-hidden="true" />
+          <div class="brand-text">
+            <span class="brand-title">AAPM</span>
+            <span class="brand-sub">SENAI - FM</span>
+          </div>
+          <button class="sidebar-toggle" id="sidebarCollapse" type="button" aria-label="Recolher menu" aria-expanded="true">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+        </div>
+
+        {% if can_smart %}
+        <div class="smart-nav-wrap">
+          <button class="nav-item smart-nav{% if initial_route == 'smart' %} active{% endif %}" data-route="smart" data-requires-permission="smart"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AAPM Smart</span></button>
+        </div>
+        {% endif %}
+
+        <nav class="nav" aria-label="Navegação principal">
+          {% if can_dashboard or can_products or can_charts %}
+          <p class="nav-label">Principal</p>
+          {% if can_dashboard %}
+          <button class="nav-item{% if initial_route == 'dashboard' %} active{% endif %}" data-route="dashboard" data-requires-permission="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></button>
+          {% endif %}
+          {% if can_products %}
+          <button class="nav-item{% if initial_route == 'admin' %} active{% endif %}" data-route="admin" data-requires-permission="products"><i class="fa-solid fa-table-cells-large"></i><span>Produtos</span></button>
+          {% endif %}
+          {% if can_charts %}
+          <button class="nav-item{% if initial_route == 'grafico' %} active{% endif %}" data-route="grafico" data-requires-permission="charts"><i class="fa-solid fa-chart-column"></i><span>Painel Gráfico</span></button>
+          {% endif %}
+          {% endif %}
+
+          {% if can_orders or can_customers or is_admin or can_categories or can_stock or can_movements %}
+          <p class="nav-label">Operacional</p>
+          {% if can_orders %}
+          <button class="nav-item{% if initial_route == 'pedidos' %} active{% endif %}" data-route="pedidos" data-requires-permission="orders"><i class="fa-solid fa-receipt"></i><span>Pedidos</span><span class="badge-soft" id="navOrdersBadge">0</span></button>
+          {% endif %}
+          {% if can_customers %}
+          <button class="nav-item{% if initial_route == 'clientes' %} active{% endif %}" data-route="clientes" data-requires-permission="customers"><i class="fa-solid fa-id-card"></i><span>Associados</span></button>
+          {% endif %}
+          {% if is_admin %}
+          <button class="nav-item" data-route="funcionarios"><i class="fa-solid fa-user-shield"></i><span>Funcionários</span></button>
+          {% endif %}
+          {% if can_categories %}
+          <button class="nav-item{% if initial_route == 'categorias' %} active{% endif %}" data-route="categorias" data-requires-permission="categories"><i class="fa-solid fa-tags"></i><span>Categorias</span></button>
+          {% endif %}
+          {% if can_stock %}
+          <button class="nav-item{% if initial_route == 'estoque' %} active{% endif %}" data-route="estoque" data-requires-permission="stock"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque</span><span class="badge-warn" id="navLowStock">0</span></button>
+          {% endif %}
+          {% if can_movements %}
+          <button class="nav-item{% if initial_route == 'movimentacoes' %} active{% endif %}" data-route="movimentacoes" data-requires-permission="movements"><i class="fa-solid fa-arrow-right-arrow-left"></i><span>Movimentações</span></button>
+          {% endif %}
+          {% endif %}
+
+          {% if can_reports %}
+          <p class="nav-label">Análise</p>
+          <button class="nav-item{% if initial_route == 'relatorios' %} active{% endif %}" data-route="relatorios" data-requires-permission="reports"><i class="fa-solid fa-file-invoice"></i><span>Relatórios</span></button>
+          {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <div>
+              <p class="upgrade-title">© 2026 SENAI</p>
+              <p class="upgrade-sub">Todos os direitos reservados</p>
+            </div>
+        </div>
+      </aside>
+
+      <!-- =============== MAIN =============== -->
+      <main class="main">
+        <!-- Topbar -->
+        <header class="topbar">
+          <button class="icon-btn ghost only-mobile" id="toggleSidebar" aria-label="Abrir menu"><i class="fa-solid fa-bars"></i></button>
+          <div class="page-title">
+            <h1 id="pageTitle">Dashboard</h1>
+            <p id="pageSubtitle" class="muted">Visão geral das vendas e operações.</p>
+          </div>
+
+          <nav class="dashboard-nav" aria-label="Navegação entre painéis">
+            <a href="/dashboard" class="active"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+            <a href="/pdv"><i class="fa-solid fa-cash-register"></i><span>Ponto de Venda</span></a>
+          </nav>
+
+          <div class="topbar-actions">
+            <div class="search-wrap">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="globalSearch" placeholder="Buscar produtos, pedidos, associados..." />
+              <kbd>⌘K</kbd>
+            </div>
+            <button class="icon-btn" id="themeToggle" aria-label="Alternar tema"><i class="fa-solid fa-moon"></i></button>
+            <button class="icon-btn notif" id="notifBtn" aria-label="Notificações" aria-expanded="false" aria-controls="notifTray"><i class="fa-solid fa-bell"></i><span class="dot"></span></button>
+            <div class="admin-chip" id="adminChip" role="button" tabindex="0" aria-label="Abrir perfil" aria-expanded="false" aria-controls="adminTray">
+              <div class="avatar">{{ (usuario.nome or usuario.sub or "U")[:2]|upper }}</div>
+              <div class="who"><span class="who-name">{{ usuario.nome or usuario.sub }}</span><span class="who-role">{{ "Administrador" if usuario.role == "admin" else "Funcionário" }}</span></div>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+          </div>
+        </header>
+
+        <div class="notif-tray hidden" id="notifTray">
+          <div class="notif-head"><strong>Notificações</strong><a href="#" class="muted" id="markNotifRead">Marcar todas</a></div>
+          <ul id="notifList"></ul>
+        </div>
+
+        <div class="admin-tray hidden" id="adminTray">
+          <div class="admin-tray-header">
+            <div class="avatar lg">{{ (usuario.nome or usuario.sub or "U")[:2]|upper }}</div>
+            <div><strong>{{ usuario.nome or usuario.sub }}</strong><p class="muted">{{ usuario.sub }}</p></div>
+          </div>
+          <ul>
+            <li id="profileBtn"><i class="fa-solid fa-user"></i> Meu perfil</li>
+            <li id="settingsBtn"><i class="fa-solid fa-sliders"></i> Configurações</li>
+            <li id="securityBtn"><i class="fa-solid fa-key"></i> Segurança</li>
+            <li id="supportBtn"><i class="fa-solid fa-life-ring"></i> Suporte</li>
+            <li class="danger" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Sair</li>
+          </ul>
+        </div>
+
+        <!-- ============================= PAGE: AAPM SMART ============================= -->
+        <section class="page smart-experience{% if initial_route == 'smart' %} active{% endif %}" id="page-smart" data-requires-permission="smart">
+          <div class="smart-hero smart-hero-3d glass">
+            <div>
+              <span class="smart-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> Modelo local v1</span>
+              <h2>AAPM Smart</h2>
+              <p>Copiloto de previsões para antecipar demanda, evitar falta de estoque e sugerir decisões rápidas para o PDV.</p>
+              <div class="smart-hero-actions" aria-label="Status da inteligencia">
+                <span><i class="fa-solid fa-circle-check"></i> Painel ativo</span>
+                <span><i class="fa-solid fa-clock"></i> Atualização simulada</span>
+              </div>
+            </div>
+            <div class="smart-3d-stage" aria-hidden="true">
+              <div class="smart-holo-ring ring-one"></div>
+              <div class="smart-holo-ring ring-two"></div>
+              <div class="smart-holo-core">
+                <span class="core-face face-front"><i class="fa-solid fa-brain"></i></span>
+                <span class="core-face face-back"><i class="fa-solid fa-bolt"></i></span>
+                <span class="core-face face-left"><i class="fa-solid fa-chart-line"></i></span>
+                <span class="core-face face-right"><i class="fa-solid fa-bullseye"></i></span>
+                <span class="core-face face-top"><i class="fa-solid fa-eye"></i></span>
+                <span class="core-face face-bottom"><i class="fa-solid fa-database"></i></span>
+              </div>
+              <span class="smart-node node-a"></span>
+              <span class="smart-node node-b"></span>
+              <span class="smart-node node-c"></span>
+            </div>
+          </div>
+
+          <article class="smart-assistant smart-depth-card">
+            <div class="smart-assistant-head">
+              <div>
+                <span class="smart-eyebrow"><i class="fa-solid fa-robot"></i> IA externa</span>
+                <h3>Assistente AAPM Smart</h3>
+                <p class="muted">Converse com a IA para transformar previsões, metas e estoque em ações práticas.</p>
+              </div>
+              <span class="smart-ai-status" id="smartAiStatus">Aguardando pergunta</span>
+            </div>
+            <div class="smart-chat" id="smartChatLog" aria-live="polite">
+              <div class="smart-chat-message ai">
+                <i class="fa-solid fa-brain"></i>
+                <p>Me pergunte algo como: "O que devo comprar para amanhã?" ou "Como bater a meta de hoje?"</p>
+              </div>
+            </div>
+            <form class="smart-chat-form" id="smartChatForm">
+              <input id="smartChatInput" type="text" maxlength="500" placeholder="Pergunte para a AAPM Smart..." autocomplete="off" />
+              <button type="submit"><i class="fa-solid fa-paper-plane"></i><span>Enviar</span></button>
+            </form>
+          </article>
+
+          <div class="smart-kpis">
+            <article class="smart-kpi smart-depth-card glass">
+              <span class="smart-kpi-label">Previsão de receita hoje</span>
+              <strong id="smartRevenueToday">R$ 0,00</strong>
+              <small class="smart-good" id="smartRevenueHint"><i class="fa-solid fa-arrow-trend-up"></i> Analisando histórico</small>
+            </article>
+            <article class="smart-kpi smart-depth-card glass">
+              <span class="smart-kpi-label">Itens previstos</span>
+              <strong id="smartItemsToday">0</strong>
+              <small id="smartPeakHint">Calculando horário de pico</small>
+            </article>
+            <article class="smart-kpi smart-depth-card glass">
+              <span class="smart-kpi-label">Risco de ruptura</span>
+              <strong id="smartRiskCount">0 produtos</strong>
+              <small class="smart-warn"><i class="fa-solid fa-triangle-exclamation"></i> Reposição recomendada</small>
+            </article>
+            <article class="smart-kpi smart-depth-card glass">
+              <span class="smart-kpi-label">Confiança da previsão</span>
+              <strong id="smartConfidence">0%</strong>
+              <div class="smart-meter" aria-label="Confiança de 82%">
+                <span id="smartConfidenceMeter" style="width: 0%"></span>
+              </div>
+            </article>
+          </div>
+
+          <div class="smart-neural-band glass" aria-hidden="true">
+            <span>PDV</span>
+            <i></i>
+            <span>Estoque</span>
+            <i></i>
+            <span>Metas</span>
+            <i></i>
+            <span>Previsão</span>
+          </div>
+
+          <div class="smart-layout">
+            <article class="smart-panel smart-panel-large smart-depth-card glass">
+              <div class="card-head">
+                <div><h3>Resumo inteligente do dia</h3><p class="muted">Leitura operacional gerada a partir do comportamento esperado.</p></div>
+              </div>
+              <div class="smart-forecast">
+                <div>
+                  <span>Demanda esperada</span>
+                  <strong id="smartDemandTitle">Analisando</strong>
+                  <p id="smartSummaryText">A AAPM Smart está lendo histórico recente, estoque e giro dos produtos.</p>
+                </div>
+                <div class="smart-pulse" aria-hidden="true"><i class="fa-solid fa-bolt"></i></div>
+              </div>
+              <ul class="smart-insights">
+                <li><i class="fa-solid fa-check"></i> Separar os itens mais vendidos antes do pico reduz filas no PDV.</li>
+                <li><i class="fa-solid fa-check"></i> Conferir estoque baixo antes da primeira venda evita cancelamentos.</li>
+                <li><i class="fa-solid fa-check"></i> Produtos com baixa saída podem virar combo promocional.</li>
+              </ul>
+            </article>
+
+            <article class="smart-panel smart-depth-card glass">
+              <div class="card-head">
+                <div><h3>Alertas prioritários</h3><p class="muted">O que merece atenção agora.</p></div>
+              </div>
+              <div class="smart-alert-list">
+                <div class="smart-alert danger">
+                  <i class="fa-solid fa-box-open"></i>
+                <div><strong>Estoque crítico</strong><span id="smartStockAlert">Produtos perto do limite mínimo.</span></div>
+                </div>
+                <div class="smart-alert warn">
+                  <i class="fa-solid fa-hourglass-half"></i>
+                  <div><strong>Pico próximo</strong><span>Prepare atendimento para o próximo intervalo.</span></div>
+                </div>
+                <div class="smart-alert info">
+                  <i class="fa-solid fa-chart-line"></i>
+                  <div><strong>Venda em alta</strong><span>Itens rápidos devem puxar a receita hoje.</span></div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="smart-layout bottom">
+            <article class="smart-panel smart-depth-card glass">
+              <div class="card-head">
+                <div><h3>Reposição sugerida</h3><p class="muted">Lista inicial para validar com dados reais na Etapa 2.</p></div>
+              </div>
+              <div class="smart-restock-list" id="smartRestockList">
+                <div><span>Produto mais vendido</span><strong>+12 un.</strong></div>
+                <div><span>Produto com estoque baixo</span><strong>+8 un.</strong></div>
+                <div><span>Produto de giro médio</span><strong>+5 un.</strong></div>
+              </div>
+            </article>
+
+            <article class="smart-panel smart-depth-card glass">
+              <div class="card-head">
+                <div><h3>Oportunidades</h3><p class="muted">Ações simples para aumentar eficiência.</p></div>
+              </div>
+              <div class="smart-opportunities" id="smartOpportunitiesList">
+                <button type="button"><i class="fa-solid fa-tags"></i><span>Criar combo de baixa saída</span></button>
+                <button type="button"><i class="fa-solid fa-cash-register"></i><span>Preparar produtos do pico</span></button>
+                <button type="button"><i class="fa-solid fa-clipboard-check"></i><span>Revisar estoque mínimo</span></button>
+              </div>
+            </article>
+          </div>
+
+          <article class="smart-goals smart-depth-card glass" id="smartGoals">
+            <div class="smart-goals-head">
+              <div>
+                <span class="smart-eyebrow"><i class="fa-solid fa-bullseye"></i> Aba de metas</span>
+                <h3>Metas, lucro previsto e estratégia automática</h3>
+                <p class="muted">Simule uma meta diária e veja quanto ela pode gerar hoje, no mês e em 364 dias.</p>
+              </div>
+              <div class="smart-goal-orb">
+                <span class="smart-goal-status" id="smartGoalStatus">Meta em análise</span>
+              </div>
+            </div>
+
+            <div class="smart-goals-grid">
+              <form class="smart-goal-form" id="smartGoalForm">
+                <label>
+                  Quantidade prevista hoje
+                  <input type="number" id="smartQtyToday" min="0" step="1" value="24" />
+                </label>
+                <label>
+                  Lucro por unidade
+                  <input type="number" id="smartProfitPerItem" min="0" step="0.01" value="3.50" />
+                </label>
+                <label>
+                  Meta diária de vendas
+                  <input type="number" id="smartDailyGoal" min="1" step="1" value="30" />
+                </label>
+              </form>
+
+              <div class="smart-goal-results">
+                <div>
+                  <span>Lucro se vender hoje</span>
+                  <strong id="smartProfitToday">R$ 0,00</strong>
+                </div>
+                <div>
+                  <span>Projeção mensal</span>
+                  <strong id="smartProfitMonth">R$ 0,00</strong>
+                </div>
+                <div>
+                  <span>Projeção em 364 dias</span>
+                  <strong id="smartProfitYear">R$ 0,00</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="smart-goal-progress" aria-label="Progresso da meta">
+              <span id="smartGoalMeter"></span>
+            </div>
+
+            <div class="smart-strategy" id="smartGoalStrategy">
+              <i class="fa-solid fa-lightbulb"></i>
+              <p>Preencha os valores para a AAPM Smart sugerir a melhor estratégia.</p>
+            </div>
+          </article>
+
+        </section>
+
+        <!-- ============================= PAGE: DASHBOARD ============================= -->
+        <section class="page{% if initial_route == 'dashboard' %} active{% endif %}" id="page-dashboard" data-requires-permission="dashboard">
+          <div class="kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Receita do dia</span><span class="kpi-icon orange"><i class="fa-solid fa-money-bill-trend-up"></i></span></div><h2 class="kpi-value" id="kpiRevenue">R$ 0</h2><p class="kpi-trend up" id="kpiRevenueTrend">+0%</p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Itens vendidos</span><span class="kpi-icon blue"><i class="fa-solid fa-cart-shopping"></i></span></div><h2 class="kpi-value" id="kpiItems">0</h2><p class="kpi-trend up" id="kpiItemsTrend">+0%</p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Pedidos concluídos</span><span class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></span></div><h2 class="kpi-value" id="kpiOrders">0</h2><p class="kpi-trend up" id="kpiOrdersTrend">+0%</p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Ticket médio</span><span class="kpi-icon purple"><i class="fa-solid fa-receipt"></i></span></div><h2 class="kpi-value" id="kpiTicket">R$ 0</h2><p class="kpi-trend down" id="kpiTicketTrend">-0%</p></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass">
+              <div class="card-head">
+                <div><h3>Vendas — últimos 7 dias</h3><p class="muted">Comparativo de receita e número de pedidos</p></div>
+                <div class="seg"><button class="seg-btn active" data-range="7">7d</button><button class="seg-btn" data-range="30">30d</button><button class="seg-btn" data-range="90">90d</button></div>
+              </div>
+              <div class="chart-wrap"><canvas id="chartSalesLine"></canvas></div>
+            </div>
+            <div class="card glass">
+              <div class="card-head"><div><h3>Vendas por categoria</h3><p class="muted">Distribuição da receita total</p></div></div>
+              <div class="chart-wrap"><canvas id="chartCategoryPie"></canvas></div>
+              <ul class="legend" id="legendCategory"></ul>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass">
+              <div class="card-head"><div><h3>Top produtos</h3><p class="muted">Mais vendidos no período</p></div><button class="ghost-btn">Ver todos</button></div>
+              <ul class="top-list" id="topProducts"></ul>
+            </div>
+            <div class="card glass">
+              <div class="card-head"><div><h3>Pedidos recentes</h3><p class="muted">Últimas transações no PDV</p></div><button class="ghost-btn" data-route-link="pedidos">Ver pedidos</button></div>
+              <div class="table-wrap small">
+                <table class="data-table">
+                  <thead><tr><th>#</th><th>Associado/Cliente</th><th>Total</th><th>Status</th></tr></thead>
+                  <tbody id="recentOrdersBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2 dashboard-extra-grid">
+            <div class="card glass">
+              <div class="card-head"><div><h3>Ticket médio — últimos 7 dias</h3><p class="muted">Valor médio por pedido concluído</p></div></div>
+              <div class="chart-wrap"><canvas id="chartDashboardTicket"></canvas></div>
+            </div>
+            <div class="card glass">
+              <div class="card-head"><div><h3>Associados x não associados</h3><p class="muted">Participação nas vendas registradas</p></div></div>
+              <div class="chart-wrap"><canvas id="chartDashboardAssociates"></canvas></div>
+              <ul class="legend" id="legendDashboardAssociates"></ul>
+            </div>
+          </div>
+
+          <div class="card glass dashboard-insights-card">
+            <div class="card-head"><div><h3>Insights rápidos</h3><p class="muted">Leituras automáticas para orientar a operação de hoje</p></div></div>
+            <div class="dashboard-insights" id="dashboardInsights"></div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: ADMIN (PRODUTOS) ============================= -->
+        <section class="page{% if initial_route == 'admin' %} active{% endif %}" id="page-admin" data-requires-permission="products">
+          <div class="toolbar glass">
+            <div class="toolbar-left">
+              <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="productSearch" placeholder="Buscar produto..." /></div>
+              <select id="productCategoryFilter" class="select"><option value="">Todas categorias</option></select>
+              <select id="productStockFilter" class="select"><option value="">Estoque</option><option value="in">Em estoque</option><option value="low">Estoque baixo</option><option value="out">Sem estoque</option></select>
+              <select id="productStatusFilter" class="select"><option value="active">Ativos</option><option value="inactive">Inativos</option><option value="all">Todos</option></select>
+            </div>
+            <div class="toolbar-right">
+              <button class="ghost-btn" id="exportProducts"><i class="fa-solid fa-file-csv"></i> Exportar</button>
+              <button class="primary-btn" id="newProductBtn"><i class="fa-solid fa-plus"></i> Novo produto</button>
+            </div>
+          </div>
+
+          <div class="card glass no-pad">
+            <div class="table-wrap">
+              <table class="data-table" id="productsTable">
+                <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Situação</th><th class="right">Ações</th></tr></thead>
+                <tbody id="productsBody"></tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span class="muted" id="productsCount">0 produtos</span>
+              <div class="pager" id="productsPager"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: GRÁFICO ============================= -->
+        <section class="page{% if initial_route == 'grafico' %} active{% endif %}" id="page-grafico" data-requires-permission="charts">
+          <div class="kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Receita do dia</span><span class="kpi-icon orange"><i class="fa-solid fa-coins"></i></span></div><h2 class="kpi-value" id="gRevenue">R$ 0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gRevenuePct">0%</span> vs ontem</p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Itens vendidos</span><span class="kpi-icon blue"><i class="fa-solid fa-box"></i></span></div><h2 class="kpi-value" id="gItems">0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gItemsPct">0%</span></p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Pedidos concluídos</span><span class="kpi-icon green"><i class="fa-solid fa-check-double"></i></span></div><h2 class="kpi-value" id="gOrders">0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gOrdersPct">0%</span></p></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Total de vendas</span><span class="kpi-icon purple"><i class="fa-solid fa-chart-pie"></i></span></div><h2 class="kpi-value" id="gTotal">R$ 0</h2><p class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> <span id="gTotalPct">0%</span> no mês</p></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass"><div class="card-head"><div><h3>Receita por categoria</h3><p class="muted">Distribuição percentual</p></div></div><div class="chart-wrap"><canvas id="chartCategoryBar"></canvas></div></div>
+            <div class="card glass"><div class="card-head"><div><h3>Radar de categorias</h3><p class="muted">Força relativa da receita</p></div></div><div class="chart-wrap"><canvas id="chartCategoryRadar"></canvas></div><ul class="legend" id="legendCategory2"></ul></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card glass"><div class="card-head"><div><h3>Produtos mais fortes</h3><p class="muted">Receita por produto vendido</p></div></div><div class="chart-wrap"><canvas id="chartTopProductsRevenue"></canvas></div></div>
+            <div class="card glass"><div class="card-head"><div><h3>Saúde do estoque</h3><p class="muted">Produtos em falta, baixos e seguros</p></div></div><div class="chart-wrap"><canvas id="chartStockHealth"></canvas></div><ul class="legend" id="legendStockHealth"></ul></div>
+          </div>
+
+          <div class="card glass">
+            <div class="card-head"><div><h3>Receita por hora</h3><p class="muted">Performance ao longo do dia</p></div></div>
+            <div class="chart-wrap"><canvas id="chartHourly"></canvas></div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: PEDIDOS ============================= -->
+        <section class="page{% if initial_route == 'pedidos' %} active{% endif %}" id="page-pedidos" data-requires-permission="orders">
+          <div class="toolbar glass">
+            <div class="toolbar-left">
+              <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="orderSearch" placeholder="Buscar pedido ou associado..." /></div>
+              <select id="orderStatusFilter" class="select"><option value="">Todos status</option><option value="concluido">Concluído</option><option value="pendente">Pendente</option><option value="cancelado">Cancelado</option></select>
+            </div>
+          </div>
+          <div class="card glass no-pad"><div class="table-wrap">
+            <table class="data-table"><thead><tr><th>Pedido</th><th>Associado/Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Data</th><th>Status</th></tr></thead><tbody id="ordersBody"></tbody></table>
+          </div></div>
+          <div class="card glass no-pad payment-exceptions-panel">
+            <div class="card-head padded">
+              <div><h3>Exceções de pagamento</h3><p class="muted">Pedidos com prazo combinado para quitar o pagamento.</p></div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Prazo</th><th>Observação</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="paymentExceptionsBody"></tbody></table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: ASSOCIADOS ============================= -->
+        <section class="page{% if initial_route == 'clientes' %} active{% endif %}" id="page-clientes" data-requires-permission="customers">
+          <div class="toolbar glass">
+            <div class="toolbar-left"><div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="customerSearch" placeholder="Buscar associado por nome, matrícula ou telefone..." /></div></div>
+            <div class="toolbar-right"><button class="primary-btn" id="newCustomerBtn"><i class="fa-solid fa-user-plus"></i> Novo associado</button></div>
+          </div>
+          <div class="customer-grid" id="customersGrid"></div>
+        </section>
+
+        {% if usuario.role == 'admin' %}
+        <!-- ============================= PAGE: FUNCIONARIOS ============================= -->
+        <section class="page{% if initial_route == 'funcionarios' %} active{% endif %}" id="page-funcionarios">
+          {% set usuarios_ativos = usuarios | selectattr('ativo') | list | length %}
+          {% set admins_total = usuarios | selectattr('role', 'equalto', 'admin') | list | length %}
+          <div class="kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Funcionários</span><span class="kpi-icon blue"><i class="fa-solid fa-users-gear"></i></span></div><h2 class="kpi-value">{{ usuarios|length }}</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Ativos</span><span class="kpi-icon green"><i class="fa-solid fa-user-check"></i></span></div><h2 class="kpi-value">{{ usuarios_ativos }}</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Administradores</span><span class="kpi-icon purple"><i class="fa-solid fa-shield-halved"></i></span></div><h2 class="kpi-value">{{ admins_total }}</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Inativos</span><span class="kpi-icon red"><i class="fa-solid fa-user-slash"></i></span></div><h2 class="kpi-value">{{ usuarios|length - usuarios_ativos }}</h2></div>
+          </div>
+
+          <div class="toolbar glass">
+            <div class="toolbar-left">
+              <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="employeeSearch" placeholder="Buscar funcionário..." /></div>
+              <select id="employeeRoleFilter" class="select">
+                <option value="">Todos perfis</option>
+                <option value="admin">Administradores</option>
+                <option value="funcionario">Funcionários</option>
+              </select>
+              <select id="employeeStatusFilter" class="select">
+                <option value="">Todos status</option>
+                <option value="true">Ativos</option>
+                <option value="false">Inativos</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <button class="primary-btn" id="newEmployeeBtn" type="button"><i class="fa-solid fa-user-plus"></i> Novo funcionário</button>
+            </div>
+          </div>
+
+          <div class="card glass no-pad">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Funcionário</th><th>E-mail</th><th>Perfil</th><th>Permissões</th><th>Status</th><th class="right">Ações</th></tr></thead>
+                <tbody id="employeesBody">
+                  {% for u in usuarios %}
+                  {% set user_perms = (u.permissoes or '').split(',') %}
+                  <tr data-employee-row data-name="{{ u.nome|lower }}" data-email="{{ u.email|lower }}" data-role="{{ u.role }}" data-permissions="{{ u.permissoes or '' }}" data-active="{{ 'true' if u.ativo else 'false' }}">
+                    <td>
+                      <div class="prod-cell">
+                        <div class="prod-thumb employee-thumb">{{ (u.nome or u.email or "U")[:2]|upper }}</div>
+                        <div class="prod-name">
+                          <strong>{{ u.nome }}</strong>
+                          <span>ID {{ u.id }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{{ u.email }}</td>
+                    <td><span class="pill {{ 'blue' if u.role == 'admin' else 'gray' }}">{{ "Administrador" if u.role == "admin" else ("Operador" if u.role == "operador" else "Funcionário") }}</span></td>
+                    <td>
+                      {% if u.role == 'admin' %}
+                        <span class="pill blue">Acesso total</span>
+                      {% else %}
+                        <div class="permission-pills">
+                          {% if 'smart' in user_perms %}<span class="pill gray">Smart</span>{% endif %}
+                          {% if 'dashboard' in user_perms %}<span class="pill gray">Dashboard</span>{% endif %}
+                          {% if 'products' in user_perms %}<span class="pill gray">Produtos</span>{% endif %}
+                          {% if 'charts' in user_perms %}<span class="pill gray">Graficos</span>{% endif %}
+                          {% if 'orders' in user_perms %}<span class="pill gray">Pedidos</span>{% endif %}
+                          {% if 'customers' in user_perms %}<span class="pill gray">Associados</span>{% endif %}
+                          {% if 'categories' in user_perms %}<span class="pill gray">Categorias</span>{% endif %}
+                          {% if 'stock' in user_perms or 'stock_movements' in user_perms %}<span class="pill gray">Estoque</span>{% endif %}
+                          {% if 'movements' in user_perms or 'stock_movements' in user_perms %}<span class="pill gray">Movimentos</span>{% endif %}
+                          {% if 'reports' in user_perms %}<span class="pill gray">Relatorios</span>{% endif %}
+                          {% if not ('smart' in user_perms or 'dashboard' in user_perms or 'products' in user_perms or 'charts' in user_perms or 'orders' in user_perms or 'customers' in user_perms or 'categories' in user_perms or 'stock' in user_perms or 'movements' in user_perms or 'stock_movements' in user_perms or 'reports' in user_perms) %}<span class="muted">Sem permissoes</span>{% endif %}
+                        </div>
+                      {% endif %}
+                    </td>
+                    <td><span class="pill {{ 'green' if u.ativo else 'red' }}">{{ "Ativo" if u.ativo else "Inativo" }}</span></td>
+                    <td class="right">
+                      <div class="actions-cell">
+                        <button class="act-btn edit" type="button" data-edit-employee data-id="{{ u.id }}" data-name="{{ u.nome }}" data-email="{{ u.email }}" data-role="{{ u.role }}" data-permissions="{{ u.permissoes or '' }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                        <form action="/usuarios/{{ u.id }}/toggle-ativo" method="post" data-employee-confirm="{{ 'Desativar' if u.ativo else 'Ativar' }} o usuário {{ u.nome }}?" style="display:inline">
+                          <button class="act-btn {{ 'delete' if u.ativo else 'view' }}" type="submit" title="{{ 'Desativar' if u.ativo else 'Ativar' }}">
+                            <i class="fa-solid {{ 'fa-ban' if u.ativo else 'fa-check' }}"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                  {% if not usuarios %}
+                  <tr><td colspan="6" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum funcionário cadastrado.</td></tr>
+                  {% endif %}
+                  <tr id="employeesEmptyRow" style="display:none"><td colspan="6" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum funcionário encontrado.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span class="muted" id="employeesCount">{{ usuarios|length }} funcionário{{ "" if usuarios|length == 1 else "s" }}</span>
+            </div>
+          </div>
+        </section>
+        {% endif %}
+
+        <!-- ============================= PAGE: CATEGORIAS ============================= -->
+        <section class="page{% if initial_route == 'categorias' %} active{% endif %}" id="page-categorias" data-requires-permission="categories">
+          <div class="toolbar glass">
+            <div class="toolbar-left"><h3 style="margin:0">Categorias do PDV</h3></div>
+            <div class="toolbar-right"><button class="primary-btn" id="newCategoryBtn"><i class="fa-solid fa-plus"></i> Nova categoria</button></div>
+          </div>
+          <div class="category-grid" id="categoriesGrid"></div>
+        </section>
+
+        <!-- ============================= PAGE: ESTOQUE ============================= -->
+        <section class="page{% if initial_route == 'estoque' %} active{% endif %}" id="page-estoque" data-requires-permission="stock">
+          <div class="kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">SKUs ativos</span><span class="kpi-icon blue"><i class="fa-solid fa-barcode"></i></span></div><h2 class="kpi-value" id="skuCount">0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Valor em estoque</span><span class="kpi-icon orange"><i class="fa-solid fa-warehouse"></i></span></div><h2 class="kpi-value" id="stockValue">R$ 0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Estoque baixo</span><span class="kpi-icon yellow"><i class="fa-solid fa-triangle-exclamation"></i></span></div><h2 class="kpi-value" id="lowStockCount">0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Sem estoque</span><span class="kpi-icon red"><i class="fa-solid fa-circle-xmark"></i></span></div><h2 class="kpi-value" id="outOfStockCount">0</h2></div>
+          </div>
+          <div class="card glass no-pad"><div class="table-wrap">
+            <table class="data-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Status</th><th class="right">Ação</th></tr></thead><tbody id="stockBody"></tbody></table>
+          </div></div>
+        </section>
+
+        <!-- ============================= PAGE: MOVIMENTACOES ============================= -->
+        <section class="page{% if initial_route == 'movimentacoes' %} active{% endif %}" id="page-movimentacoes" data-requires-permission="movements">
+          <div class="card glass no-pad">
+            <div class="card-head padded">
+              <div><h3>Histórico de movimentações</h3><p class="muted">Entradas por reposição e saídas geradas pelas vendas</p></div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Valor</th><th>Operador</th><th>Observação</th></tr></thead>
+                <tbody id="stockMovementsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: RELATÓRIOS ============================= -->
+        <section class="page{% if initial_route == 'relatorios' %} active{% endif %}" id="page-relatorios" data-requires-permission="reports">
+          <div class="card glass reports-panel">
+            <div class="card-head">
+              <div><h3>Relatorios</h3><p class="muted">Exporte leituras por periodo, operacao e area do PDV.</p></div>
+            </div>
+
+            <div class="report-tabs" role="tablist" aria-label="Tipos de relatorio">
+              <button class="report-tab active" type="button" data-report-tab="sales" role="tab" aria-selected="true">Vendas</button>
+              <button class="report-tab" type="button" data-report-tab="daily" role="tab" aria-selected="false">Resumo</button>
+              <button class="report-tab" type="button" data-report-tab="abc" role="tab" aria-selected="false">Produtos</button>
+              <button class="report-tab" type="button" data-report-tab="categories" role="tab" aria-selected="false">Categorias</button>
+              <button class="report-tab" type="button" data-report-tab="customers" role="tab" aria-selected="false">Associados</button>
+              <button class="report-tab" type="button" data-report-tab="stock" role="tab" aria-selected="false">Estoque</button>
+            </div>
+
+            <div class="report-tab-panel active" data-report-panel="sales" role="tabpanel">
+              <div class="report-copy"><strong>Vendas</strong><span>Pedidos, cliente, pagamento, data, desconto e total liquido.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="sales" data-period="today"><i class="fa-solid fa-calendar-day"></i><span>Hoje</span><small>Vendas registradas hoje</small></button>
+                <button class="report-card" data-report="sales" data-period="week"><i class="fa-solid fa-calendar-week"></i><span>Ultimos 7 dias</span><small>Uma semana de pedidos</small></button>
+                <button class="report-card" data-report="sales" data-period="month"><i class="fa-solid fa-calendar-days"></i><span>Ultimos 30 dias</span><small>Leitura mensal de vendas</small></button>
+                <button class="report-card" data-report="sales" data-period="year"><i class="fa-solid fa-calendar"></i><span>Ultimos 12 meses</span><small>Historico anual de vendas</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="daily" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Resumo financeiro</strong><span>Receita, pedidos e itens agrupados por dia.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="daily" data-period="today"><i class="fa-solid fa-sun"></i><span>Hoje</span><small>Resumo do dia atual</small></button>
+                <button class="report-card" data-report="daily" data-period="week"><i class="fa-solid fa-chart-simple"></i><span>Ultimos 7 dias</span><small>Evolucao da semana</small></button>
+                <button class="report-card" data-report="daily" data-period="month"><i class="fa-solid fa-chart-column"></i><span>Ultimos 30 dias</span><small>Consolidacao mensal</small></button>
+                <button class="report-card" data-report="daily" data-period="year"><i class="fa-solid fa-chart-line"></i><span>Ultimos 12 meses</span><small>Base anual por dia</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="abc" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Produtos vendidos</strong><span>Ranking de quantidade vendida e receita por produto.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="abc" data-period="today"><i class="fa-solid fa-ranking-star"></i><span>Hoje</span><small>Produtos destaque do dia</small></button>
+                <button class="report-card" data-report="abc" data-period="week"><i class="fa-solid fa-medal"></i><span>Ultimos 7 dias</span><small>Mais vendidos da semana</small></button>
+                <button class="report-card" data-report="abc" data-period="month"><i class="fa-solid fa-trophy"></i><span>Ultimos 30 dias</span><small>Curva ABC mensal</small></button>
+                <button class="report-card" data-report="abc" data-period="year"><i class="fa-solid fa-award"></i><span>Ultimos 12 meses</span><small>Performance anual</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="categories" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Categorias</strong><span>Produtos ativos, itens vendidos e receita por categoria.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="categories" data-period="today"><i class="fa-solid fa-tags"></i><span>Hoje</span><small>Categorias vendidas hoje</small></button>
+                <button class="report-card" data-report="categories" data-period="week"><i class="fa-solid fa-layer-group"></i><span>Ultimos 7 dias</span><small>Forca por categoria</small></button>
+                <button class="report-card" data-report="categories" data-period="month"><i class="fa-solid fa-table-cells"></i><span>Ultimos 30 dias</span><small>Mix mensal de vendas</small></button>
+                <button class="report-card" data-report="categories" data-period="year"><i class="fa-solid fa-chart-pie"></i><span>Ultimos 12 meses</span><small>Mix anual de categorias</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="customers" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Associados</strong><span>Clientes ativos, matricula, pedidos e gasto no periodo.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="customers" data-period="today"><i class="fa-solid fa-user-check"></i><span>Hoje</span><small>Compras de associados hoje</small></button>
+                <button class="report-card" data-report="customers" data-period="week"><i class="fa-solid fa-users-viewfinder"></i><span>Ultimos 7 dias</span><small>Movimento da semana</small></button>
+                <button class="report-card" data-report="customers" data-period="month"><i class="fa-solid fa-people-group"></i><span>Ultimos 30 dias</span><small>Engajamento mensal</small></button>
+                <button class="report-card" data-report="customers" data-period="year"><i class="fa-solid fa-address-book"></i><span>Ultimos 12 meses</span><small>Historico anual</small></button>
+              </div>
+            </div>
+
+            <div class="report-tab-panel" data-report-panel="stock" role="tabpanel" hidden>
+              <div class="report-copy"><strong>Estoque</strong><span>Inventario atual, alertas de reposicao e produtos indisponiveis.</span></div>
+              <div class="report-grid">
+                <button class="report-card" data-report="stock"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque atual</span><small>Todos os produtos ativos</small></button>
+                <button class="report-card" data-report="stock-low"><i class="fa-solid fa-triangle-exclamation"></i><span>Estoque baixo</span><small>Itens com 5 ou menos unidades</small></button>
+                <button class="report-card" data-report="stock-out"><i class="fa-solid fa-circle-xmark"></i><span>Sem estoque</span><small>Produtos indisponiveis</small></button>
+                <button class="report-card" data-report="stock-value"><i class="fa-solid fa-coins"></i><span>Valor em estoque</span><small>Preco, quantidade e subtotal</small></button>
+              </div>
+            </div>
+          </div>
+          <div class="card glass">
+            <div class="card-head"><div><h3>Relatórios</h3><p class="muted">Exporte e analise dados de vendas e operações</p></div></div>
+            <div class="report-grid">
+              <button class="report-card" data-report="sales"><i class="fa-solid fa-file-csv"></i><span>Vendas (CSV)</span></button>
+              <button class="report-card" data-report="daily"><i class="fa-solid fa-file-pdf"></i><span>Resumo Diário (PDF)</span></button>
+              <button class="report-card" data-report="stock"><i class="fa-solid fa-file-lines"></i><span>Estoque atual</span></button>
+              <button class="report-card" data-report="abc"><i class="fa-solid fa-chart-line"></i><span>Curva ABC</span></button>
+              <button class="report-card" data-report="customers"><i class="fa-solid fa-people-group"></i><span>Associados ativos</span></button>
+              <button class="report-card" data-report="categories"><i class="fa-solid fa-tags"></i><span>Por categoria</span></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= PAGE: CONFIG ============================= -->
+        <section class="page" id="page-configuracoes" data-requires-permission="settings">
+          <div class="grid-2">
+            <div class="card glass">
+              <div class="card-head"><div><h3>Perfil da loja</h3><p class="muted">Informações do estabelecimento</p></div></div>
+              <div class="form-grid">
+                <label>Nome<input type="text" value="Aurora PDV" /></label>
+                <label>CNPJ<input type="text" value="00.000.000/0001-00" /></label>
+                <label>Email<input type="email" value="contato@aurorapdv.com" /></label>
+                <label>Telefone<input type="text" value="(11) 99999-0000" /></label>
+                <label class="span-2">Endereço<input type="text" value="Av. Paulista, 1000 — São Paulo/SP" /></label>
+              </div>
+              <button class="primary-btn">Salvar alterações</button>
+            </div>
+            <div class="card glass">
+              <div class="card-head"><div><h3>Preferências</h3><p class="muted">Customize seu painel</p></div></div>
+              <ul class="prefs">
+                <li><span>Notificações de estoque baixo</span><label class="switch"><input type="checkbox" checked /><span></span></label></li>
+                <li><span>Alerta de novos pedidos</span><label class="switch"><input type="checkbox" checked /><span></span></label></li>
+                <li><span>Efeitos sonoros</span><label class="switch"><input type="checkbox" id="soundEffectsToggle" checked /><span></span></label></li>
+                <li><span>Modo escuro automático</span><label class="switch"><input type="checkbox" /><span></span></label></li>
+                <li><span>Email diário de resumo</span><label class="switch"><input type="checkbox" checked /><span></span></label></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ====================== MODAL: ITENS DO PEDIDO ====================== -->
+    <div class="modal-backdrop hidden" id="orderItemsModal">
+      <div class="modal glass order-items-modal" role="dialog" aria-modal="true" aria-labelledby="orderItemsModalTitle">
+        <div class="modal-head">
+          <div>
+            <h3 id="orderItemsModalTitle">Produtos do pedido</h3>
+            <p class="muted"><span id="orderItemsCustomer">Cliente</span> • <span id="orderItemsDate">-</span></p>
+          </div>
+          <button class="icon-btn ghost" data-close-modal="orderItemsModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="order-items-content">
+          <ul class="order-items-list" id="orderItemsList"></ul>
+          <p class="order-items-empty" id="orderItemsEmpty" hidden>Nenhum produto encontrado neste pedido.</p>
+        </div>
+        <div class="modal-foot order-items-foot">
+          <span>Total do pedido</span>
+          <strong id="orderItemsTotal">R$ 0,00</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: PRODUTO ====================== -->
+    <div class="modal-backdrop hidden" id="productModal">
+      <div class="modal glass">
+        <div class="modal-head">
+          <h3 id="productModalTitle">Novo produto</h3>
+          <button class="icon-btn ghost" data-close-modal="productModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="productForm" class="form-grid" enctype="multipart/form-data">
+          <input type="hidden" id="productId" />
+          <label class="span-2">Nome do produto<input type="text" id="productName" required /></label>
+          <label>Categoria<select id="productCategory" required></select></label>
+          <label>Preço (R$)<input type="number" id="productPrice" step="0.01" min="0" required /></label>
+          <label>Estoque atual<input type="number" id="productStock" min="0" required /></label>
+          <div class="span-2 product-image-field">
+            <span class="field-label">Imagem do produto</span>
+            <input type="hidden" id="productExistingImage" />
+            <input type="file" id="productImage" accept="image/png,image/jpeg,image/webp" />
+            <div class="product-image-actions">
+              <label class="image-upload-btn" for="productImage">
+                <i class="fa-solid fa-image"></i>
+                <span id="productImageFileName">Escolher imagem</span>
+              </label>
+              <button type="button" class="image-library-btn" id="openImageLibrary">
+                <i class="fa-solid fa-folder-open"></i>
+                <span>Galeria</span>
+              </button>
+            </div>
+            <p class="image-field-hint" id="productImageHint">PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva.</p>
+          </div>
+          <label class="span-2">Descrição<textarea id="productDesc" rows="3"></textarea></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="productModal">Cancelar</button>
+            <button type="submit" class="primary-btn">Salvar produto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: GALERIA DE IMAGENS ====================== -->
+    <div class="modal-backdrop hidden" id="imageLibraryModal">
+      <div class="modal glass image-library-modal">
+        <div class="modal-head">
+          <div>
+            <h3>Galeria de imagens</h3>
+            <p class="muted">Imagens salvas no projeto</p>
+          </div>
+          <button class="icon-btn ghost" data-close-modal="imageLibraryModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="image-library-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" id="imageLibrarySearch" placeholder="Pesquisar imagem..." autocomplete="off" />
+        </div>
+        <div class="image-library-grid" id="imageLibraryGrid"></div>
+        <div class="modal-foot image-library-foot">
+          <button type="button" class="ghost-btn" data-close-modal="imageLibraryModal">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: ESTOQUE ====================== -->
+    <div class="modal-backdrop hidden" id="stockModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3 id="stockModalTitle">Repor estoque</h3>
+          <button class="icon-btn ghost" data-close-modal="stockModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="stockForm" class="form-grid">
+          <input type="hidden" id="stockProductId" />
+          <label class="span-2">Produto<input type="text" id="stockProductName" readonly /></label>
+          <label>Estoque atual<input type="number" id="stockCurrent" readonly /></label>
+          <label>Quantidade a adicionar<input type="number" id="stockQuantity" min="1" step="1" required /></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="stockModal">Cancelar</button>
+            <button type="submit" class="primary-btn">Adicionar estoque</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: CATEGORIA ====================== -->
+    <div class="modal-backdrop hidden" id="categoryModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3 id="categoryModalTitle">Nova categoria</h3>
+          <button class="icon-btn ghost" data-close-modal="categoryModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="categoryForm" class="form-grid">
+          <input type="hidden" id="categoryId" />
+          <label class="span-2">Nome da categoria<input type="text" id="categoryName" required /></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="categoryModal">Cancelar</button>
+            <button type="submit" class="primary-btn">Salvar categoria</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: FUNCIONARIO ====================== -->
+    <div class="modal-backdrop hidden" id="employeeModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3 id="employeeModalTitle">Novo funcionário</h3>
+          <button class="icon-btn ghost" data-close-modal="employeeModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="employeeForm" class="form-grid" method="post" action="/usuarios/novo">
+          <label class="span-2">Nome completo<input type="text" id="employeeName" name="nome" required /></label>
+          <label class="span-2">E-mail de acesso<input type="email" id="employeeEmail" name="email" required /></label>
+          <label>Perfil<select id="employeeRole" name="role" required>
+            <option value="funcionario">Funcionário</option>
+            <option value="admin">Administrador</option>
+          </select></label>
+          <label>Senha<input type="password" id="employeePassword" name="senha" minlength="6" required /></label>
+          <fieldset class="span-2 permission-fieldset dashboard-permissions-box" id="employeePermissionsFieldset">
+            <legend>Permissões do dashboard</legend>
+            <div class="dashboard-permissions-grid">
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="smart" />
+                <span class="permission-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+                <span class="permission-copy"><strong>Smart</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="dashboard" />
+                <span class="permission-icon"><i class="fa-solid fa-gauge-high"></i></span>
+                <span class="permission-copy"><strong>Dashboard</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="products" />
+                <span class="permission-icon"><i class="fa-solid fa-table-cells-large"></i></span>
+                <span class="permission-copy"><strong>Produtos</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="charts" />
+                <span class="permission-icon"><i class="fa-solid fa-chart-column"></i></span>
+                <span class="permission-copy"><strong>Graficos</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="orders" />
+                <span class="permission-icon"><i class="fa-solid fa-receipt"></i></span>
+                <span class="permission-copy"><strong>Pedidos</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="customers" />
+                <span class="permission-icon"><i class="fa-solid fa-id-card"></i></span>
+                <span class="permission-copy"><strong>Associados</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="categories" />
+                <span class="permission-icon"><i class="fa-solid fa-tags"></i></span>
+                <span class="permission-copy"><strong>Categorias</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="stock" />
+                <span class="permission-icon"><i class="fa-solid fa-boxes-stacked"></i></span>
+                <span class="permission-copy"><strong>Estoque</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="movements" />
+                <span class="permission-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span>
+                <span class="permission-copy"><strong>Movimentos</strong></span>
+              </label>
+              <label class="permission-check dashboard-permission-card">
+                <input type="checkbox" name="permissoes" value="reports" />
+                <span class="permission-icon"><i class="fa-solid fa-file-invoice"></i></span>
+                <span class="permission-copy"><strong>Relatorios</strong></span>
+              </label>
+            </div>
+          </fieldset>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="employeeModal">Cancelar</button>
+            <button type="submit" class="primary-btn">Salvar acesso</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: PERFIL ====================== -->
+    <div class="modal-backdrop hidden" id="profileModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3>Meu perfil</h3>
+          <button class="icon-btn ghost" data-close-modal="profileModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="profile-summary">
+          <div class="profile-avatar-lg" id="profileInitials">--</div>
+          <div>
+            <strong id="profileName">-</strong>
+            <span id="profileEmail">-</span>
+          </div>
+        </div>
+        <div class="profile-info-grid">
+          <div><span>Perfil</span><strong id="profileRole">-</strong></div>
+          <div><span>Status</span><strong id="profileStatus">-</strong></div>
+        </div>
+        <div class="modal-foot profile-actions">
+          <button type="button" class="ghost-btn" id="profileSecurityShortcut"><i class="fa-solid fa-lock"></i> Alterar senha</button>
+          <button type="button" class="primary-btn" id="profileSupportShortcut"><i class="fa-solid fa-life-ring"></i> Suporte</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: SEGURANCA ====================== -->
+    <div class="modal-backdrop hidden" id="securityModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3>Segurança</h3>
+          <button class="icon-btn ghost" data-close-modal="securityModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="securityForm" class="form-grid">
+          <label>Senha atual <input type="password" id="currentPassword" required autocomplete="current-password"></label>
+          <label>Nova senha <input type="password" id="newPassword" required minlength="6" autocomplete="new-password"></label>
+          <label>Confirmar senha <input type="password" id="confirmPassword" required minlength="6" autocomplete="new-password"></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="securityModal">Cancelar</button>
+            <button class="primary-btn" type="submit">Salvar senha</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: SUPORTE ====================== -->
+    <div class="modal-backdrop hidden" id="supportModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3>Suporte</h3>
+          <button class="icon-btn ghost" data-close-modal="supportModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="supportForm" class="form-grid">
+          <label>Assunto <input type="text" id="supportSubject" value="Suporte" required></label>
+          <label class="span-2">Mensagem <textarea id="supportMessage" rows="4" required placeholder="Descreva o que aconteceu"></textarea></label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="supportModal">Cancelar</button>
+            <button class="primary-btn" type="submit">Enviar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="associateModal">
+      <div class="modal glass small">
+        <div class="modal-head">
+          <h3>Novo associado</h3>
+          <button class="icon-btn ghost" data-close-modal="associateModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="associateForm" class="form-grid">
+          <label class="span-2">Nome completo <input type="text" id="associateName" required autocomplete="name"></label>
+          <label>Matrícula <input type="text" id="associateRegistry" placeholder="Opcional"></label>
+          <label>Telefone <input type="tel" id="associatePhone" placeholder="Opcional"></label>
+          <label class="span-2 check-row"><input type="checkbox" id="associateActiveDiscount" checked> Associado AAPM com desconto ativo</label>
+          <div class="modal-foot span-2">
+            <button type="button" class="ghost-btn" data-close-modal="associateModal">Cancelar</button>
+            <button class="primary-btn" type="submit">Salvar associado</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================== CONFIRM ====================== -->
+    <div class="modal-backdrop hidden" id="confirmModal">
+      <div class="modal glass small confirm-dialog">
+        <div class="modal-head"><h3 id="confirmTitle">Confirmar</h3></div>
+        <p id="confirmText" style="padding:0 24px 8px;color:var(--text-mute)"></p>
+        <div class="modal-foot" style="padding:16px 24px 24px">
+          <button class="ghost-btn" id="confirmCancel">Cancelar</button>
+          <button class="danger-btn" id="confirmOk">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== TOAST ====================== -->
+    <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- App -->
+    <script src="/apps/pvd/scripts/sounds.js?v=aapm-sounds-20260615-1"></script>
+    <script src="/apps/pvd/scripts/dashboard.js?v=aapm-hourly-line-20260615-1"></script>
+  </body>
+</html>
+
+

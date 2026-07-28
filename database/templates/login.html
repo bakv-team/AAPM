@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AAPM</title>
+
+    <script>
+        try {
+            if (localStorage.getItem("aapm_theme") === "dark") {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        } catch (error) {}
+    </script>
+    <link rel="stylesheet" href="/apps/pvd/styles/login.css?v=login-microinteractions-20260605-1">
+    <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://googleapis.com">
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .01ms !important;
+                animation-delay: .01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <div class="background-image"></div>
+
+    <div class="blur blue"></div>
+    <div class="blur orange"></div>
+
+    <main class="container">
+
+        <!-- LEFT -->
+        <section class="left-side">
+
+            <div class="brand">
+
+                <div class="logo-box">
+                    <img src="/apps/pvd/assets/icones/logosemtexto.png" alt="Logo">
+                </div>
+
+                <div>
+                    <h1>AAPM</h1>
+                    <span></span>
+                    <span>SENAI FRANCISCO MATARAZZO - SP</span>
+                </div>
+
+            </div>
+
+            <div class="content">
+
+                <p class="tag">
+                    SISTEMA INSTITUCIONAL ADMINISTRATIVO
+                </p>
+
+                <h2>
+                    Plataforma Administrativa
+                    de Gestão Comercial
+                </h2>
+
+                <p class="text">
+                    Centralize estoque, pedidos
+                    e operações administrativas
+                    em um ambiente seguro.
+                </p>
+
+                <div class="mini-cards">
+
+                    <div class="mini-card">
+                        <i data-lucide="shopping-cart"></i>
+                        <span>Pedidos</span>
+                    </div>
+
+                    <div class="mini-card">
+                        <i data-lucide="package"></i>
+                        <span>Estoque</span>
+                    </div>
+
+                    <div class="mini-card">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>Relatórios</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- RIGHT -->
+        <section class="right-side">
+
+            <div class="login-card">
+
+                <div class="line"></div>
+
+                <div class="header">
+
+                    <h3>Entrar</h3>
+
+                    <p>
+                        Acesse o sistema administrativo.
+                    </p>
+
+                </div>
+
+                <form action="/auth/" method="post" id="loginForm" data-temporary-error="{{ 'true' if erro_temporario else 'false' }}">
+                    {% set erro_normalizado = (erro or "")|lower %}
+                    {% set email_inexistente = erro and ("nao cadastrado" in erro_normalizado or "não cadastrado" in erro_normalizado) %}
+                    {% set credenciais_invalidas = erro and not email_inexistente and ("senha" in erro_normalizado or "e-mail" in erro_normalizado) %}
+
+                    <div class="input-box {% if email_inexistente %}has-error{% endif %}">
+
+                        <i data-lucide="user"></i>
+
+                        <input type="email" name="email" id="loginEmailInput" placeholder="E-mail" required {% if email_inexistente %}aria-invalid="true" aria-describedby="loginEmailError"{% endif %}>
+
+                    </div>
+
+                    {% if email_inexistente %}
+                    <p class="login-field-error" id="loginEmailError">
+                        <i data-lucide="circle-alert"></i>
+                        <span>Este e-mail nao existe no cadastro. Verifique ou solicite seu acesso.</span>
+                    </p>
+                    {% endif %}
+
+                    <div class="input-box password-field {% if credenciais_invalidas %}has-error{% endif %}">
+
+                        <i data-lucide="lock"></i>
+
+                        <input type="password" name="senha" id="passwordInput" placeholder="Senha" required {% if credenciais_invalidas %}aria-invalid="true" aria-describedby="loginPasswordError"{% endif %}>
+
+                        <button class="password-toggle" id="passwordToggle" type="button" aria-label="Mostrar senha" aria-pressed="false">
+                            <i data-lucide="eye"></i>
+                        </button>
+
+                    </div>
+
+                    {% if credenciais_invalidas %}
+                    <p class="login-field-error" id="loginPasswordError">
+                        <i data-lucide="circle-alert"></i>
+                        <span>Senha incorreta. Verifique seus dados e tente novamente.</span>
+                    </p>
+                    {% endif %}
+
+                    <div class="options">
+
+                        <label>
+                            <input type="checkbox">
+                            Lembrar login
+                        </label>
+
+                        <a href="#" id="forgotPasswordLink">
+                            Esqueci a senha
+                        </a>
+
+                    </div>
+
+                    <p class="auth-feedback" id="forgotPasswordFeedback" hidden></p>
+                    {% if erro and not credenciais_invalidas %}
+                    <p class="auth-feedback error">{{ erro }}</p>
+                    {% endif %}
+
+                    <button type="submit" class="login-btn">
+
+                        <span>Entrar</span>
+
+                        <i data-lucide="arrow-right"></i>
+                    </button>
+                </form>
+                <div class="security">
+
+                    <div class="dot"></div>
+
+                    <span>
+                        Ambiente seguro - © 2026 SENAI. Todos os direitos reservados.
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <div class="login-loading-overlay" id="loginLoadingOverlay" aria-hidden="true">
+        <div class="login-loading-panel" role="status" aria-live="polite">
+            <span class="loading-kicker">Autenticando</span>
+            <strong>Preparando seu painel...</strong>
+            <div class="loading-bar" aria-hidden="true"><span></span></div>
+        </div>
+    </div>
+
+    <div class="toast-wrap" id="toastWrap" aria-live="polite" data-notfound-message="{{ notfound_message or '' }}"></div>
+
+    <script src="/apps/pvd/scripts/sounds.js?v=aapm-sounds-20260615-1"></script>
+    <script src="/apps/pvd/scripts/login.js?v=forgot-password-20260604-1"></script>
+
+    <script>
+        lucide.createIcons();
+    </script>
+
+</body>
+
+</html>

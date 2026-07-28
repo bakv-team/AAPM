@@ -12,5 +12,6 @@ class Usuario(Base):
 
     # Tipo do usuário - perfil do usuário (operador ou admin)
     role = Column(String(20), default="funcionario")
+    permissoes = Column(String(255), nullable=False, default="")
 
     ativo = Column(Boolean, default=True)

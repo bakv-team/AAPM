@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - AAPM</title>
+
+    <link rel="stylesheet" href="../styles/cadastro.css">
+    <link rel="icon" type="image/png" href="../assets/icones/logosemtexto.png?v=1">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://googleapis.com">
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .01ms !important;
+                animation-delay: .01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <div class="background-image"></div>
+
+    <div class="blur blue"></div>
+    <div class="blur orange"></div>
+
+    <main class="container">
+
+        <section class="left-side">
+
+            <div class="brand">
+                <div class="logo-box">
+                    <img src="../assets/icones/logosemtexto.png" alt="Logo">
+                </div>
+                <div>
+                    <h1>AAPM</h1>
+                    <span></span>
+                    <span>SENAI FRANCISCO MATARAZZO - SP</span>
+                </div>
+            </div>
+
+            <div class="content">
+                <p class="tag">SISTEMA INSTITUCIONAL ADMINISTRATIVO</p>
+                <h2>Plataforma Administrativa de Gestão Comercial</h2>
+                <p class="text">Centralize estoque, pedidos e operações administrativas em um ambiente seguro.</p>
+
+                <div class="mini-cards">
+                    <div class="mini-card">
+                        <i data-lucide="shopping-cart"></i>
+                        <span>Pedidos</span>
+                    </div>
+                    <div class="mini-card">
+                        <i data-lucide="package"></i>
+                        <span>Estoque</span>
+                    </div>
+                    <div class="mini-card">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>Relatórios</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="right-side">
+
+            <div class="cadastro-card">
+
+                <div class="line"></div>
+
+                <div class="header">
+                    <h3>Cadastro</h3>
+                    <p>Cadastre um usuário.</p>
+                </div>
+
+                <form action="/auth/cadastro" method="post" id="cadastroForm">
+
+                    <div class="input-box">
+                        <i data-lucide="user"></i>
+                        <input type="text" name="nome" placeholder="Nome de usuário" required>
+                    </div>
+
+                    <div class="input-box">
+                        <i data-lucide="mail"></i>
+                        <input type="email" name="email" placeholder="Email" required>
+                    </div>
+
+                    <div class="input-box">
+                        <i data-lucide="lock"></i>
+                        <input type="password" name="senha" placeholder="Senha" required>
+                    </div>
+
+                    <button type="submit" class="cadastro-btn">
+                        <span>Cadastrar</span>
+                        <i data-lucide="arrow-right"></i>
+                    </button>
+
+                    {% if erro %}
+                    <p
+                        style="color: #ff4d4d; margin-top: 15px; text-align: center; font-weight: 600; font-size: 0.9rem; animation: fadeIn 0.4s ease both;">
+                        {{ erro }}
+                    </p>
+                    {% endif %}
+                </form>
+                <div class="signup-link">
+                    <p>Já tem uma conta? <a href="/auth/login">Faça o login</a></p>
+                </div>
+                <div class="security">
+                    <div class="dot"></div>
+                    <span>Ambiente seguro - © 2026 SENAI. Todos os direitos reservados.</span>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="../scripts/cadastro.js"></script>
+
+    <script>
+        lucide.createIcons();
+    </script>
+
+</body>
+
+</html>

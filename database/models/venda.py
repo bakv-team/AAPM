@@ -83,6 +83,11 @@ class ItemVenda(Base):
         ForeignKey("produtos.id", ondelete="SET NULL"),
         nullable=True
     )
+    variacao_id = Column(
+        Integer,
+        ForeignKey("produtos_variacoes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Dados históricos — não dependem do produto atual no banco
     produto_nome   = Column(String(150), nullable=False)
@@ -96,3 +101,4 @@ class ItemVenda(Base):
     # Relacionamentos
     venda   = relationship("Venda", back_populates="itens")
     produto = relationship("Produto", backref="itens_venda")
+    variacao = relationship("ProdutoVariacao")

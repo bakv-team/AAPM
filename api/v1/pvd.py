@@ -6,6 +6,7 @@ import os
 import smtplib
 import urllib.error
 import urllib.request
+import uuid
 from email.message import EmailMessage
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -24,6 +25,7 @@ from database.models.categoria import Categoria
 from database.models.cliente import Cliente
 from database.models.movimentacao import Movimentacao, Tipo_movimentacao
 from database.models.produto import Produto
+from database.models.variacao import Atributo, ProdutoVariacao, ValorAtributo
 from database.models.usuario import Usuario
 from database.models.venda import ItemVenda, Venda
 
@@ -57,6 +59,7 @@ class CategoriaPayload(BaseModel):
 
 class EstoquePayload(BaseModel):
     quantidade: int
+    variacao_id: int | None = None
 
 
 class ProdutoStatusPayload(BaseModel):
@@ -65,6 +68,7 @@ class ProdutoStatusPayload(BaseModel):
 
 class ItemVendaPayload(BaseModel):
     produto_id: int
+    variacao_id: int | None = None
     quantidade: int
 
 
@@ -123,11 +127,25 @@ def _categoria_json(categoria: Categoria) -> dict:
 
 def _produto_json(produto: Produto) -> dict:
     categoria = produto.categoria
+    variacoes = [
+        {
+            "id": str(variacao.id),
+            "size": variacao.valor_do_atributo("Tamanho"),
+            "tamanho": variacao.valor_do_atributo("Tamanho"),
+            "color": variacao.valor_do_atributo("Cor"),
+            "cor": variacao.valor_do_atributo("Cor"),
+            "label": variacao.nome_combinacao,
+            "price": variacao.preco,
+            "preco": variacao.preco,
+            "stock": variacao.estoque_atual,
+            "estoque_atual": variacao.estoque_atual,
+        }
+        for variacao in produto.variacoes
+    ]
     return {
         "id": str(produto.id),
         "name": produto.nome,
         "nome": produto.nome,
-        "sku": f"PROD-{produto.id:04d}",
         "categoryId": str(produto.categoria_id) if produto.categoria_id else "",
         "categoria_id": produto.categoria_id,
         "categoryName": categoria.nome if categoria else "",
@@ -139,7 +157,104 @@ def _produto_json(produto: Produto) -> dict:
         "descricao": produto.descricao or "",
         "imageUrl": produto.imagem_url if produto.imagem_path else "",
         "ativo": produto.ativo,
+        "hasVariations": bool(variacoes),
+        "variations": variacoes,
+        "variacoes": variacoes,
     }
+
+
+def _parse_variacoes(valor: str) -> list[dict]:
+    if not (valor or "").strip():
+        return []
+    try:
+        itens = json.loads(valor)
+    except (TypeError, json.JSONDecodeError):
+        raise HTTPException(status_code=400, detail="As variacoes informadas sao invalidas.")
+    if not isinstance(itens, list):
+        raise HTTPException(status_code=400, detail="As variacoes devem ser uma lista.")
+
+    resultado = []
+    combinacoes = set()
+    for item in itens:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=400, detail="Variacao invalida.")
+        tamanho = str(item.get("size") or item.get("tamanho") or "").strip()
+        cor = str(item.get("color") or item.get("cor") or "").strip()
+        try:
+            preco = float(item.get("price", item.get("preco")))
+            estoque = int(item.get("stock", item.get("estoque_atual", 0)))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"Preco ou estoque invalido para o tamanho {tamanho or '?'}.")
+        chave_combinacao = (tamanho.casefold(), cor.casefold())
+        if not tamanho and not cor:
+            raise HTTPException(status_code=400, detail="Informe o tamanho ou a cor de todas as variacoes.")
+        if preco < 0 or estoque < 0:
+            raise HTTPException(status_code=400, detail="Preco e estoque da variacao nao podem ser negativos.")
+        if chave_combinacao in combinacoes:
+            raise HTTPException(status_code=400, detail="A mesma combinacao de tamanho e cor foi informada mais de uma vez.")
+        combinacoes.add(chave_combinacao)
+        resultado.append({"tamanho": tamanho, "cor": cor, "preco": preco, "estoque": estoque})
+    return resultado
+
+
+def _salvar_variacoes(
+    db: Session,
+    produto: Produto,
+    itens: list[dict],
+    substituir: bool = True,
+) -> None:
+    if substituir:
+        produto.variacoes.clear()
+        db.flush()
+    if not itens:
+        return
+
+    combinacoes_existentes = {
+        (
+            variacao.valor_do_atributo("Tamanho").casefold(),
+            variacao.valor_do_atributo("Cor").casefold(),
+        )
+        for variacao in produto.variacoes
+    }
+
+    for item in itens:
+        chave = (item["tamanho"].casefold(), item["cor"].casefold())
+        if chave in combinacoes_existentes:
+            nome = " / ".join(filter(None, (item["tamanho"], item["cor"])))
+            raise HTTPException(status_code=409, detail=f"A variacao {nome} ja existe neste produto.")
+        combinacoes_existentes.add(chave)
+        valores = []
+        for nome_atributo, conteudo in (("Tamanho", item["tamanho"]), ("Cor", item["cor"])):
+            if not conteudo:
+                continue
+            atributo = db.query(Atributo).filter(func.lower(Atributo.nome) == nome_atributo.lower()).first()
+            if not atributo:
+                atributo = Atributo(nome=nome_atributo)
+                db.add(atributo)
+                db.flush()
+            valor = (
+                db.query(ValorAtributo)
+                .filter(
+                    ValorAtributo.atributo_id == atributo.id,
+                    func.lower(ValorAtributo.valor) == conteudo.lower(),
+                )
+                .first()
+            )
+            if not valor:
+                valor = ValorAtributo(atributo=atributo, valor=conteudo)
+                db.add(valor)
+                db.flush()
+            valores.append(valor)
+        produto.variacoes.append(ProdutoVariacao(
+            codigo_produto=f"VAR-{uuid.uuid4().hex[:12].upper()}",
+            preco=item["preco"],
+            estoque_atual=item["estoque"],
+            valores_atributos=valores,
+        ))
+
+    # Mantém os consumidores legados (relatórios, filtros e estoque) coerentes.
+    produto.preco = min(variacao.preco for variacao in produto.variacoes)
+    produto.estoque_atual = sum(variacao.estoque_atual for variacao in produto.variacoes)
 
 
 def _imagem_existente_path(valor: str | None) -> str | None:
@@ -726,26 +841,47 @@ def criar_venda_api(
     if not cliente_nome or cliente_nome.lower() in ("cliente balcao", "cliente balcão"):
         raise HTTPException(status_code=400, detail="Informe o nome do cliente para fechar o pedido.")
 
-    quantidades: dict[int, int] = {}
+    quantidades: dict[tuple[int, int | None], int] = {}
     for item in payload.itens:
         if item.quantidade <= 0:
             raise HTTPException(status_code=400, detail="Quantidade invalida.")
-        quantidades[item.produto_id] = quantidades.get(item.produto_id, 0) + item.quantidade
+        chave = (item.produto_id, item.variacao_id)
+        quantidades[chave] = quantidades.get(chave, 0) + item.quantidade
+
+    produto_ids = {produto_id for produto_id, _ in quantidades}
 
     produtos = (
         db.query(Produto)
-        .filter(Produto.id.in_(quantidades.keys()), Produto.ativo == True)
+        .filter(Produto.id.in_(produto_ids), Produto.ativo == True)
         .with_for_update()
         .all()
     )
     produtos_por_id = {produto.id: produto for produto in produtos}
 
-    if len(produtos_por_id) != len(quantidades):
+    if len(produtos_por_id) != len(produto_ids):
         raise HTTPException(status_code=404, detail="Um ou mais produtos nao foram encontrados.")
 
-    for produto_id, quantidade in quantidades.items():
+    variacao_ids = {variacao_id for _, variacao_id in quantidades if variacao_id is not None}
+    variacoes_por_id = {
+        variacao.id: variacao
+        for variacao in (
+            db.query(ProdutoVariacao)
+            .filter(ProdutoVariacao.id.in_(variacao_ids))
+            .with_for_update()
+            .all()
+            if variacao_ids else []
+        )
+    }
+
+    for (produto_id, variacao_id), quantidade in quantidades.items():
         produto = produtos_por_id[produto_id]
-        if produto.estoque_atual - quantidade < 0:
+        if produto.variacoes and variacao_id is None:
+            raise HTTPException(status_code=400, detail=f"Selecione tamanho/cor para {produto.nome}.")
+        variacao = variacoes_por_id.get(variacao_id) if variacao_id is not None else None
+        if variacao_id is not None and (not variacao or variacao.produto_id != produto_id):
+            raise HTTPException(status_code=400, detail=f"Variacao invalida para {produto.nome}.")
+        estoque_disponivel = variacao.estoque_atual if variacao else produto.estoque_atual
+        if estoque_disponivel - quantidade < 0:
             raise HTTPException(
                 status_code=409,
                 detail=f"Estoque insuficiente para {produto.nome}.",
@@ -772,7 +908,10 @@ def criar_venda_api(
         )
         associado_confirmado = bool(cliente and cliente.is_associado)
         desconto_percentual = 10.0 if associado_confirmado else 0.0
-        total_bruto = sum(produtos_por_id[id].preco * qtd for id, qtd in quantidades.items())
+        total_bruto = sum(
+            (variacoes_por_id[variacao_id].preco if variacao_id else produtos_por_id[produto_id].preco) * qtd
+            for (produto_id, variacao_id), qtd in quantidades.items()
+        )
         total_liquido = total_bruto * (1 - desconto_percentual / 100)
 
         observacoes = [f"Pagamento: {pagamento}."]
@@ -807,21 +946,27 @@ def criar_venda_api(
         db.add(venda)
         db.flush()
 
-        for produto_id, quantidade in quantidades.items():
+        for (produto_id, variacao_id), quantidade in quantidades.items():
             produto = produtos_por_id[produto_id]
+            variacao = variacoes_por_id.get(variacao_id) if variacao_id else None
+            preco_unitario = variacao.preco if variacao else produto.preco
             produto.estoque_atual -= quantidade
+            if variacao:
+                variacao.estoque_atual -= quantidade
+            complemento = f" ({variacao.nome_combinacao})" if variacao else ""
 
             db.add(ItemVenda(
                 venda_id=venda.id,
                 produto_id=produto.id,
-                produto_nome=produto.nome,
+                variacao_id=variacao.id if variacao else None,
+                produto_nome=f"{produto.nome}{complemento}",
                 quantidade=quantidade,
-                preco_unitario=produto.preco,
+                preco_unitario=preco_unitario,
             ))
             db.add(Movimentacao(
                 tipo=Tipo_movimentacao.SAIDA,
                 quantidade=quantidade,
-                preco_unitario=produto.preco,
+                preco_unitario=preco_unitario,
                 observacao=f"Venda #{venda.id:04d}",
                 criado_em=agora,
                 produto_id=produto.id,
@@ -1655,6 +1800,7 @@ async def criar_produto_api(
     categoria_id: int = Form(0),
     imagem: UploadFile = File(None),
     imagem_existente: str = Form(""),
+    variacoes: str = Form(""),
     db: Session = Depends(get_db),
     admin=Depends(require_permission("products")),
 ):
@@ -1662,10 +1808,13 @@ async def criar_produto_api(
     if not nome:
         raise HTTPException(status_code=400, detail="Informe o nome do produto.")
 
+    variacoes_data = _parse_variacoes(variacoes)
     existente = db.query(Produto).filter(Produto.nome.ilike(nome)).first()
-    if existente:
-        raise HTTPException(status_code=409, detail="Ja existe um produto com este nome.")
-
+    if existente and not variacoes_data:
+        raise HTTPException(
+            status_code=409,
+            detail="Este produto ja existe. Adicione uma variacao de tamanho ou cor para complementar o cadastro.",
+        )
     if estoque_atual < 0:
         raise HTTPException(status_code=400, detail="O estoque nao pode ser negativo.")
 
@@ -1681,6 +1830,24 @@ async def criar_produto_api(
 
     imagem_path = await _salvar_imagem(imagem) or _imagem_existente_path(imagem_existente)
 
+    if existente:
+        _salvar_variacoes(db, existente, variacoes_data, substituir=False)
+        existente.ativo = True
+        if (descricao or "").strip():
+            existente.descricao = descricao.strip()
+        if categoria_id:
+            existente.categoria_id = categoria_id
+        if imagem_path:
+            _remover_imagem(existente.imagem_path)
+            existente.imagem_path = imagem_path
+        try:
+            db.commit()
+        except SQLAlchemyError:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Nao foi possivel adicionar a variacao ao produto.")
+        db.refresh(existente)
+        return _produto_json(existente)
+
     produto = Produto(
         nome=nome,
         descricao=(descricao or "").strip(),
@@ -1691,7 +1858,13 @@ async def criar_produto_api(
     )
 
     db.add(produto)
-    db.commit()
+    db.flush()
+    _salvar_variacoes(db, produto, variacoes_data)
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Nao foi possivel gerar o codigo interno da variacao.")
     db.refresh(produto)
 
     return _produto_json(produto)
@@ -1707,6 +1880,7 @@ async def editar_produto_api(
     categoria_id: int = Form(0),
     imagem: UploadFile = File(None),
     imagem_existente: str = Form(""),
+    variacoes: str = Form(""),
     db: Session = Depends(get_db),
     admin=Depends(require_permission("products")),
 ):
@@ -1726,6 +1900,7 @@ async def editar_produto_api(
     if conflito:
         raise HTTPException(status_code=409, detail="Ja existe outro produto com este nome.")
 
+    variacoes_data = _parse_variacoes(variacoes)
     if estoque_atual < 0:
         raise HTTPException(status_code=400, detail="O estoque nao pode ser negativo.")
 
@@ -1753,8 +1928,12 @@ async def editar_produto_api(
     produto.preco = preco
     produto.estoque_atual = estoque_atual
     produto.categoria_id = categoria_id
-
-    db.commit()
+    _salvar_variacoes(db, produto, variacoes_data)
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Nao foi possivel gerar o codigo interno da variacao.")
     db.refresh(produto)
 
     return _produto_json(produto)
@@ -1779,11 +1958,17 @@ def adicionar_estoque_api(
         raise HTTPException(status_code=401, detail="Usuario nao identificado.")
 
     produto.estoque_atual += payload.quantidade
+    variacao = None
+    if produto.variacoes:
+        variacao = next((item for item in produto.variacoes if item.id == payload.variacao_id), None)
+        if not variacao:
+            raise HTTPException(status_code=400, detail="Selecione a variacao que recebera o estoque.")
+        variacao.estoque_atual += payload.quantidade
     db.add(Movimentacao(
         tipo=Tipo_movimentacao.ENTRADA,
         quantidade=payload.quantidade,
-        preco_unitario=produto.preco,
-        observacao="Reposicao manual de estoque",
+        preco_unitario=variacao.preco if variacao else produto.preco,
+        observacao=f"Reposicao manual de estoque{f' - {variacao.nome_combinacao}' if variacao else ''}",
         criado_em=_agora_local(),
         produto_id=produto.id,
         usuario_id=usuario_id,

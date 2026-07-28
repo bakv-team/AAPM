@@ -186,6 +186,7 @@ window.API = (function () {
     data.set("preco", payload.price);
     data.set("estoque_atual", payload.stock);
     data.set("categoria_id", payload.categoryId || 0);
+    data.set("variacoes", JSON.stringify(payload.variations || []));
     if (payload.image) data.set("imagem", payload.image);
     if (!payload.image && payload.existingImage) data.set("imagem_existente", payload.existingImage);
     return data;
@@ -224,8 +225,8 @@ window.API = (function () {
   async function updateProduct(id, payload) {
     return apiForm(`/api/v1/pdv/products/${id}`, "PUT", productFormData(payload));
   }
-  async function addProductStock(id, quantidade) {
-    return apiPost(`/api/v1/pdv/products/${id}/stock`, { quantidade });
+  async function addProductStock(id, quantidade, variacaoId = null) {
+    return apiPost(`/api/v1/pdv/products/${id}/stock`, { quantidade, variacao_id: variacaoId ? Number(variacaoId) : null });
   }
   async function getStockMovements(filters = {}) {
     const qs = new URLSearchParams();
@@ -994,7 +995,7 @@ window.ProductsPage = (function () {
   function getFiltered() {
     return productsPageItems.filter(p => {
       const cat = window.DB.getCategory(p.categoryId);
-      if (filters.q && !(`${p.name} ${p.sku || ""} ${cat?.name || ""}`.toLowerCase().includes(filters.q.toLowerCase()))) return false;
+      if (filters.q && !(`${p.name} ${cat?.name || ""} ${(p.variations || []).map(v => `${v.size || ""} ${v.color || ""}`).join(" ")}`.toLowerCase().includes(filters.q.toLowerCase()))) return false;
       if (filters.category && p.categoryId !== filters.category) return false;
       if (filters.stock) {
         if (filters.stock === "in"  && p.stock <= 0) return false;
@@ -1054,12 +1055,12 @@ window.ProductsPage = (function () {
             <td>
               <div class="prod-cell">
                 ${thumb}
-                <div class="prod-name"><strong>${p.name}</strong><span>${p.sku || "—"}</span></div>
+                <div class="prod-name"><strong>${p.name}</strong><span>${p.hasVariations ? `${p.variations.length} variação${p.variations.length === 1 ? "" : "ões"}` : "Sem variações"}</span></div>
               </div>
             </td>
             <td><span class="pill gray">${cat?.name || "—"}</span></td>
-            <td><strong>${UI.money(p.price)}</strong></td>
-            <td>${p.stock}</td>
+            <td>${p.hasVariations ? `<div class="variation-summary">${p.variations.map(v => `<span><b>${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))}</b> ${UI.money(v.price)}</span>`).join("")}</div>` : `<strong>${UI.money(p.price)}</strong>`}</td>
+            <td>${p.hasVariations ? `<div class="variation-summary">${p.variations.map(v => `<span><b>${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))}</b> ${v.stock} un.</span>`).join("")}</div>` : p.stock}</td>
             <td><span class="pill ${s.pill}">${s.label}</span></td>
             <td><span class="pill ${active ? "green" : "red"}">${active ? "Ativo" : "Inativo"}</span></td>
             <td class="right">
@@ -1274,6 +1275,53 @@ window.ProductsPage = (function () {
     }
   }
 
+  function addProductVariationRow(variation = {}) {
+    const list = document.getElementById("productVariations");
+    const row = document.createElement("div");
+    row.className = "product-variation-row";
+    row.innerHTML = `
+      <label>Tamanho <span class="optional">(opcional)</span><input type="text" data-variation-size maxlength="50" placeholder="Ex.: P, M, G"></label>
+      <label>Cor <span class="optional">(opcional)</span><input type="text" data-variation-color maxlength="50" placeholder="Ex.: Azul"></label>
+      <label>Preco (R$)<input type="number" data-variation-price min="0" step="0.01" required></label>
+      <label>Estoque<input type="number" data-variation-stock min="0" step="1" required></label>
+      <button type="button" class="act-btn delete variation-remove" data-remove-variation title="Remover tamanho" aria-label="Remover tamanho"><i class="fa-solid fa-trash"></i></button>
+    `;
+    row.querySelector("[data-variation-size]").value = variation.size || variation.tamanho || "";
+    row.querySelector("[data-variation-color]").value = variation.color || variation.cor || "";
+    row.querySelector("[data-variation-price]").value = variation.price ?? variation.preco ?? document.getElementById("productPrice").value ?? "";
+    row.querySelector("[data-variation-stock]").value = variation.stock ?? variation.estoque_atual ?? 0;
+    list.appendChild(row);
+    updateVariationFieldState();
+  }
+
+  function setProductVariations(variations) {
+    document.getElementById("productVariations").replaceChildren();
+    (variations || []).forEach(addProductVariationRow);
+    updateVariationFieldState();
+  }
+
+  function readProductVariations() {
+    return [...document.querySelectorAll(".product-variation-row")].map(row => ({
+      size: row.querySelector("[data-variation-size]").value.trim(),
+      color: row.querySelector("[data-variation-color]").value.trim(),
+      price: Number(row.querySelector("[data-variation-price]").value),
+      stock: Number(row.querySelector("[data-variation-stock]").value)
+    }));
+  }
+
+  function updateVariationFieldState() {
+    const count = document.querySelectorAll(".product-variation-row").length;
+    const hint = document.getElementById("productVariationHint");
+    const hasVariations = count > 0;
+    document.getElementById("productBasePriceField").hidden = hasVariations;
+    document.getElementById("productBaseStockField").hidden = hasVariations;
+    document.getElementById("productPrice").required = !hasVariations;
+    document.getElementById("productStock").required = !hasVariations;
+    if (hint) hint.textContent = hasVariations
+      ? `${count} variação${count === 1 ? "" : "ões"}. Preço e estoque são definidos somente em cada combinação.`
+      : "Opcional. Sem variações, use o preço e o estoque gerais acima.";
+  }
+
   function openProductForm(id) {
     const titleEl = document.getElementById("productModalTitle");
     const catSel = document.getElementById("productCategory");
@@ -1288,6 +1336,7 @@ window.ProductsPage = (function () {
       document.getElementById("productCategory").value = p.categoryId;
       document.getElementById("productPrice").value = p.price;
       document.getElementById("productStock").value = p.stock;
+      setProductVariations(p.variations || p.variacoes || []);
       resetProductImageChoice(
         p.imageUrl ? "Manter imagem atual" : "Escolher imagem",
         p.imageUrl ? "Imagem atual mantida. Escolha outra se quiser trocar." : "PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva."
@@ -1297,6 +1346,7 @@ window.ProductsPage = (function () {
       titleEl.textContent = "Novo produto";
       document.getElementById("productForm").reset();
       document.getElementById("productId").value = "";
+      setProductVariations([]);
       resetProductImageChoice();
     }
     UI.openModal("productModal");
@@ -1314,8 +1364,12 @@ window.ProductsPage = (function () {
       image: document.getElementById("productImage").files[0] || null,
       existingImage: document.getElementById("productExistingImage").value || ""
     };
+    data.variations = readProductVariations();
     if (!data.name) { UI.toast("Informe o nome do produto.", "error"); return; }
     if (data.stock < 0) { UI.toast("O estoque nao pode ser negativo.", "error"); return; }
+    if (data.variations.some(v => (!v.size && !v.color) || v.price < 0 || v.stock < 0)) {
+      UI.toast("Revise tamanho/cor, preco e estoque das variacoes.", "error"); return;
+    }
 
     try {
       if (id) {
@@ -1326,11 +1380,19 @@ window.ProductsPage = (function () {
         UI.toast(`Produto "${data.name}" atualizado.`, "success");
       } else {
         const created = await window.API.createProduct(data);
-        window.DB.products.push(created);
-        if (filters.status !== "inactive") productsPageItems.push(created);
+        const existing = window.DB.products.find(product => String(product.id) === String(created.id));
+        if (existing) {
+          Object.assign(existing, created);
+          const pageProduct = productsPageItems.find(product => String(product.id) === String(created.id));
+          if (pageProduct) Object.assign(pageProduct, created);
+          else if (filters.status !== "inactive") productsPageItems.push(created);
+        } else {
+          window.DB.products.push(created);
+          if (filters.status !== "inactive") productsPageItems.push(created);
+        }
         window.AAPMSound?.play("add");
         window.AAPMSound?.suppressNextToast();
-        UI.toast(`Produto "${data.name}" criado.`, "success");
+        UI.toast(existing ? `Nova variação adicionada a "${data.name}".` : `Produto "${data.name}" criado.`, "success");
       }
     } catch (err) {
       console.error("Falha ao salvar produto:", err);
@@ -1368,14 +1430,22 @@ window.ProductsPage = (function () {
     document.getElementById("productForm").addEventListener("submit", saveProduct);
     document.getElementById("productImage").addEventListener("change", handleProductImageFileChange);
     document.getElementById("openImageLibrary").addEventListener("click", openImageLibrary);
+    document.getElementById("addProductVariation").addEventListener("click", () => addProductVariationRow());
+    document.getElementById("productVariations").addEventListener("click", event => {
+      const remove = event.target.closest("[data-remove-variation]");
+      if (remove) {
+        remove.closest(".product-variation-row")?.remove();
+        updateVariationFieldState();
+      }
+    });
     document.getElementById("imageLibrarySearch").addEventListener("input", e => {
       renderImageLibrary(imageLibraryItems, e.target.value);
     });
 
     document.getElementById("exportProducts").addEventListener("click", () => {
-      const rows = [["Nome", "SKU", "Categoria", "Preço", "Estoque", "Situacao"]];
+      const rows = [["Nome", "Variações", "Categoria", "Preço", "Estoque", "Situacao"]];
       getFiltered().forEach(p => {
-        rows.push([p.name, p.sku || "", window.DB.getCategory(p.categoryId)?.name || "", p.price.toFixed(2).replace(".", ","), p.stock, p.ativo !== false ? "Ativo" : "Inativo"]);
+        rows.push([p.name, (p.variations || []).map(v => [v.size, v.color].filter(Boolean).join(" / ")).join("; "), window.DB.getCategory(p.categoryId)?.name || "", p.price.toFixed(2).replace(".", ","), p.stock, p.ativo !== false ? "Ativo" : "Inativo"]);
       });
       UI.downloadCSV("produtos.csv", rows);
       UI.toast("Exportação CSV gerada.", "success");
@@ -2029,6 +2099,16 @@ window.StockPage = (function () {
     document.getElementById("stockProductId").value = product.id;
     document.getElementById("stockProductName").value = product.name;
     document.getElementById("stockCurrent").value = product.stock;
+    const variationField = document.getElementById("stockVariationField");
+    const variationSelect = document.getElementById("stockVariation");
+    variationField.hidden = !product.hasVariations;
+    variationSelect.required = product.hasVariations;
+    variationSelect.innerHTML = product.hasVariations
+      ? product.variations.map(v => `<option value="${v.id}" data-stock="${v.stock}">${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))} — ${v.stock} un.</option>`).join("")
+      : "";
+    if (product.hasVariations) {
+      document.getElementById("stockCurrent").value = product.variations[0]?.stock || 0;
+    }
     document.getElementById("stockQuantity").value = "";
     document.getElementById("stockModalTitle").textContent = `Repor estoque`;
     UI.openModal("stockModal");
@@ -2040,6 +2120,7 @@ window.StockPage = (function () {
     const id = document.getElementById("stockProductId").value;
     const product = window.DB.getProduct(id);
     const quantity = parseInt(document.getElementById("stockQuantity").value, 10);
+    const variationId = document.getElementById("stockVariation").value || null;
 
     if (!product || !Number.isInteger(quantity) || quantity <= 0) {
       UI.toast("Informe uma quantidade maior que zero.", "error");
@@ -2047,7 +2128,7 @@ window.StockPage = (function () {
     }
 
     try {
-      const updated = await window.API.addProductStock(id, quantity);
+      const updated = await window.API.addProductStock(id, quantity, variationId);
       Object.assign(product, updated);
       UI.toast(`+${quantity} unidades adicionadas a ${product.name}.`, "success");
       UI.closeModal("stockModal");
@@ -2071,7 +2152,7 @@ window.StockPage = (function () {
       const s = UI.stockStatus(p);
       return `
         <tr>
-          <td><strong>${p.name}</strong> <span class="muted" style="font-family:'DM Mono',monospace;font-size:11px">${p.sku || ""}</span></td>
+          <td><strong>${p.name}</strong>${p.hasVariations ? `<div class="stock-variation-list">${p.variations.map(v => `<span>${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))}: <b>${v.stock} un.</b></span>`).join("")}</div>` : ""}</td>
           <td><span class="pill gray">${cat?.name || "—"}</span></td>
           <td><strong>${p.stock}</strong></td>
           <td><span class="pill ${s.pill}">${s.label}</span></td>
@@ -2085,11 +2166,11 @@ window.StockPage = (function () {
     }).join("");
 
     // KPIs
-    const skuCount = window.DB.products.length;
+    const productCodeCount = window.DB.products.length;
     const stockValue = window.DB.products.reduce((s, p) => s + (p.cost || p.price * 0.5) * p.stock, 0);
     const low = window.DB.products.filter(p => p.stock > 0 && p.stock <= 5).length;
     const out = window.DB.products.filter(p => p.stock <= 0).length;
-    document.getElementById("skuCount").textContent = UI.num(skuCount);
+    document.getElementById("productCodeCount").textContent = UI.num(productCodeCount);
     document.getElementById("stockValue").textContent = UI.money(stockValue);
     document.getElementById("lowStockCount").textContent = low;
     document.getElementById("outOfStockCount").textContent = out;
@@ -2105,6 +2186,9 @@ window.StockPage = (function () {
 
   function init() {
     document.getElementById("stockForm")?.addEventListener("submit", saveStock);
+    document.getElementById("stockVariation")?.addEventListener("change", event => {
+      document.getElementById("stockCurrent").value = event.target.selectedOptions[0]?.dataset.stock || 0;
+    });
     document.getElementById("stockModal")?.addEventListener("click", event => {
       if (event.target.id === "stockModal") UI.closeModal("stockModal");
     });
@@ -2429,7 +2513,7 @@ window.Dashboard = (function () {
     clientes:      { title: "Associados",            sub: "Cadastre associados e acompanhe benefícios de desconto." },
     funcionarios:  { title: "Funcionários",          sub: "Cadastre acessos e acompanhe permissões da equipe." },
     categorias:    { title: "Categorias",            sub: "Organize seus produtos por categoria." },
-    estoque:       { title: "Estoque",               sub: "Controle de SKUs, mínimos e reposições." },
+    estoque:       { title: "Estoque",               sub: "Controle de produtos, mínimos e reposições." },
     movimentacoes: { title: "Movimentações",         sub: "Acompanhe entradas, saídas e ajustes do estoque." },
     relatorios:    { title: "Relatórios",            sub: "Exportações e análises detalhadas." },
     configuracoes: { title: "Configurações",         sub: "Preferências da loja e do painel." }

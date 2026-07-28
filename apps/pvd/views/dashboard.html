@@ -634,7 +634,7 @@
         <!-- ============================= PAGE: ESTOQUE ============================= -->
         <section class="page{% if initial_route == 'estoque' %} active{% endif %}" id="page-estoque" data-requires-permission="stock">
           <div class="kpis">
-            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">SKUs ativos</span><span class="kpi-icon blue"><i class="fa-solid fa-barcode"></i></span></div><h2 class="kpi-value" id="skuCount">0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Produtos ativos</span><span class="kpi-icon blue"><i class="fa-solid fa-box"></i></span></div><h2 class="kpi-value" id="productCodeCount">0</h2></div>
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Valor em estoque</span><span class="kpi-icon orange"><i class="fa-solid fa-warehouse"></i></span></div><h2 class="kpi-value" id="stockValue">R$ 0</h2></div>
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Estoque baixo</span><span class="kpi-icon yellow"><i class="fa-solid fa-triangle-exclamation"></i></span></div><h2 class="kpi-value" id="lowStockCount">0</h2></div>
             <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Sem estoque</span><span class="kpi-icon red"><i class="fa-solid fa-circle-xmark"></i></span></div><h2 class="kpi-value" id="outOfStockCount">0</h2></div>
@@ -809,8 +809,15 @@
           <input type="hidden" id="productId" />
           <label class="span-2">Nome do produto<input type="text" id="productName" required /></label>
           <label>Categoria<select id="productCategory" required></select></label>
-          <label>Preço (R$)<input type="number" id="productPrice" step="0.01" min="0" required /></label>
-          <label>Estoque atual<input type="number" id="productStock" min="0" required /></label>
+          <label id="productBasePriceField">Preço (R$)<input type="number" id="productPrice" step="0.01" min="0" required /></label>
+          <label id="productBaseStockField">Estoque atual<input type="number" id="productStock" min="0" required /></label>
+          <div class="span-2 product-variations-field">
+            <div class="product-variations-head">
+              <div><span class="field-label">Variações do produto</span><p id="productVariationHint">Opcional. Adicione combinações de tamanho e/ou cor.</p></div>
+              <button type="button" class="ghost-btn" id="addProductVariation"><i class="fa-solid fa-plus"></i> Adicionar variação</button>
+            </div>
+            <div id="productVariations" class="product-variations-list"></div>
+          </div>
           <div class="span-2 product-image-field">
             <span class="field-label">Imagem do produto</span>
             <input type="hidden" id="productExistingImage" />
@@ -867,6 +874,7 @@
         <form id="stockForm" class="form-grid">
           <input type="hidden" id="stockProductId" />
           <label class="span-2">Produto<input type="text" id="stockProductName" readonly /></label>
+          <label class="span-2" id="stockVariationField" hidden>Variação<select id="stockVariation"></select></label>
           <label>Estoque atual<input type="number" id="stockCurrent" readonly /></label>
           <label>Quantidade a adicionar<input type="number" id="stockQuantity" min="1" step="1" required /></label>
           <div class="modal-foot span-2">

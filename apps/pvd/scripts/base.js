@@ -243,20 +243,20 @@ function cartItemName(item) {
   return item?.name || item?.nome || "Produto";
 }
 
+function variationLabel(variation) {
+  return [variation?.size || variation?.tamanho, variation?.color || variation?.cor].filter(Boolean).join(" / ");
+}
+
+function cartItemKey(item) {
+  return item?.cartKey || `${item?.id}:${item?.variationId || "base"}`;
+}
+
 function cartItemPrice(item) {
   return Number(item?.price ?? item?.preco ?? 0) || 0;
 }
 
 function cartItemQuantity(item) {
   return Math.max(1, Number(item?.quantidade ?? item?.qty ?? 1) || 1);
-}
-
-function productFiscalField(item, keys, fallback = "-") {
-  for (const key of keys) {
-    const value = item?.[key];
-    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
-  }
-  return fallback;
 }
 
 function icon(className) {
@@ -319,6 +319,11 @@ async function apiPost(path, body) {
 }
 
 function produtoDisponivel(produto) {
+  if (produto?.variationId) {
+    const origem = produtos.find(item => String(item.id) === String(produto.id));
+    const variacao = origem?.variations?.find(item => String(item.id) === String(produto.variationId));
+    return Math.max(0, Number(variacao?.stock) || 0);
+  }
   return Math.max(0, Number(produto.stock) || 0);
 }
 
@@ -343,8 +348,21 @@ function normalizarCarrinho() {
     .map(item => {
       const produto = produtos.find(p => String(p.id) === String(item.id));
       if (!produto) return null;
-      const quantidade = Math.min(item.quantidade, produtoDisponivel(produto));
-      return quantidade > 0 ? { ...produto, quantidade } : null;
+      const variacao = item.variationId
+        ? produto.variations?.find(v => String(v.id) === String(item.variationId))
+        : null;
+      if (produto.hasVariations && !variacao) return null;
+      const normalizado = variacao ? {
+        ...produto,
+        name: `${produto.name} (${variationLabel(variacao)})`,
+        price: variacao.price,
+        stock: variacao.stock,
+        variationId: variacao.id,
+        variationLabel: variationLabel(variacao),
+        cartKey: `${produto.id}:${variacao.id}`,
+      } : { ...produto, cartKey: `${produto.id}:base` };
+      const quantidade = Math.min(item.quantidade, produtoDisponivel(normalizado));
+      return quantidade > 0 ? { ...normalizado, quantidade } : null;
     })
     .filter(Boolean);
   salvarCarrinho();
@@ -440,6 +458,14 @@ function renderProdutos() {
             </div>
           `
         : `<p class="price"><strong>${money(precoOriginal)}</strong></p>`;
+      const variationsHTML = produto.hasVariations
+        ? `<label class="product-variation-select">
+             <span>Tamanho / cor</span>
+             <select data-product-variation="${produto.id}">
+               ${produto.variations.map(variation => `<option value="${variation.id}" ${variation.stock <= 0 ? "disabled" : ""}>${escapeHTML(variationLabel(variation))} — ${variation.stock} un. — ${money(variation.price)}</option>`).join("")}
+             </select>
+           </label>`
+        : "";
       return `
         <article class="${cardClasses}">
           ${bestSeller ? `<span class="top-seller-badge"><i class="fa-solid fa-fire"></i> Mais vendido</span>` : ""}
@@ -453,6 +479,7 @@ function renderProdutos() {
             </div>
             <p class="stock-chip ${disponivel <= 0 ? "danger" : ""}" title="${escapeHTML(estoqueLabel)}">${escapeHTML(estoqueLabel)}</p>
             ${priceHTML}
+            ${variationsHTML}
             <button class="card-button" data-add-product="${produto.id}" ${disabled}>
               <i class="fa-solid fa-cart-plus"></i> Adicionar
             </button>
@@ -463,7 +490,10 @@ function renderProdutos() {
   }
 
   productsGrid.querySelectorAll("[data-add-product]").forEach(button => {
-    button.addEventListener("click", () => adicionarAoCarrinho(button.dataset.addProduct));
+    button.addEventListener("click", () => {
+      const select = productsGrid.querySelector(`[data-product-variation="${button.dataset.addProduct}"]`);
+      adicionarAoCarrinho(button.dataset.addProduct, select?.value || null);
+    });
   });
   requestAnimationFrame(() => {
     productsGrid.classList.add("is-rendering");
@@ -498,37 +528,53 @@ function renderPagination(pages) {
   });
 }
 
-function adicionarAoCarrinho(idProduto) {
+function adicionarAoCarrinho(idProduto, idVariacao = null) {
   const produto = produtos.find(p => String(p.id) === String(idProduto));
   if (!produto) return;
 
-  const item = carrinho.find(row => String(row.id) === String(idProduto));
+  const variacao = idVariacao
+    ? produto.variations?.find(item => String(item.id) === String(idVariacao))
+    : null;
+  if (produto.hasVariations && !variacao) {
+    toast("Selecione uma combinação disponível.", "warn");
+    return;
+  }
+  const produtoCarrinho = variacao ? {
+    ...produto,
+    name: `${produto.name} (${variationLabel(variacao)})`,
+    price: variacao.price,
+    stock: variacao.stock,
+    variationId: variacao.id,
+    variationLabel: variationLabel(variacao),
+    cartKey: `${produto.id}:${variacao.id}`,
+  } : { ...produto, cartKey: `${produto.id}:base` };
+  const chave = cartItemKey(produtoCarrinho);
+  const item = carrinho.find(row => cartItemKey(row) === chave);
   const novaQuantidade = (item?.quantidade || 0) + 1;
-  if (novaQuantidade > produtoDisponivel(produto)) {
+  if (novaQuantidade > produtoDisponivel(produtoCarrinho)) {
     toast("Estoque insuficiente para este produto.", "warn");
     return;
   }
 
   if (item) item.quantidade = novaQuantidade;
-  else carrinho.push({ ...produto, quantidade: 1 });
+  else carrinho.push({ ...produtoCarrinho, quantidade: 1 });
 
   salvarCarrinho();
   renderCarrinho();
   window.AAPMSound?.play("add");
   window.AAPMSound?.suppressNextToast();
-  toast(`${produto.name} adicionado ao carrinho.`, "success");
+  toast(`${produtoCarrinho.name} adicionado ao carrinho.`, "success");
 }
 
-function alterarQuantidade(idProduto, delta) {
-  const item = carrinho.find(row => String(row.id) === String(idProduto));
-  const produto = produtos.find(p => String(p.id) === String(idProduto));
-  if (!item || !produto) return;
+function alterarQuantidade(chaveItem, delta) {
+  const item = carrinho.find(row => cartItemKey(row) === chaveItem);
+  if (!item) return;
 
   const novaQuantidade = item.quantidade + delta;
   if (novaQuantidade <= 0) {
-    carrinho = carrinho.filter(row => String(row.id) !== String(idProduto));
+    carrinho = carrinho.filter(row => cartItemKey(row) !== chaveItem);
     window.AAPMSound?.play("remove");
-  } else if (novaQuantidade <= produtoDisponivel(produto)) {
+  } else if (novaQuantidade <= produtoDisponivel(item)) {
     item.quantidade = novaQuantidade;
     if (delta > 0) window.AAPMSound?.play("add");
   } else {
@@ -539,8 +585,8 @@ function alterarQuantidade(idProduto, delta) {
   renderCarrinho();
 }
 
-function removerDoCarrinho(idProduto) {
-  carrinho = carrinho.filter(row => String(row.id) !== String(idProduto));
+function removerDoCarrinho(chaveItem) {
+  carrinho = carrinho.filter(row => cartItemKey(row) !== chaveItem);
   salvarCarrinho();
   renderCarrinho();
   window.AAPMSound?.play("remove");
@@ -586,6 +632,7 @@ function buildSalePayload() {
     excecao_observacao: exception.note,
     itens: carrinho.map(item => ({
       produto_id: Number(item.id),
+      variacao_id: item.variationId ? Number(item.variationId) : null,
       quantidade: cartItemQuantity(item)
     }))
   };
@@ -644,7 +691,7 @@ function renderCarrinho() {
       qty.className = "cart-line-qty";
       const minus = document.createElement("button");
       minus.type = "button";
-      minus.dataset.qty = item.id;
+      minus.dataset.qty = cartItemKey(item);
       minus.dataset.delta = "-1";
       minus.setAttribute("aria-label", `Diminuir quantidade de ${name}`);
       minus.append(icon("fa-solid fa-minus"));
@@ -652,7 +699,7 @@ function renderCarrinho() {
       amount.textContent = String(quantity);
       const plus = document.createElement("button");
       plus.type = "button";
-      plus.dataset.qty = item.id;
+      plus.dataset.qty = cartItemKey(item);
       plus.dataset.delta = "1";
       plus.setAttribute("aria-label", `Aumentar quantidade de ${name}`);
       plus.append(icon("fa-solid fa-plus"));
@@ -666,7 +713,7 @@ function renderCarrinho() {
       total.textContent = money(price * quantity);
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.dataset.remove = item.id;
+      remove.dataset.remove = cartItemKey(item);
       remove.setAttribute("aria-label", `Remover ${name}`);
       remove.append(icon("fa-solid fa-trash-can"));
       side.append(total, remove);
@@ -1075,7 +1122,6 @@ function renderPrintableNote() {
     const unitPrice = cartItemPrice(item);
     const itemGross = unitPrice * quantity;
     const itemDiscount = totals.desconto ? (itemGross / grossTotal) * totals.desconto : 0;
-    const sku = productFiscalField(item, ["sku", "codigo", "code"], `PROD-${String(item.id || index + 1).padStart(4, "0")}`);
     const itemTotal = itemGross - itemDiscount;
 
     return `
@@ -1084,7 +1130,7 @@ function renderPrintableNote() {
           <span class="receipt-item-name">${escapeHTML(cartItemName(item))}</span>
           <strong>${money(itemTotal)}</strong>
         </div>
-        <span class="receipt-item-meta">${escapeHTML(sku)} - ${quantity} x ${money(unitPrice)}${itemDiscount ? ` - desc. ${money(itemDiscount)}` : ""}</span>
+        <span class="receipt-item-meta">${quantity} x ${money(unitPrice)}${itemDiscount ? ` - desc. ${money(itemDiscount)}` : ""}</span>
       </div>
     `;
   }).join("");

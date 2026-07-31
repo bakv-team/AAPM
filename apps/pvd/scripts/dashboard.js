@@ -436,7 +436,7 @@ window.UI = (function () {
   }
 
   // Confirm dialog (returns Promise<boolean>)
-  function confirmDialog({ title = "Confirmar ação", text = "Tem certeza?", okLabel = "Confirmar" } = {}) {
+  function confirmDialog({ title = "Confirmar ação", text = "Tem certeza?", okLabel = "Confirmar", cancelLabel = "Cancelar" } = {}) {
     return new Promise(resolve => {
       const m = document.getElementById("confirmModal");
       document.getElementById("confirmTitle").textContent = title;
@@ -444,6 +444,7 @@ window.UI = (function () {
       const okBtn = document.getElementById("confirmOk");
       const cancelBtn = document.getElementById("confirmCancel");
       okBtn.textContent = okLabel;
+      cancelBtn.textContent = cancelLabel;
       m.classList.remove("hidden");
       const clean = () => {
         m.classList.add("hidden");
@@ -1037,6 +1038,15 @@ window.ProductsPage = (function () {
         const color = UI.palette[(catIndex >= 0 ? catIndex : 0) % UI.palette.length];
         const s = UI.stockStatus(p);
         const active = p.ativo !== false;
+        const variations = p.hasVariations ? (p.variations || []) : [];
+        const variationPrices = variations.map(v => Number(v.price) || 0);
+        const minVariationPrice = variationPrices.length ? Math.min(...variationPrices) : Number(p.price) || 0;
+        const maxVariationPrice = variationPrices.length ? Math.max(...variationPrices) : Number(p.price) || 0;
+        const totalVariationStock = variations.reduce((totalStock, variation) => totalStock + (Number(variation.stock) || 0), 0);
+        const variationChips = variations.slice(0, 2).map(variation => {
+          const label = [variation.size, variation.color].filter(Boolean).join(" · ") || "Opção";
+          return `<span class="product-variation-chip">${UI.escapeHTML(label)}</span>`;
+        }).join("") + (variations.length > 2 ? `<span class="product-variation-chip more">+${variations.length - 2}</span>` : "");
         const thumb = p.imageUrl
           ? `<div class="prod-thumb image"><img src="${p.imageUrl}" alt=""></div>`
           : `<div class="prod-thumb" style="background:linear-gradient(135deg, ${color}, ${color}aa)"><i class="fa-solid ${cat?.icon || "fa-box"}"></i></div>`;
@@ -1055,12 +1065,17 @@ window.ProductsPage = (function () {
             <td>
               <div class="prod-cell">
                 ${thumb}
-                <div class="prod-name"><strong>${p.name}</strong><span>${p.hasVariations ? `${p.variations.length} variação${p.variations.length === 1 ? "" : "ões"}` : "Sem variações"}</span></div>
+                <div class="prod-name product-table-name">
+                  <strong>${p.name}</strong>
+                  ${variations.length
+                    ? `<div class="product-table-variations"><span class="product-variation-count"><i class="fa-solid fa-shapes"></i>${variations.length} opç${variations.length === 1 ? "ão" : "ões"}</span>${variationChips}</div>`
+                    : `<span class="product-simple-label">Produto simples</span>`}
+                </div>
               </div>
             </td>
             <td><span class="pill gray">${cat?.name || "—"}</span></td>
-            <td>${p.hasVariations ? `<div class="variation-summary">${p.variations.map(v => `<span><b>${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))}</b> ${UI.money(v.price)}</span>`).join("")}</div>` : `<strong>${UI.money(p.price)}</strong>`}</td>
-            <td>${p.hasVariations ? `<div class="variation-summary">${p.variations.map(v => `<span><b>${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))}</b> ${v.stock} un.</span>`).join("")}</div>` : p.stock}</td>
+            <td><div class="product-table-value"><strong>${variations.length && minVariationPrice !== maxVariationPrice ? `${UI.money(minVariationPrice)} – ${UI.money(maxVariationPrice)}` : UI.money(variations.length ? minVariationPrice : p.price)}</strong><span>${variations.length ? (minVariationPrice === maxVariationPrice ? "Mesmo preço" : "Faixa de preço") : "Preço unitário"}</span></div></td>
+            <td><div class="product-table-value stock"><strong>${variations.length ? totalVariationStock : p.stock}<small> un.</small></strong><span>${variations.length ? `Somado em ${variations.length} opç${variations.length === 1 ? "ão" : "ões"}` : "Estoque atual"}</span></div></td>
             <td><span class="pill ${s.pill}">${s.label}</span></td>
             <td><span class="pill ${active ? "green" : "red"}">${active ? "Ativo" : "Inativo"}</span></td>
             <td class="right">
@@ -1280,18 +1295,63 @@ window.ProductsPage = (function () {
     const row = document.createElement("div");
     row.className = "product-variation-row";
     row.innerHTML = `
-      <label>Tamanho <span class="optional">(opcional)</span><input type="text" data-variation-size maxlength="50" placeholder="Ex.: P, M, G"></label>
-      <label>Cor <span class="optional">(opcional)</span><input type="text" data-variation-color maxlength="50" placeholder="Ex.: Azul"></label>
-      <label>Preco (R$)<input type="number" data-variation-price min="0" step="0.01" required></label>
-      <label>Estoque<input type="number" data-variation-stock min="0" step="1" required></label>
-      <button type="button" class="act-btn delete variation-remove" data-remove-variation title="Remover tamanho" aria-label="Remover tamanho"><i class="fa-solid fa-trash"></i></button>
+      <label data-mobile-label="Tamanho"><span class="sr-only">Tamanho (opcional)</span><input type="text" data-variation-size list="productSizeSuggestions" maxlength="50" placeholder="Ex.: M"></label>
+      <label data-mobile-label="Cor"><span class="sr-only">Cor (opcional)</span><input type="text" data-variation-color list="productColorSuggestions" maxlength="50" placeholder="Ex.: Azul"></label>
+      <label data-mobile-label="Preço"><span class="sr-only">Preço</span><div class="variation-number-field"><span class="variation-number-prefix">R$</span><input type="number" data-variation-price min="0" step="0.01" placeholder="0,00" required><span class="variation-number-controls"><button type="button" data-variation-step="up" aria-label="Aumentar preço"><i class="fa-solid fa-chevron-up"></i></button><button type="button" data-variation-step="down" aria-label="Diminuir preço"><i class="fa-solid fa-chevron-down"></i></button></span></div></label>
+      <label data-mobile-label="Estoque"><span class="sr-only">Estoque</span><div class="variation-number-field"><input type="number" data-variation-stock min="0" step="1" placeholder="0" required><span class="variation-number-controls"><button type="button" data-variation-step="up" aria-label="Aumentar estoque"><i class="fa-solid fa-chevron-up"></i></button><button type="button" data-variation-step="down" aria-label="Diminuir estoque"><i class="fa-solid fa-chevron-down"></i></button></span></div></label>
+      <div class="variation-row-actions">
+        <button type="button" class="act-btn variation-duplicate" data-duplicate-variation title="Duplicar opção" aria-label="Duplicar opção"><i class="fa-regular fa-copy"></i></button>
+        <button type="button" class="act-btn delete variation-remove" data-remove-variation title="Remover opção" aria-label="Remover opção"><i class="fa-solid fa-trash"></i></button>
+      </div>
     `;
     row.querySelector("[data-variation-size]").value = variation.size || variation.tamanho || "";
     row.querySelector("[data-variation-color]").value = variation.color || variation.cor || "";
     row.querySelector("[data-variation-price]").value = variation.price ?? variation.preco ?? document.getElementById("productPrice").value ?? "";
     row.querySelector("[data-variation-stock]").value = variation.stock ?? variation.estoque_atual ?? 0;
     list.appendChild(row);
+    row.querySelectorAll("[data-variation-size], [data-variation-color]").forEach(input => {
+      input.addEventListener("input", () => updateVariationRowLabels());
+    });
     updateVariationFieldState();
+    requestAnimationFrame(() => row.classList.add("is-visible"));
+    if (!variation.id && !variation.size && !variation.tamanho && !variation.color && !variation.cor) {
+      row.querySelector("[data-variation-size]")?.focus({ preventScroll: true });
+    }
+  }
+
+  function updateVariationRowLabels() {
+    document.querySelectorAll(".product-variation-row").forEach((row, index) => {
+      const size = row.querySelector("[data-variation-size]")?.value.trim();
+      const color = row.querySelector("[data-variation-color]")?.value.trim();
+      row.setAttribute("aria-label", `Opção ${index + 1}: ${[size, color].filter(Boolean).join(", ") || "sem identificação"}`);
+    });
+    renderProductVariationSummary();
+  }
+
+  function renderProductVariationSummary() {
+    const rows = [...document.querySelectorAll(".product-variation-row")];
+    const summary = document.getElementById("productVariationSummary");
+    const title = document.getElementById("productVariationSummaryTitle");
+    const chips = document.getElementById("productVariationSummaryChips");
+    const footerCount = document.getElementById("productVariationFooterCount");
+    if (!summary || !title || !chips) return;
+    summary.hidden = rows.length === 0;
+    title.textContent = `${rows.length} combinaç${rows.length === 1 ? "ão" : "ões"}`;
+    if (footerCount) footerCount.textContent = `${rows.length} combinaç${rows.length === 1 ? "ão configurada" : "ões configuradas"}`;
+    chips.replaceChildren();
+    rows.slice(0, 3).forEach((row, index) => {
+      const size = row.querySelector("[data-variation-size]")?.value.trim();
+      const color = row.querySelector("[data-variation-color]")?.value.trim();
+      const chip = document.createElement("span");
+      chip.textContent = [size, color].filter(Boolean).join(" · ") || `Combinação ${index + 1}`;
+      chips.appendChild(chip);
+    });
+    if (rows.length > 3) {
+      const more = document.createElement("span");
+      more.className = "is-more";
+      more.textContent = `+${rows.length - 3}`;
+      chips.appendChild(more);
+    }
   }
 
   function setProductVariations(variations) {
@@ -1312,14 +1372,26 @@ window.ProductsPage = (function () {
   function updateVariationFieldState() {
     const count = document.querySelectorAll(".product-variation-row").length;
     const hint = document.getElementById("productVariationHint");
+    const countBadge = document.getElementById("productVariationCount");
+    const list = document.getElementById("productVariations");
     const hasVariations = count > 0;
+    const typeButtons = document.querySelectorAll("[data-product-type]");
     document.getElementById("productBasePriceField").hidden = hasVariations;
     document.getElementById("productBaseStockField").hidden = hasVariations;
     document.getElementById("productPrice").required = !hasVariations;
     document.getElementById("productStock").required = !hasVariations;
+    typeButtons.forEach(button => {
+      const active = button.dataset.productType === (hasVariations ? "variations" : "simple");
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    if (countBadge) {
+      countBadge.textContent = count;
+    }
+    updateVariationRowLabels();
     if (hint) hint.textContent = hasVariations
       ? `${count} variação${count === 1 ? "" : "ões"}. Preço e estoque são definidos somente em cada combinação.`
-      : "Opcional. Sem variações, use o preço e o estoque gerais acima.";
+      : "Crie opções por tamanho ou cor; sem variações, o preço e o estoque gerais serão usados.";
   }
 
   function openProductForm(id) {
@@ -1367,8 +1439,19 @@ window.ProductsPage = (function () {
     data.variations = readProductVariations();
     if (!data.name) { UI.toast("Informe o nome do produto.", "error"); return; }
     if (data.stock < 0) { UI.toast("O estoque nao pode ser negativo.", "error"); return; }
-    if (data.variations.some(v => (!v.size && !v.color) || v.price < 0 || v.stock < 0)) {
-      UI.toast("Revise tamanho/cor, preco e estoque das variacoes.", "error"); return;
+    const variationRows = [...document.querySelectorAll(".product-variation-row")];
+    const invalidVariationRow = variationRows.find(row => {
+      const price = row.querySelector("[data-variation-price]");
+      const stock = row.querySelector("[data-variation-stock]");
+      const size = row.querySelector("[data-variation-size]").value.trim();
+      const color = row.querySelector("[data-variation-color]").value.trim();
+      return (!size && !color) || !price.value || !stock.value || !price.checkValidity() || !stock.checkValidity();
+    });
+    if (invalidVariationRow) {
+      UI.toast("Revise tamanho/cor, preço e estoque das variações.", "error");
+      UI.openModal("productVariationsModal");
+      invalidVariationRow.querySelector(":invalid, [data-variation-size]")?.focus();
+      return;
     }
 
     try {
@@ -1431,11 +1514,55 @@ window.ProductsPage = (function () {
     document.getElementById("productImage").addEventListener("change", handleProductImageFileChange);
     document.getElementById("openImageLibrary").addEventListener("click", openImageLibrary);
     document.getElementById("addProductVariation").addEventListener("click", () => addProductVariationRow());
+    document.querySelectorAll("[data-product-type]").forEach(button => {
+      button.addEventListener("click", async () => {
+        if (button.dataset.productType === "variations") {
+          if (!document.querySelector(".product-variation-row")) addProductVariationRow();
+          UI.openModal("productVariationsModal");
+          return;
+        }
+        if (document.querySelector(".product-variation-row")) {
+          const confirmed = await UI.confirmDialog({
+            title: "Voltar para produto simples?",
+            text: "As combinações configuradas serão removidas. O produto voltará a usar apenas um preço e um estoque.",
+            okLabel: "Voltar para simples",
+            cancelLabel: "Manter variações"
+          });
+          if (!confirmed) return;
+        }
+        setProductVariations([]);
+      });
+    });
+    document.getElementById("manageProductVariations").addEventListener("click", () => UI.openModal("productVariationsModal"));
     document.getElementById("productVariations").addEventListener("click", event => {
+      const stepButton = event.target.closest("[data-variation-step]");
+      if (stepButton) {
+        const input = stepButton.closest(".variation-number-field")?.querySelector("input[type=number]");
+        if (input) {
+          stepButton.dataset.variationStep === "up" ? input.stepUp() : input.stepDown();
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        return;
+      }
       const remove = event.target.closest("[data-remove-variation]");
       if (remove) {
-        remove.closest(".product-variation-row")?.remove();
-        updateVariationFieldState();
+        const row = remove.closest(".product-variation-row");
+        row?.classList.add("is-removing");
+        setTimeout(() => {
+          row?.remove();
+          updateVariationFieldState();
+        }, 180);
+        return;
+      }
+      const duplicate = event.target.closest("[data-duplicate-variation]");
+      if (duplicate) {
+        const row = duplicate.closest(".product-variation-row");
+        addProductVariationRow({
+          size: row.querySelector("[data-variation-size]").value,
+          color: row.querySelector("[data-variation-color]").value,
+          price: row.querySelector("[data-variation-price]").value,
+          stock: row.querySelector("[data-variation-stock]").value
+        });
       }
     });
     document.getElementById("imageLibrarySearch").addEventListener("input", e => {
@@ -1456,6 +1583,9 @@ window.ProductsPage = (function () {
     });
     document.getElementById("productModal").addEventListener("click", e => {
       if (e.target.id === "productModal") UI.closeModal("productModal");
+    });
+    document.getElementById("productVariationsModal").addEventListener("click", e => {
+      if (e.target.id === "productVariationsModal") UI.closeModal("productVariationsModal");
     });
     document.getElementById("imageLibraryModal").addEventListener("click", e => {
       if (e.target.id === "imageLibraryModal") UI.closeModal("imageLibraryModal");
@@ -3359,6 +3489,40 @@ window.Dashboard = (function () {
     });
   }
 
+  function labelResponsiveTable(table) {
+    if (!table || table.dataset.responsiveLabels === "off") return;
+    const labels = [...table.querySelectorAll("thead th")].map(header => header.textContent.trim());
+    table.querySelectorAll("tbody tr").forEach(row => {
+      [...row.children].forEach((cell, index) => {
+        if (cell.tagName !== "TD") return;
+        if (cell.hasAttribute("colspan")) {
+          cell.removeAttribute("data-label");
+          return;
+        }
+        cell.dataset.label = labels[index] || "Informação";
+      });
+    });
+  }
+
+  function setupResponsiveTables() {
+    const syncAll = () => document.querySelectorAll(".data-table").forEach(labelResponsiveTable);
+    syncAll();
+    const observer = new MutationObserver(mutations => {
+      const tables = new Set();
+      mutations.forEach(mutation => {
+        const table = mutation.target.closest?.(".data-table");
+        if (table) tables.add(table);
+        mutation.addedNodes.forEach(node => {
+          if (!(node instanceof Element)) return;
+          if (node.matches(".data-table")) tables.add(node);
+          node.querySelectorAll?.(".data-table").forEach(item => tables.add(item));
+        });
+      });
+      tables.forEach(labelResponsiveTable);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
   document.addEventListener("DOMContentLoaded", async () => {
     applyPermissionUI();
     try {
@@ -3442,6 +3606,7 @@ window.Dashboard = (function () {
     runPreventiveChecks();
     setupMotionObserver();
     setupChartScrollObserver();
+    setupResponsiveTables();
 
     // Initial route via hash
     const route = (location.hash || (IS_ADMIN ? "#dashboard" : `#${firstAllowedRoute()}`)).replace("#", "");

@@ -12,7 +12,7 @@
             }
         } catch (error) {}
     </script>
-    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-product-card-badges-discount-20260615-1">
+    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-solid-drawer-20260730-4">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -266,6 +266,36 @@
             </div>
         </div>
     </section>
+
+    <div class="product-purchase-modal hidden" id="productPurchaseModal" role="dialog" aria-modal="true" aria-labelledby="productPurchaseTitle">
+        <div class="product-purchase-panel">
+            <button type="button" class="product-purchase-close" id="productPurchaseClose" aria-label="Fechar detalhes do produto"><i class="fa-solid fa-xmark"></i></button>
+            <div class="product-purchase-layout">
+                <div class="product-purchase-media"><img id="productPurchaseImage" src="" alt=""></div>
+                <div class="product-purchase-content">
+                    <span class="product-purchase-category" id="productPurchaseCategory"></span>
+                    <h2 id="productPurchaseTitle">Produto</h2>
+                    <p class="product-purchase-description" id="productPurchaseDescription"></p>
+                    <div class="product-purchase-specs">
+                        <div><span>Disponibilidade</span><strong id="productPurchaseStock">0 unidades</strong></div>
+                        <div><span>Tipo do produto</span><strong id="productPurchaseType">Produto simples</strong></div>
+                    </div>
+                    <div class="product-choice-group" id="productPurchaseSizeGroup" hidden>
+                        <div class="product-choice-head"><strong>Escolha o tamanho</strong><span>Obrigatório</span></div>
+                        <div class="product-options" id="productPurchaseSizes"></div>
+                    </div>
+                    <div class="product-choice-group" id="productPurchaseColorGroup" hidden>
+                        <div class="product-choice-head"><strong>Escolha a cor</strong><span>Obrigatório</span></div>
+                        <div class="product-options" id="productPurchaseColors"></div>
+                    </div>
+                    <div class="product-purchase-action">
+                        <div><span>Valor</span><strong id="productPurchasePrice">R$ 0,00</strong></div>
+                        <button type="button" class="checkout-primary" id="productPurchaseConfirm"><i class="fa-solid fa-cart-plus"></i><span>Adicionar ao carrinho</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="confirm-modal hidden" id="confirmPurchaseModal" role="dialog" aria-modal="true" aria-labelledby="confirmPurchaseTitle">
         <div class="confirm-panel">

@@ -48,8 +48,10 @@
   ) %}
   <body data-user-role="{{ usuario.role }}" data-user-permissions="{{ ','.join(perms) }}">
     <script>
-      window.AAPM_USER_ROLE = "{{ usuario.role }}";
-      window.AAPM_DASHBOARD_PERMISSIONS = {{ perms|tojson }};
+      window.AAPM_USER_ROLE = document.body.dataset.userRole || "";
+      window.AAPM_DASHBOARD_PERMISSIONS = (document.body.dataset.userPermissions || "")
+        .split(",")
+        .filter(Boolean);
     </script>
      
     <!-- ====================== APP SHELL ====================== -->
@@ -813,10 +815,32 @@
           <label id="productBaseStockField">Estoque atual<input type="number" id="productStock" min="0" required /></label>
           <div class="span-2 product-variations-field">
             <div class="product-variations-head">
-              <div><span class="field-label">Variações do produto</span><p id="productVariationHint">Opcional. Adicione combinações de tamanho e/ou cor.</p></div>
-              <button type="button" class="ghost-btn" id="addProductVariation"><i class="fa-solid fa-plus"></i> Adicionar variação</button>
+              <div class="product-variations-title">
+                <span class="product-variations-icon"><i class="fa-solid fa-layer-group"></i></span>
+                <div>
+                  <span class="field-label">Como este produto é vendido?</span>
+                  <p>Escolha se ele possui uma única opção ou combinações diferentes.</p>
+                </div>
+              </div>
             </div>
-            <div id="productVariations" class="product-variations-list"></div>
+            <div class="product-type-switch" role="group" aria-label="Tipo do produto">
+              <button type="button" class="product-type-option is-active" data-product-type="simple" aria-pressed="true">
+                <i class="fa-solid fa-box"></i><span><strong>Produto simples</strong><small>Um preço e um estoque</small></span>
+              </button>
+              <button type="button" class="product-type-option" data-product-type="variations" aria-pressed="false">
+                <i class="fa-solid fa-shapes"></i><span><strong>Com variações</strong><small>Tamanhos, cores ou opções</small></span>
+              </button>
+            </div>
+            <div class="variation-summary-card" id="productVariationSummary" hidden>
+              <div class="variation-summary-info">
+                <span class="variation-summary-icon"><i class="fa-solid fa-shapes"></i></span>
+                <div>
+                  <strong id="productVariationSummaryTitle">1 combinação</strong>
+                  <div class="variation-summary-chips" id="productVariationSummaryChips"></div>
+                </div>
+              </div>
+              <button type="button" class="ghost-btn" id="manageProductVariations"><i class="fa-solid fa-sliders"></i> Gerenciar</button>
+            </div>
           </div>
           <div class="span-2 product-image-field">
             <span class="field-label">Imagem do produto</span>
@@ -840,6 +864,37 @@
             <button type="submit" class="primary-btn">Salvar produto</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- ====================== MODAL: VARIACOES DO PRODUTO ====================== -->
+    <div class="modal-backdrop hidden variation-modal-backdrop" id="productVariationsModal">
+      <div class="modal glass product-variations-modal">
+        <div class="modal-head">
+          <div>
+            <h3>Gerenciar variações</h3>
+            <p class="muted">Crie as opções e defina preço e estoque de cada combinação.</p>
+          </div>
+          <button class="icon-btn ghost" data-close-modal="productVariationsModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="variations-editor" id="productVariationsEditor">
+          <div class="variations-editor-head">
+            <div><strong>Combinações <b id="productVariationCount" class="variation-count">0</b></strong><p id="productVariationHint">Tamanho ou cor são opcionais, mas informe ao menos um deles.</p></div>
+            <button type="button" class="ghost-btn variation-add-btn" id="addProductVariation"><i class="fa-solid fa-plus"></i> Adicionar opção</button>
+          </div>
+          <div class="variation-column-head" aria-hidden="true"><span>Tamanho</span><span>Cor</span><span>Preço</span><span>Estoque</span><span>Ações</span></div>
+          <div id="productVariations" class="product-variations-list"></div>
+        </div>
+        <div class="modal-foot variations-modal-foot">
+          <span id="productVariationFooterCount">0 combinações configuradas</span>
+          <button type="button" class="primary-btn" data-close-modal="productVariationsModal"><i class="fa-solid fa-check"></i> Concluir</button>
+        </div>
+        <datalist id="productSizeSuggestions">
+          <option value="PP"></option><option value="P"></option><option value="M"></option><option value="G"></option><option value="GG"></option><option value="XG"></option>
+        </datalist>
+        <datalist id="productColorSuggestions">
+          <option value="Preto"></option><option value="Branco"></option><option value="Azul"></option><option value="Vermelho"></option><option value="Verde"></option><option value="Cinza"></option>
+        </datalist>
       </div>
     </div>
 
@@ -1065,9 +1120,14 @@
     <!-- ====================== CONFIRM ====================== -->
     <div class="modal-backdrop hidden" id="confirmModal">
       <div class="modal glass small confirm-dialog">
-        <div class="modal-head"><h3 id="confirmTitle">Confirmar</h3></div>
-        <p id="confirmText" style="padding:0 24px 8px;color:var(--text-mute)"></p>
-        <div class="modal-foot" style="padding:16px 24px 24px">
+        <div class="confirm-dialog-body">
+          <span class="confirm-dialog-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+          <div>
+            <h3 id="confirmTitle">Confirmar</h3>
+            <p id="confirmText"></p>
+          </div>
+        </div>
+        <div class="modal-foot confirm-dialog-actions">
           <button class="ghost-btn" id="confirmCancel">Cancelar</button>
           <button class="danger-btn" id="confirmOk">Confirmar</button>
         </div>

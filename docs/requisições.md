@@ -406,9 +406,9 @@ Não são fixados números de latência ou concorrência sem medição do ambien
 | Usuários | RF-USR-001–009 | RN-AUT-007–011 | `admin_controller.py`, `usuario.py` |
 | Categorias | RF-CAT-001–005 | RN-CAT-001–003 | `api/v1/pvd.py`, `categoria.py` |
 | Produtos e variações | RF-PRD-001–013 | RN-PRD-001–012 | `produto.py`, `variacao.py`, `produto_controller.py` |
-| Estoque | RF-EST-001–008 | RN-EST-001–005 | `movimentacao.py`, `api/v1/pvd.py` |
+| Estoque | RF-EST-001–008 | RN-EST-001–005 | `stock_service.py`, `movimentacao.py`, `api/v1/pvd.py` |
 | Clientes | RF-CLI-001–007 | RN-CLI-001–007 | `cliente.py`, `api/v1/pvd.py` |
-| Vendas | RF-VEN-001–011 | RN-VEN-001–014 | `venda.py`, `api/v1/pvd.py` |
+| Vendas | RF-VEN-001–011 | RN-VEN-001–014 | `sale_service.py`, `stock_service.py`, `venda.py`, `api/v1/pvd.py` |
 | Pedidos | RF-PED-001–006 | RN-PED-001–005 | `venda.py`, `api/v1/pvd.py` |
 | Dashboard | RF-DSH-001–008 | RN-DSH-001–003 | `dashboard.js`, `api/v1/pvd.py` |
 | Relatórios | RF-REL-001–008 | RN-REL-001–003 | `api/v1/pvd.py` |

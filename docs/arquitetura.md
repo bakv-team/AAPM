@@ -54,8 +54,8 @@ Navegador
                          autenticação e autorização
                               database/auth.py
                                         │
-                         regras e acesso aos dados
-                       endpoints + controllers atuais
+                         casos de uso de venda/estoque
+                         services/ + regras restantes
                                         │
                               SQLAlchemy ORM
                          database/models/*.py
@@ -63,7 +63,7 @@ Navegador
                      banco configurado em DATABASE_URL
 ```
 
-As fronteiras são modulares, mas não formam uma arquitetura de serviços independente. No estado atual, `api/v1/pvd.py` concentra validação HTTP, regras de negócio, consultas e serialização. Os controladores em `database/controllers/` fazem o mesmo para autenticação, usuários e parte do cadastro de produtos.
+As fronteiras são modulares e a extração da camada de serviços está em andamento. Vendas e estoque já possuem casos de uso independentes do protocolo HTTP em `services/`; relatórios, catálogo, clientes e Smart ainda mantêm parte de suas regras em `api/v1/pvd.py`. Os controladores em `database/controllers/` cuidam de autenticação, usuários e upload de produtos.
 
 ## 3. Estrutura real do repositório
 
@@ -100,6 +100,10 @@ AAPM/
 │   └── templates/
 ├── migrations/
 │   └── versions/
+├── services/
+│   ├── errors.py
+│   ├── sale_service.py
+│   └── stock_service.py
 ├── docs/
 ├── tests/
 ├── utils/
@@ -110,7 +114,7 @@ AAPM/
 └── requirements.txt
 ```
 
-Não existem atualmente as pastas `core/`, `services/` ou `assets/` globais. Recursos visuais do PDV ficam em `apps/pvd/assets/`, e imagens enviadas pelos usuários ficam em `database/static/uploads/`.
+Não existem atualmente as pastas `core/` ou `assets/` globais. Recursos visuais do PDV ficam em `apps/pvd/assets/`, e imagens enviadas pelos usuários ficam em `database/static/uploads/`.
 
 ## 4. Componentes
 
@@ -160,7 +164,17 @@ O router usa o prefixo `/api/v1/pdv` e reúne os seguintes grupos de recursos:
 
 Os contratos de entrada são modelos Pydantic declarados no próprio módulo, como `VendaPayload`, `ClientePayload`, `EstoquePayload` e `ExcecaoPagamentoPayload`.
 
-### 4.4 Controladores — `database/controllers/`
+### 4.4 Serviços — `services/`
+
+Os serviços encapsulam casos de uso críticos sem depender de FastAPI:
+
+| Serviço | Responsabilidade |
+|---|---|
+| `sale_service.py` | Validar e registrar a venda, calcular desconto e coordenar a transação |
+| `stock_service.py` | Reservar e repor estoque de forma atômica, registrando movimentações |
+| `errors.py` | Exceções de negócio convertidas em respostas HTTP pela camada da API |
+
+### 4.5 Controladores — `database/controllers/`
 
 | Controlador | Prefixo/função |
 |---|---|
@@ -170,7 +184,7 @@ Os contratos de entrada são modelos Pydantic declarados no próprio módulo, co
 
 A recuperação de senha gera um JWT de uso específico, válido por tempo limitado, e envia o link por SMTP.
 
-### 4.5 Segurança — `database/auth.py`
+### 4.6 Segurança — `database/auth.py`
 
 Responsabilidades:
 
@@ -187,7 +201,7 @@ Administradores possuem acesso integral. Os demais perfis podem receber permiss�
 
 O cookie de sessão é HttpOnly e o cookie CSRF é legível pelo frontend apenas para devolução no cabeçalho `X-CSRF-Token`. Em produção, `APP_ENV=production` ativa o atributo `Secure`; `COOKIE_SECURE` permite configuração explícita conforme o ambiente.
 
-### 4.6 Persistência — `database/database.py`
+### 4.7 Persistência — `database/database.py`
 
 O módulo lê `DATABASE_URL` do ambiente, cria o `engine`, configura `SessionLocal`, declara a classe base dos modelos e fornece `get_db()` como dependência do FastAPI. `pool_pre_ping` e `pool_recycle` ajudam a manter conexões remotas válidas. Há também uma função opcional para conexão PostgreSQL bruta via `psycopg2`.
 
@@ -370,7 +384,7 @@ O `.env` contém segredos e não deve ser versionado. Configurações novas deve
 - Regras de autorização devem ser verificadas no backend, mesmo quando a interface já restringe o recurso.
 - Registros financeiros devem preservar valores históricos, sem depender do preço atual do produto.
 - Novos modelos devem declarar claramente nulabilidade, unicidade, chaves estrangeiras e comportamento de exclusão.
-- Novas regras extensas podem ser extraídas dos endpoints para uma camada de serviços; essa camada ainda não existe no projeto atual.
+- Novas regras extensas devem seguir a camada `services/`; a extração dos módulos ainda concentrados na API deve continuar incrementalmente.
 - Testes devem acompanhar fluxos críticos de autenticação, venda, desconto, estoque e permissões.
 
 ## 10. Arquivos da raiz

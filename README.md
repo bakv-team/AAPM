@@ -102,6 +102,7 @@ A sessão usa JWT em cookie HttpOnly. Administradores têm acesso integral; func
 ```text
 apps/pvd/                  interface, estilos, scripts e recursos visuais
 api/v1/pvd.py              endpoints do PDV e do dashboard
+services/                   casos de uso e regras de vendas/estoque
 database/main.py           composição e inicialização da aplicação
 database/auth.py           JWT, senhas, sessão e autorização
 database/controllers/      autenticação e administração de usuários

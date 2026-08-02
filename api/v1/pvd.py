@@ -1,5 +1,5 @@
 from datetime import date, datetime, time, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 import csv
 import io
 import json
@@ -30,6 +30,10 @@ from database.models.produto import Produto
 from database.models.variacao import Atributo, ProdutoVariacao, ValorAtributo
 from database.models.usuario import Usuario
 from database.models.venda import ItemVenda, Venda
+from services.errors import ConflictError, NotFoundError, PersistenceError, ServiceError, ValidationError
+from services.sale_service import RegisterSaleInput, SaleItemInput, register_sale
+from services.stock_service import replenish_stock
+from utils.money import money as _money
 
 
 router = APIRouter(
@@ -47,12 +51,6 @@ _AI_RUNTIME_STATUS = {
 PRODUCT_IMAGE_DIR = Path("database/static/uploads")
 PRODUCT_IMAGE_PREFIX = "uploads"
 PRODUCT_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-MONEY_QUANTUM = Decimal("0.01")
-
-
-def _money(value: object) -> Decimal:
-    """Normaliza um valor monetario em centavos, sem aritmetica binaria."""
-    return Decimal(str(value or 0)).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
 
 
 def _json_money(value: object) -> float:
@@ -60,45 +58,16 @@ def _json_money(value: object) -> float:
     return float(_money(value))
 
 
-def _baixar_estoque_atomico(
-    db: Session,
-    produto: Produto,
-    variacao: ProdutoVariacao | None,
-    quantidade: int,
-) -> None:
-    """Reserva saldo com UPDATE condicional, inclusive onde FOR UPDATE e ignorado."""
-    produto_atualizado = (
-        db.query(Produto)
-        .filter(
-            Produto.id == produto.id,
-            Produto.ativo == True,
-            Produto.estoque_atual >= quantidade,
-        )
-        .update(
-            {Produto.estoque_atual: Produto.estoque_atual - quantidade},
-            synchronize_session=False,
-        )
-    )
-    if produto_atualizado != 1:
-        raise HTTPException(status_code=409, detail=f"Estoque insuficiente para {produto.nome}.")
-
-    if variacao is None:
-        return
-
-    variacao_atualizada = (
-        db.query(ProdutoVariacao)
-        .filter(
-            ProdutoVariacao.id == variacao.id,
-            ProdutoVariacao.produto_id == produto.id,
-            ProdutoVariacao.estoque_atual >= quantidade,
-        )
-        .update(
-            {ProdutoVariacao.estoque_atual: ProdutoVariacao.estoque_atual - quantidade},
-            synchronize_session=False,
-        )
-    )
-    if variacao_atualizada != 1:
-        raise HTTPException(status_code=409, detail=f"Estoque insuficiente para {produto.nome}.")
+def _service_http_exception(exc: ServiceError) -> HTTPException:
+    if isinstance(exc, ValidationError):
+        return HTTPException(status_code=400, detail=str(exc))
+    if isinstance(exc, NotFoundError):
+        return HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, ConflictError):
+        return HTTPException(status_code=409, detail=str(exc))
+    if isinstance(exc, PersistenceError):
+        return HTTPException(status_code=500, detail=str(exc))
+    return HTTPException(status_code=500, detail="Erro interno ao processar a operacao.")
 
 
 def _carregar_timezone():
@@ -874,184 +843,32 @@ def criar_venda_api(
     db: Session = Depends(get_db),
     usuario=Depends(get_usuario_logado),
 ):
-    usuario_id = usuario.get("id")
-    if not usuario_id and usuario.get("sub"):
-        usuario_db = db.query(Usuario).filter(Usuario.email == usuario.get("sub"), Usuario.ativo == True).first()
-        usuario_id = usuario_db.id if usuario_db else None
-
-    if not usuario_id:
-        raise HTTPException(status_code=401, detail="Sessao invalida. Faca login novamente para registrar a venda.")
-
-    if not payload.itens:
-        raise HTTPException(status_code=400, detail="Adicione produtos ao carrinho.")
-
-    pagamento = payload.pagamento.strip()
-    if pagamento not in ("pix", "debito", "credito", "dinheiro"):
-        raise HTTPException(status_code=400, detail="Forma de pagamento invalida.")
-
     excecao_ativa = bool(payload.excecao_pagamento)
     excecao_prazo = _parse_data_local(payload.excecao_prazo) if excecao_ativa else None
-    excecao_observacao = (payload.excecao_observacao or "").strip()
-    if excecao_ativa and not excecao_prazo:
-        raise HTTPException(status_code=400, detail="Informe o prazo para a excecao de pagamento.")
-
-    cliente_nome = (payload.cliente_nome or payload.customerName or "").strip()
-    if not cliente_nome or cliente_nome.lower() in ("cliente balcao", "cliente balcão"):
-        raise HTTPException(status_code=400, detail="Informe o nome do cliente para fechar o pedido.")
-
-    quantidades: dict[tuple[int, int | None], int] = {}
-    for item in payload.itens:
-        if item.quantidade <= 0:
-            raise HTTPException(status_code=400, detail="Quantidade invalida.")
-        chave = (item.produto_id, item.variacao_id)
-        quantidades[chave] = quantidades.get(chave, 0) + item.quantidade
-
-    produto_ids = {produto_id for produto_id, _ in quantidades}
-
-    produtos = (
-        db.query(Produto)
-        .filter(Produto.id.in_(produto_ids), Produto.ativo == True)
-        .order_by(Produto.id)
-        .with_for_update()
-        .all()
-    )
-    produtos_por_id = {produto.id: produto for produto in produtos}
-
-    if len(produtos_por_id) != len(produto_ids):
-        raise HTTPException(status_code=404, detail="Um ou mais produtos nao foram encontrados.")
-
-    variacao_ids = {variacao_id for _, variacao_id in quantidades if variacao_id is not None}
-    variacoes_por_id = {
-        variacao.id: variacao
-        for variacao in (
-            db.query(ProdutoVariacao)
-            .filter(ProdutoVariacao.id.in_(variacao_ids))
-            .order_by(ProdutoVariacao.id)
-            .with_for_update()
-            .all()
-            if variacao_ids else []
-        )
-    }
-
-    for (produto_id, variacao_id), quantidade in quantidades.items():
-        produto = produtos_por_id[produto_id]
-        if produto.variacoes and variacao_id is None:
-            raise HTTPException(status_code=400, detail=f"Selecione tamanho/cor para {produto.nome}.")
-        variacao = variacoes_por_id.get(variacao_id) if variacao_id is not None else None
-        if variacao_id is not None and (not variacao or variacao.produto_id != produto_id):
-            raise HTTPException(status_code=400, detail=f"Variacao invalida para {produto.nome}.")
-        estoque_disponivel = variacao.estoque_atual if variacao else produto.estoque_atual
-        if estoque_disponivel - quantidade < 0:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Estoque insuficiente para {produto.nome}.",
-            )
-
     try:
-        cliente = None
-        like_cliente = f"%{cliente_nome}%"
-        cliente = (
-            db.query(Cliente)
-            .filter(
-                Cliente.ativo == True,
-                or_(
-                    Cliente.nome.ilike(cliente_nome),
-                    Cliente.matricula.ilike(cliente_nome),
-                    Cliente.telefone.ilike(cliente_nome),
-                    Cliente.nome.ilike(like_cliente),
-                    Cliente.matricula.ilike(like_cliente),
-                    Cliente.telefone.ilike(like_cliente),
-                ),
-            )
-            .order_by(Cliente.is_associado.desc(), Cliente.nome)
-            .first()
-        )
-        associado_confirmado = bool(cliente and cliente.is_associado)
-        desconto_percentual = Decimal("10.00") if associado_confirmado else Decimal("0.00")
-        total_bruto = sum(
-            (
-                _money(
-                    variacoes_por_id[variacao_id].preco
-                    if variacao_id
-                    else produtos_por_id[produto_id].preco
-                )
-                * qtd
-                for (produto_id, variacao_id), qtd in quantidades.items()
+        venda = register_sale(
+            db,
+            RegisterSaleInput(
+                items=[
+                    SaleItemInput(
+                        product_id=item.produto_id,
+                        variation_id=item.variacao_id,
+                        quantity=item.quantidade,
+                    )
+                    for item in payload.itens
+                ],
+                payment=payload.pagamento,
+                customer_name=payload.cliente_nome or payload.customerName or "",
+                note=payload.observacao or "",
+                payment_exception=excecao_ativa,
+                payment_due_at=excecao_prazo,
+                payment_exception_note=payload.excecao_observacao or "",
             ),
-            start=Decimal("0.00"),
+            user_id=usuario.get("id"),
+            created_at=_agora_local(),
         )
-        total_bruto = _money(total_bruto)
-        total_liquido = _money(total_bruto * (Decimal("1.00") - desconto_percentual / Decimal("100.00")))
-
-        observacoes = [f"Pagamento: {pagamento}."]
-        if cliente_nome:
-            observacoes.append(f"Cliente: {cliente_nome}.")
-        if excecao_ativa:
-            observacoes.append("Excecao de pagamento ativa.")
-        if payload.observacao:
-            obs_limpa = payload.observacao.strip()
-            if obs_limpa and not obs_limpa.lower().startswith("cliente:"):
-                observacoes.append(obs_limpa)
-
-        agora = _agora_local()
-        venda = Venda(
-            cliente_id=cliente.id if cliente else None,
-            usuario_id=usuario_id,
-            metodo_pagamento=pagamento,
-            desconto=total_bruto - total_liquido,
-            valor_total=total_bruto,
-            valor_final=total_liquido,
-            data=agora,
-            desconto_percentual=desconto_percentual,
-            total_bruto=total_bruto,
-            total_liquido=total_liquido,
-            observacao=" ".join(observacoes).strip(),
-            excecao_pagamento=excecao_ativa,
-            excecao_status="pendente" if excecao_ativa else "sem_excecao",
-            excecao_prazo=excecao_prazo,
-            excecao_observacao=excecao_observacao[:255] if excecao_observacao else None,
-            criado_em=agora,
-        )
-        db.add(venda)
-        db.flush()
-
-        for (produto_id, variacao_id), quantidade in sorted(
-            quantidades.items(),
-            key=lambda item: (item[0][0], item[0][1] or 0),
-        ):
-            produto = produtos_por_id[produto_id]
-            variacao = variacoes_por_id.get(variacao_id) if variacao_id else None
-            preco_unitario = _money(variacao.preco if variacao else produto.preco)
-            _baixar_estoque_atomico(db, produto, variacao, quantidade)
-            complemento = f" ({variacao.nome_combinacao})" if variacao else ""
-
-            db.add(ItemVenda(
-                venda_id=venda.id,
-                produto_id=produto.id,
-                variacao_id=variacao.id if variacao else None,
-                produto_nome=f"{produto.nome}{complemento}",
-                quantidade=quantidade,
-                preco_unitario=preco_unitario,
-            ))
-            db.add(Movimentacao(
-                tipo=Tipo_movimentacao.SAIDA,
-                quantidade=quantidade,
-                preco_unitario=preco_unitario,
-                observacao=f"Venda #{venda.id:04d}",
-                criado_em=agora,
-                produto_id=produto.id,
-                usuario_id=usuario_id,
-            ))
-
-        db.commit()
-        db.refresh(venda)
-    except HTTPException:
-        db.rollback()
-        raise
-    except SQLAlchemyError as exc:
-        db.rollback()
-        print(f"[PDV] Falha ao registrar venda: {exc}")
-        raise HTTPException(status_code=500, detail="Nao foi possivel salvar a venda no banco.")
+    except ServiceError as exc:
+        raise _service_http_exception(exc)
 
     return _venda_json(venda)
 
@@ -2024,35 +1841,18 @@ def adicionar_estoque_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("stock", "movements", "stock_movements")),
 ):
-    produto = db.query(Produto).filter(Produto.id == produto_id).first()
-    if not produto or not produto.ativo:
-        raise HTTPException(status_code=404, detail="Produto nao encontrado.")
-
-    if payload.quantidade <= 0:
-        raise HTTPException(status_code=400, detail="A quantidade deve ser maior que zero.")
-
     usuario_id = _usuario_id_atual(admin, db)
-    if not usuario_id:
-        raise HTTPException(status_code=401, detail="Usuario nao identificado.")
-
-    produto.estoque_atual += payload.quantidade
-    variacao = None
-    if produto.variacoes:
-        variacao = next((item for item in produto.variacoes if item.id == payload.variacao_id), None)
-        if not variacao:
-            raise HTTPException(status_code=400, detail="Selecione a variacao que recebera o estoque.")
-        variacao.estoque_atual += payload.quantidade
-    db.add(Movimentacao(
-        tipo=Tipo_movimentacao.ENTRADA,
-        quantidade=payload.quantidade,
-        preco_unitario=variacao.preco if variacao else produto.preco,
-        observacao=f"Reposicao manual de estoque{f' - {variacao.nome_combinacao}' if variacao else ''}",
-        criado_em=_agora_local(),
-        produto_id=produto.id,
-        usuario_id=usuario_id,
-    ))
-    db.commit()
-    db.refresh(produto)
+    try:
+        produto = replenish_stock(
+            db,
+            product_id=produto_id,
+            quantity=payload.quantidade,
+            variation_id=payload.variacao_id,
+            user_id=usuario_id,
+            created_at=_agora_local(),
+        )
+    except ServiceError as exc:
+        raise _service_http_exception(exc)
 
     return _produto_json(produto)
 

@@ -1,18 +1,16 @@
 import tempfile
 import threading
 import unittest
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
-from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from api.v1.pvd import (
     ItemVendaPayload,
     VendaPayload,
-    _baixar_estoque_atomico,
-    _money,
     criar_venda_api,
 )
 from database.database import Base
@@ -22,6 +20,9 @@ from database.models.cliente import Cliente
 from database.models.movimentacao import Movimentacao
 from database.models.usuario import Usuario
 from database.models.venda import ItemVenda, Venda
+from services.errors import ConflictError
+from services.stock_service import replenish_stock, reserve_stock
+from utils.money import money
 
 
 class FinanceAndStockTests(unittest.TestCase):
@@ -40,8 +41,8 @@ class FinanceAndStockTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_money_rounds_half_up_to_cents(self):
-        self.assertEqual(_money("0.30000000000000004"), Decimal("0.30"))
-        self.assertEqual(_money("10.005"), Decimal("10.01"))
+        self.assertEqual(money("0.30000000000000004"), Decimal("0.30"))
+        self.assertEqual(money("10.005"), Decimal("10.01"))
 
     def test_only_one_concurrent_sale_can_consume_last_unit(self):
         with self.Session.begin() as session:
@@ -62,12 +63,12 @@ class FinanceAndStockTests(unittest.TestCase):
             try:
                 current_product = session.query(Produto).first()
                 barrier.wait(timeout=5)
-                _baixar_estoque_atomico(session, current_product, None, 1)
+                reserve_stock(session, current_product, None, 1)
                 session.commit()
                 outcome = "success"
-            except HTTPException as exc:
+            except ConflictError:
                 session.rollback()
-                outcome = f"conflict:{exc.status_code}"
+                outcome = "conflict"
             finally:
                 session.close()
             with outcomes_lock:
@@ -80,7 +81,7 @@ class FinanceAndStockTests(unittest.TestCase):
             thread.join(timeout=10)
 
         self.assertFalse(any(thread.is_alive() for thread in threads))
-        self.assertCountEqual(outcomes, ["success", "conflict:409"])
+        self.assertCountEqual(outcomes, ["success", "conflict"])
         with self.Session() as session:
             self.assertEqual(session.query(Produto).one().estoque_atual, 0)
 
@@ -130,6 +131,40 @@ class FinanceAndStockTests(unittest.TestCase):
             self.assertEqual(saved_item.preco_unitario, Decimal("0.10"))
             self.assertEqual(saved_product.estoque_atual, 0)
             self.assertEqual(verification.query(Movimentacao).count(), 1)
+
+    def test_replenishment_updates_stock_and_creates_audit_movement(self):
+        with self.Session.begin() as session:
+            operator = Usuario(
+                nome="Estoquista",
+                email="estoque@teste.local",
+                senha_hash="hash",
+                role="funcionario",
+                permissoes="stock",
+                ativo=True,
+            )
+            product = Produto(
+                nome="Produto para reposicao",
+                preco=Decimal("7.50"),
+                estoque_atual=1,
+                ativo=True,
+            )
+            session.add_all([operator, product])
+
+        with self.Session() as session:
+            updated = replenish_stock(
+                session,
+                product_id=product.id,
+                quantity=2,
+                variation_id=None,
+                user_id=operator.id,
+                created_at=datetime(2026, 8, 2, 10, 0),
+            )
+            self.assertEqual(updated.estoque_atual, 3)
+
+        with self.Session() as session:
+            movement = session.query(Movimentacao).one()
+            self.assertEqual(movement.quantidade, 2)
+            self.assertEqual(movement.preco_unitario, Decimal("7.50"))
 
 
 if __name__ == "__main__":

@@ -82,6 +82,8 @@ Crie um arquivo `.env` na raiz. Estes são os grupos de configuração usados pe
 | `ALGORITHM` | `SMTP_FROM` · `SMTP_TLS` · `SMTP_SSL` | `RESET_PASSWORD_BASE_URL` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `SMTP_TIMEOUT` | — |
 
+Para produção, defina `APP_ENV=production` para cookies `Secure`. O limite padrão das imagens é 5 MB e pode ser alterado por `MAX_PRODUCT_IMAGE_BYTES`.
+
 Não publique o `.env`: ele contém credenciais e chaves privadas. O banco utilizado é determinado por `DATABASE_URL`; o repositório possui suporte a PostgreSQL e um banco SQLite local.
 
 ## Acessos da aplicação

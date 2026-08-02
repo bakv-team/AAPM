@@ -13,6 +13,13 @@ from sqlalchemy.orm import Session
 
 from database.database import get_db
 from database.models.usuario import Usuario
+from api.middleware import (
+    CSRF_COOKIE_NAME,
+    access_token_max_age,
+    cookie_secure,
+    csrf_token_for_request,
+    set_csrf_cookie,
+)
 from database.auth import (
     criar_token,
     criar_token_recuperacao_senha,
@@ -227,11 +234,13 @@ def login(
     response.set_cookie(
         key="access_token",
         value=token,
-        httponly=True,    # JavaScript NÃO pode ler este cookie (proteção XSS)
-        max_age=3600,     # expira em 1 hora (em segundos)
-        samesite="lax",   # proteção básica contra CSRF
-        # secure=True     # ativar em produção (exige HTTPS)
+        httponly=True,
+        secure=cookie_secure(),
+        max_age=access_token_max_age(),
+        samesite="lax",
+        path="/",
     )
+    set_csrf_cookie(response, csrf_token_for_request(request))
 
     return response
 
@@ -351,6 +360,7 @@ def redefinir_senha(
 @router.get("/logout")
 def sair():
     response = RedirectResponse(url="/", status_code=302)
-    response.delete_cookie("access_token")
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie(CSRF_COOKIE_NAME, path="/")
     return response
 

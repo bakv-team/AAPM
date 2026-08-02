@@ -19,6 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from api.middleware import require_api_csrf
 from database.auth import get_usuario_logado, hash_senha, require_permission, verificar_senha
 from database.controllers.produto_controller import _remover_imagem, _salvar_imagem
 from database.database import get_db
@@ -31,7 +32,11 @@ from database.models.usuario import Usuario
 from database.models.venda import ItemVenda, Venda
 
 
-router = APIRouter(prefix="/api/v1/pdv", tags=["API PDV"])
+router = APIRouter(
+    prefix="/api/v1/pdv",
+    tags=["API PDV"],
+    dependencies=[Depends(require_api_csrf)],
+)
 
 _AI_RUNTIME_STATUS = {
     "provider": "",

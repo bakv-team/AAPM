@@ -602,6 +602,7 @@
                       <div class="actions-cell">
                         <button class="act-btn edit" type="button" data-edit-employee data-id="{{ u.id }}" data-name="{{ u.nome }}" data-email="{{ u.email }}" data-role="{{ u.role }}" data-permissions="{{ u.permissoes or '' }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
                         <form action="/usuarios/{{ u.id }}/toggle-ativo" method="post" data-employee-confirm="{{ 'Desativar' if u.ativo else 'Ativar' }} o usuário {{ u.nome }}?" style="display:inline">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                           <button class="act-btn {{ 'delete' if u.ativo else 'view' }}" type="submit" title="{{ 'Desativar' if u.ativo else 'Ativar' }}">
                             <i class="fa-solid {{ 'fa-ban' if u.ativo else 'fa-check' }}"></i>
                           </button>
@@ -856,7 +857,7 @@
                 <span>Galeria</span>
               </button>
             </div>
-            <p class="image-field-hint" id="productImageHint">PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva.</p>
+            <p class="image-field-hint" id="productImageHint">PNG, JPG ou WEBP, com até 5 MB. Voce tambem pode escolher uma imagem ja salva.</p>
           </div>
           <label class="span-2">Descrição<textarea id="productDesc" rows="3"></textarea></label>
           <div class="modal-foot span-2">
@@ -966,6 +967,7 @@
           <button class="icon-btn ghost" data-close-modal="employeeModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form id="employeeForm" class="form-grid" method="post" action="/usuarios/novo">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
           <label class="span-2">Nome completo<input type="text" id="employeeName" name="nome" required /></label>
           <label class="span-2">E-mail de acesso<input type="email" id="employeeEmail" name="email" required /></label>
           <label>Perfil<select id="employeeRole" name="role" required>

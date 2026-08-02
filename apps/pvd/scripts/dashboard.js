@@ -116,6 +116,15 @@
 window.API = (function () {
   const BASE_URL = window.location.origin;
 
+  function csrfToken() {
+    const item = document.cookie.split("; ").find(value => value.startsWith("csrf_token="));
+    return item ? decodeURIComponent(item.split("=").slice(1).join("=")) : "";
+  }
+
+  function mutationHeaders(headers = {}) {
+    return { ...headers, "X-CSRF-Token": csrfToken() };
+  }
+
   async function apiErrorMessage(res, fallback) {
     try {
       const data = await res.clone().json();
@@ -146,7 +155,7 @@ window.API = (function () {
   async function apiPost(path, body) {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: mutationHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify(body)
     });
@@ -156,7 +165,7 @@ window.API = (function () {
   async function apiPut(path, body) {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: mutationHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify(body)
     });
@@ -164,7 +173,11 @@ window.API = (function () {
     return res.json();
   }
   async function apiDelete(path) {
-    const res = await fetch(`${BASE_URL}${path}`, { method: "DELETE", credentials: "same-origin" });
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "DELETE",
+      headers: mutationHeaders(),
+      credentials: "same-origin"
+    });
     await assertOk(res, `DELETE ${path} -> ${res.status}`);
     return res.ok;
   }
@@ -172,6 +185,7 @@ window.API = (function () {
   async function apiForm(path, method, body) {
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
+      headers: mutationHeaders(),
       credentials: "same-origin",
       body
     });
@@ -1204,7 +1218,7 @@ window.ProductsPage = (function () {
     }
   }
 
-  function resetProductImageChoice(text = "Escolher imagem", hint = "PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva.") {
+  function resetProductImageChoice(text = "Escolher imagem", hint = "PNG, JPG ou WEBP, com até 5 MB. Voce tambem pode escolher uma imagem ja salva.") {
     const fileInput = document.getElementById("productImage");
     const existingInput = document.getElementById("productExistingImage");
     const fileName = document.getElementById("productImageFileName");
@@ -1225,7 +1239,7 @@ window.ProductsPage = (function () {
     if (imageHint) {
       imageHint.textContent = file
         ? "Imagem nova selecionada. Ela sera salva no projeto ao cadastrar o produto."
-        : "PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva.";
+        : "PNG, JPG ou WEBP, com até 5 MB. Voce tambem pode escolher uma imagem ja salva.";
     }
   }
 
@@ -1411,7 +1425,7 @@ window.ProductsPage = (function () {
       setProductVariations(p.variations || p.variacoes || []);
       resetProductImageChoice(
         p.imageUrl ? "Manter imagem atual" : "Escolher imagem",
-        p.imageUrl ? "Imagem atual mantida. Escolha outra se quiser trocar." : "PNG, JPG ou WEBP. Voce tambem pode escolher uma imagem ja salva."
+        p.imageUrl ? "Imagem atual mantida. Escolha outra se quiser trocar." : "PNG, JPG ou WEBP, com até 5 MB. Voce tambem pode escolher uma imagem ja salva."
       );
       document.getElementById("productDesc").value = p.description || "";
     } else {

@@ -177,12 +177,15 @@ Responsabilidades:
 - hash e verificação de senha com bcrypt;
 - criação e validação de JWT;
 - leitura do token no cookie `access_token`;
+- proteção CSRF por token de dupla submissão nas operações autenticadas;
 - revalidação da conta, perfil e permissões no banco a cada requisição;
 - dependências para usuário obrigatório, opcional e administrador;
 - normalização de permissões do dashboard;
 - autorização por função (`role`) e por permissão granular.
 
 Administradores possuem acesso integral. Os demais perfis podem receber permissões como produtos, pedidos, clientes, categorias, estoque, relatórios, configurações e AAPM Smart. O JWT comprova a identidade, mas o banco é a fonte de verdade do acesso: desativação, troca de perfil e alteração de permissões têm efeito na requisição seguinte.
+
+O cookie de sessão é HttpOnly e o cookie CSRF é legível pelo frontend apenas para devolução no cabeçalho `X-CSRF-Token`. Em produção, `APP_ENV=production` ativa o atributo `Secure`; `COOKIE_SECURE` permite configuração explícita conforme o ambiente.
 
 ### 4.6 Persistência — `database/database.py`
 
@@ -353,6 +356,8 @@ As configurações são lidas do `.env`. Entre as variáveis utilizadas estão:
 - `SECRET_KEY`, `ALGORITHM` e `ACCESS_TOKEN_EXPIRE_MINUTES` para JWT;
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` e `SMTP_SSL` para e-mail;
 - `APP_BASE_URL` ou `RESET_PASSWORD_BASE_URL` para links de recuperação;
+- `APP_ENV` e `COOKIE_SECURE` para segurança dos cookies;
+- `MAX_PRODUCT_IMAGE_BYTES` para o limite de upload, com padrão de 5 MB;
 - credenciais/configurações da OpenAI usadas pelos recursos Smart.
 
 O `.env` contém segredos e não deve ser versionado. Configurações novas devem continuar externas ao código.

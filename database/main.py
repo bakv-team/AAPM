@@ -10,6 +10,7 @@ from database.controllers import admin_controller
 from api.v1 import pvd
 from database.database import get_db
 from database.models.usuario import Usuario
+from api.middleware import CSRF_COOKIE_NAME, csrf_token_for_request, set_csrf_cookie
 
 
 
@@ -26,7 +27,10 @@ app.mount("/static", StaticFiles(directory="database/static"), name="static")
 
 @app.middleware("http")
 async def disable_apps_static_cache(request: Request, call_next):
+    csrf_token = csrf_token_for_request(request)
     response = await call_next(request)
+    if request.cookies.get("access_token") and not request.cookies.get(CSRF_COOKIE_NAME):
+        set_csrf_cookie(response, csrf_token)
     if request.url.path.startswith("/apps/"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
@@ -102,6 +106,7 @@ def tela_dashboard(
             "usuario": usuario,
             "permissoes_usuario": normalizar_permissoes(usuario.get("permissoes")),
             "usuarios": usuarios,
+            "csrf_token": csrf_token_for_request(request),
         }
     )
 

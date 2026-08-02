@@ -306,10 +306,18 @@ async function apiGet(path) {
   return response.json();
 }
 
+function csrfToken() {
+  const item = document.cookie.split("; ").find(value => value.startsWith("csrf_token="));
+  return item ? decodeURIComponent(item.split("=").slice(1).join("=")) : "";
+}
+
 async function apiPost(path, body) {
   const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken()
+    },
     credentials: "same-origin",
     body: JSON.stringify(body)
   });

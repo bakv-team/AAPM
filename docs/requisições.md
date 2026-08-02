@@ -244,6 +244,7 @@ As permissões granulares reconhecidas são: `smart`, `dashboard`, `products`, `
 | RN-PRD-010 | Produto inativo não pode ser vendido nem receber edição pelo fluxo comum de edição. |
 | RN-PRD-011 | Imagem reutilizada deve existir na biblioteca e possuir extensão permitida. |
 | RN-PRD-012 | Ao substituir upload, a imagem anterior controlada pelo sistema deve ser removida quando aplicável. |
+| RN-PRD-013 | Upload deve possuir extensão e assinatura binária compatíveis e respeitar `MAX_PRODUCT_IMAGE_BYTES`, cujo padrão é 5 MB. |
 
 ### 5.3 Clientes e desconto
 
@@ -308,11 +309,11 @@ As permissões granulares reconhecidas são: `smart`, `dashboard`, `products`, `
 | RNF-SEG-001 | Credenciais e chaves devem ser fornecidas por variáveis de ambiente e não versionadas. | Crítica | Implementado | Revisão do repositório e configuração de implantação. |
 | RNF-SEG-002 | Senhas devem usar hash bcrypt via Passlib. | Crítica | Implementado | Inspeção do hash e teste de autenticação. |
 | RNF-SEG-003 | Cookie de sessão deve ser HttpOnly e `SameSite=Lax`. | Crítica | Implementado | Inspeção dos atributos `Set-Cookie`. |
-| RNF-SEG-004 | Em produção, o cookie de sessão deve usar `Secure` e todo tráfego deve ocorrer por HTTPS. | Crítica | Parcial | Teste no ambiente de produção; `Secure` ainda depende de ativação. |
+| RNF-SEG-004 | Em produção, o cookie de sessão deve usar `Secure` e todo tráfego deve ocorrer por HTTPS. | Crítica | Implementado | `APP_ENV=production` ativa `Secure`; `COOKIE_SECURE` permite configuração explícita e o ambiente deve validar HTTPS. |
 | RNF-SEG-005 | Toda mutação administrativa deve validar autorização no backend. | Crítica | Implementado | Testes de acesso direto sem permissão retornam `401` ou `403`. |
 | RNF-SEG-006 | Respostas de saúde e erros não devem expor senhas, tokens, chaves ou strings completas de conexão. | Crítica | Implementado | Inspeção de payloads e logs. |
-| RNF-SEG-007 | O sistema deve aplicar proteção CSRF adequada às operações autenticadas por cookie. | Crítica | Requer validação | Teste de requisição cross-site; `SameSite=Lax` é a proteção atual, sem token CSRF dedicado. |
-| RNF-SEG-008 | Upload deve impedir extensão não autorizada e nome de caminho arbitrário. | Alta | Implementado | Tentativa com extensão inválida e path traversal é recusada/normalizada. |
+| RNF-SEG-007 | O sistema deve aplicar proteção CSRF adequada às operações autenticadas por cookie. | Crítica | Implementado | Mutações exigem correspondência entre cookie CSRF e cabeçalho ou campo de formulário. |
+| RNF-SEG-008 | Upload deve impedir extensão não autorizada, conteúdo disfarçado, excesso de tamanho e nome de caminho arbitrário. | Alta | Implementado | Assinatura binária, extensão, limite e destino são validados antes da gravação. |
 | RNF-SEG-009 | Dados pessoais devem ser acessíveis somente a usuários internos autorizados. | Crítica | Implementado | Rotas de clientes exigem autenticação e permissão correspondente. |
 | RNF-SEG-010 | Logs não devem registrar senha, conteúdo de token ou segredo SMTP/IA. | Crítica | Requer validação | Revisão automatizada e operacional de logs. |
 

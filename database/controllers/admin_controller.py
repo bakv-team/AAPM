@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from database.auth import get_admin, hash_senha, permissoes_to_string
 from database.database import get_db
 from database.models.usuario import Usuario
+from api.middleware import validate_csrf_token
 
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
@@ -25,14 +26,17 @@ def form_novo_usuario(admin=Depends(get_admin)):
 
 @router.post("/novo")
 def criar_usuario(
+    request: Request,
     nome: str = Form(...),
     email: str = Form(...),
     senha: str = Form(...),
     role: str = Form(...),
     permissoes: list[str] = Form(default=[]),
+    csrf_token: str = Form(...),
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
+    validate_csrf_token(request, csrf_token)
     if role not in ROLES_PERMITIDOS:
         return RedirectResponse(url=DASHBOARD_FUNCIONARIOS, status_code=302)
 
@@ -62,15 +66,18 @@ def form_editar_usuario(usuario_id: int, admin=Depends(get_admin)):
 
 @router.post("/{usuario_id}/editar")
 def editar_usuario(
+    request: Request,
     usuario_id: int,
     nome: str = Form(...),
     email: str = Form(...),
     role: str = Form(...),
     senha: str = Form(""),
     permissoes: list[str] = Form(default=[]),
+    csrf_token: str = Form(...),
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
+    validate_csrf_token(request, csrf_token)
     editando = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not editando or role not in ROLES_PERMITIDOS:
         return RedirectResponse(url=DASHBOARD_FUNCIONARIOS, status_code=302)
@@ -98,10 +105,13 @@ def editar_usuario(
 
 @router.post("/{usuario_id}/toggle-ativo")
 def toggle_ativo(
+    request: Request,
     usuario_id: int,
+    csrf_token: str = Form(...),
     db: Session = Depends(get_db),
     admin=Depends(get_admin),
 ):
+    validate_csrf_token(request, csrf_token)
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
         return RedirectResponse(url=DASHBOARD_FUNCIONARIOS, status_code=302)

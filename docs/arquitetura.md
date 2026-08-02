@@ -177,11 +177,12 @@ Responsabilidades:
 - hash e verificação de senha com bcrypt;
 - criação e validação de JWT;
 - leitura do token no cookie `access_token`;
+- revalidação da conta, perfil e permissões no banco a cada requisição;
 - dependências para usuário obrigatório, opcional e administrador;
 - normalização de permissões do dashboard;
 - autorização por função (`role`) e por permissão granular.
 
-Administradores possuem acesso integral. Os demais perfis podem receber permissões como produtos, pedidos, clientes, categorias, estoque, relatórios, configurações e AAPM Smart.
+Administradores possuem acesso integral. Os demais perfis podem receber permissões como produtos, pedidos, clientes, categorias, estoque, relatórios, configurações e AAPM Smart. O JWT comprova a identidade, mas o banco é a fonte de verdade do acesso: desativação, troca de perfil e alteração de permissões têm efeito na requisição seguinte.
 
 ### 4.6 Persistência — `database/database.py`
 

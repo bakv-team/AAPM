@@ -5,9 +5,13 @@
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Request, HTTPException, status
+from fastapi import Depends, Request, HTTPException, status
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
 import os 
+
+from database.database import get_db
+from database.models.usuario import Usuario
 
 load_dotenv()
 
@@ -72,7 +76,7 @@ def criar_token(data:dict):
     #Define quando o token expira
     #Lembre que o ACESS_TOKEN_EXPERIRE_MINUTES é uma string, então precisamos converter para int
     expira = datetime.now(timezone.utc) + timedelta(minutes= int(ACCESS_TOKEN_EXPIRE_MINUTES))
-    payload.update({"exp": expira})
+    payload.update({"exp": expira, "purpose": "access"})
 
     # Criar o tokwn jwt
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -99,43 +103,68 @@ def decodificar_token(token: str):
     return payload
 
 # Dependências do FastAPI
-def get_usuario_logado(request: Request):
+def _erro_nao_autenticado(detail: str = "Token inválido") -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+    )
+
+
+def get_usuario_logado(
+    request: Request,
+    db: Session = Depends(get_db),
+):
 
     token = request.cookies.get("access_token")
 
     if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Não autenticado"
-        )
-    
-    try:
-        payload = decodificar_token(token)
-        email = payload.get("sub")
-        if email is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token inválido"
-            )
-        return payload
-    except JWTError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token inválido"
-            )
-    
-def get_usuario_opcional(request: Request):
+        raise _erro_nao_autenticado("Não autenticado")
 
     try:
-        return get_usuario_logado(request)
+        payload = decodificar_token(token)
+    except JWTError:
+        raise _erro_nao_autenticado()
+
+    email = payload.get("sub")
+    usuario_id = payload.get("id")
+    if payload.get("purpose") not in (None, "access"):
+        raise _erro_nao_autenticado()
+    if not email and not usuario_id:
+        raise _erro_nao_autenticado()
+
+    if usuario_id:
+        usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    elif email:
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+    else:
+        usuario = None
+    if not usuario or not usuario.ativo:
+        raise _erro_nao_autenticado("Sessão encerrada. Faça login novamente.")
+
+    # O token prova a identidade; o banco define o acesso vigente.
+    return {
+        **payload,
+        "sub": usuario.email,
+        "nome": usuario.nome,
+        "role": usuario.role,
+        "id": usuario.id,
+        "permissoes": normalizar_permissoes(usuario.permissoes),
+    }
+
+
+def get_usuario_opcional(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+
+    try:
+        return get_usuario_logado(request, db)
     except HTTPException:
         return None
     
 # Quando o usuario é admin
 # Ao inves de retornar erro, retornar um template dizendo "Acesso apenas para administradores" ou para erros num geral
-def get_admin(request: Request):
-    usuario = get_usuario_logado(request)
-
+def get_admin(usuario=Depends(get_usuario_logado)):
     if usuario.get("role") != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -144,8 +173,7 @@ def get_admin(request: Request):
     else:
         return usuario
 
-def get_dashboard_user(request: Request):
-    usuario = get_usuario_logado(request)
+def get_dashboard_user(usuario=Depends(get_usuario_logado)):
     if usuario.get("role") == "admin" or normalizar_permissoes(usuario.get("permissoes")):
         return usuario
     raise HTTPException(
@@ -154,8 +182,7 @@ def get_dashboard_user(request: Request):
     )
 
 def require_permission(*permissoes_aceitas: str):
-    def dependency(request: Request):
-        usuario = get_usuario_logado(request)
+    def dependency(usuario=Depends(get_usuario_logado)):
         if usuario.get("role") == "admin":
             return usuario
         permissoes_usuario = set(normalizar_permissoes(usuario.get("permissoes")))

@@ -222,6 +222,8 @@ As permissões granulares reconhecidas são: `smart`, `dashboard`, `products`, `
 | RN-AUT-007 | Administrador possui acesso integral; demais usuários dependem das permissões atribuídas. |
 | RN-AUT-008 | Somente administrador pode criar, editar ou alterar a situação de usuários. |
 | RN-AUT-009 | A própria conta administrativa não pode ser desativada pelo fluxo de alternância de situação. |
+| RN-AUT-010 | O JWT comprova a identidade, mas situação, perfil e permissões devem ser revalidados no banco a cada requisição protegida. |
+| RN-AUT-011 | Token com finalidade `password_reset` não pode autenticar uma sessão de acesso. |
 
 ### 5.2 Catálogo
 
@@ -399,8 +401,8 @@ Não são fixados números de latência ou concorrência sem medição do ambien
 
 | Domínio | Requisitos funcionais | Regras de negócio | Componentes principais |
 |---|---|---|---|
-| Autenticação | RF-AUT-001–012 | RN-AUT-001–009 | `database/auth.py`, `auth_controller.py` |
-| Usuários | RF-USR-001–009 | RN-AUT-007–009 | `admin_controller.py`, `usuario.py` |
+| Autenticação | RF-AUT-001–012 | RN-AUT-001–011 | `database/auth.py`, `auth_controller.py` |
+| Usuários | RF-USR-001–009 | RN-AUT-007–011 | `admin_controller.py`, `usuario.py` |
 | Categorias | RF-CAT-001–005 | RN-CAT-001–003 | `api/v1/pvd.py`, `categoria.py` |
 | Produtos e variações | RF-PRD-001–013 | RN-PRD-001–012 | `produto.py`, `variacao.py`, `produto_controller.py` |
 | Estoque | RF-EST-001–008 | RN-EST-001–005 | `movimentacao.py`, `api/v1/pvd.py` |

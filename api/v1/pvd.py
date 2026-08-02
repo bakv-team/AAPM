@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal, ROUND_HALF_UP
 import csv
 import io
 import json
@@ -41,6 +42,58 @@ _AI_RUNTIME_STATUS = {
 PRODUCT_IMAGE_DIR = Path("database/static/uploads")
 PRODUCT_IMAGE_PREFIX = "uploads"
 PRODUCT_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+MONEY_QUANTUM = Decimal("0.01")
+
+
+def _money(value: object) -> Decimal:
+    """Normaliza um valor monetario em centavos, sem aritmetica binaria."""
+    return Decimal(str(value or 0)).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+
+
+def _json_money(value: object) -> float:
+    """Mantem o contrato numerico consumido pelo frontend JavaScript."""
+    return float(_money(value))
+
+
+def _baixar_estoque_atomico(
+    db: Session,
+    produto: Produto,
+    variacao: ProdutoVariacao | None,
+    quantidade: int,
+) -> None:
+    """Reserva saldo com UPDATE condicional, inclusive onde FOR UPDATE e ignorado."""
+    produto_atualizado = (
+        db.query(Produto)
+        .filter(
+            Produto.id == produto.id,
+            Produto.ativo == True,
+            Produto.estoque_atual >= quantidade,
+        )
+        .update(
+            {Produto.estoque_atual: Produto.estoque_atual - quantidade},
+            synchronize_session=False,
+        )
+    )
+    if produto_atualizado != 1:
+        raise HTTPException(status_code=409, detail=f"Estoque insuficiente para {produto.nome}.")
+
+    if variacao is None:
+        return
+
+    variacao_atualizada = (
+        db.query(ProdutoVariacao)
+        .filter(
+            ProdutoVariacao.id == variacao.id,
+            ProdutoVariacao.produto_id == produto.id,
+            ProdutoVariacao.estoque_atual >= quantidade,
+        )
+        .update(
+            {ProdutoVariacao.estoque_atual: ProdutoVariacao.estoque_atual - quantidade},
+            synchronize_session=False,
+        )
+    )
+    if variacao_atualizada != 1:
+        raise HTTPException(status_code=409, detail=f"Estoque insuficiente para {produto.nome}.")
 
 
 def _carregar_timezone():
@@ -135,8 +188,8 @@ def _produto_json(produto: Produto) -> dict:
             "color": variacao.valor_do_atributo("Cor"),
             "cor": variacao.valor_do_atributo("Cor"),
             "label": variacao.nome_combinacao,
-            "price": variacao.preco,
-            "preco": variacao.preco,
+            "price": _json_money(variacao.preco),
+            "preco": _json_money(variacao.preco),
             "stock": variacao.estoque_atual,
             "estoque_atual": variacao.estoque_atual,
         }
@@ -149,8 +202,8 @@ def _produto_json(produto: Produto) -> dict:
         "categoryId": str(produto.categoria_id) if produto.categoria_id else "",
         "categoria_id": produto.categoria_id,
         "categoryName": categoria.nome if categoria else "",
-        "price": produto.preco,
-        "preco": produto.preco,
+        "price": _json_money(produto.preco),
+        "preco": _json_money(produto.preco),
         "stock": produto.estoque_atual,
         "estoque_atual": produto.estoque_atual,
         "description": produto.descricao or "",
@@ -181,7 +234,7 @@ def _parse_variacoes(valor: str) -> list[dict]:
         tamanho = str(item.get("size") or item.get("tamanho") or "").strip()
         cor = str(item.get("color") or item.get("cor") or "").strip()
         try:
-            preco = float(item.get("price", item.get("preco")))
+            preco = _money(item.get("price", item.get("preco")))
             estoque = int(item.get("stock", item.get("estoque_atual", 0)))
         except (TypeError, ValueError):
             raise HTTPException(status_code=400, detail=f"Preco ou estoque invalido para o tamanho {tamanho or '?'}.")
@@ -292,7 +345,7 @@ def _usuario_id_atual(usuario: dict, db: Session) -> int | None:
 def _movimentacao_json(movimento: Movimentacao) -> dict:
     tipo = movimento.tipo.value if hasattr(movimento.tipo, "value") else str(movimento.tipo)
     is_entrada = tipo == Tipo_movimentacao.ENTRADA.value
-    preco = movimento.preco_unitario or 0
+    preco = _money(movimento.preco_unitario)
     quantidade = movimento.quantidade or 0
     criado_em = movimento.criado_em or getattr(movimento, "data", None)
 
@@ -301,8 +354,8 @@ def _movimentacao_json(movimento: Movimentacao) -> dict:
         "type": "entrada" if is_entrada else "saida",
         "typeLabel": "Entrada" if is_entrada else "Saída",
         "quantity": quantidade,
-        "unitPrice": preco,
-        "total": quantidade * preco,
+        "unitPrice": _json_money(preco),
+        "total": _json_money(quantidade * preco),
         "note": movimento.observacao or "",
         "createdAt": criado_em.isoformat() if criado_em else None,
         "productId": str(movimento.produto_id),
@@ -339,8 +392,8 @@ def _venda_json(venda: Venda) -> dict:
     if pagamento == "nao informado" and getattr(venda, "metodo_pagamento", None):
         pagamento = venda.metodo_pagamento
     cliente_nome = venda.cliente.nome if venda.cliente else _extrair_cliente(observacao)
-    total_bruto = venda.total_bruto or getattr(venda, "valor_total", 0) or 0
-    total_liquido = venda.total_liquido or getattr(venda, "valor_final", 0) or 0
+    total_bruto = _money(venda.total_bruto or getattr(venda, "valor_total", 0))
+    total_liquido = _money(venda.total_liquido or getattr(venda, "valor_final", 0))
     criado_em = venda.criado_em or getattr(venda, "data", None)
     excecao_ativa = bool(getattr(venda, "excecao_pagamento", False))
     excecao_status = getattr(venda, "excecao_status", "") or ("pendente" if excecao_ativa else "sem_excecao")
@@ -349,12 +402,12 @@ def _venda_json(venda: Venda) -> dict:
     return {
         "id": venda.id,
         "number": f"#{venda.id:04d}",
-        "total_bruto": total_bruto,
-        "total_liquido": total_liquido,
-        "subtotal": total_bruto,
-        "total": total_liquido,
-        "desconto_percentual": venda.desconto_percentual,
-        "desconto_valor": venda.desconto_valor,
+        "total_bruto": _json_money(total_bruto),
+        "total_liquido": _json_money(total_liquido),
+        "subtotal": _json_money(total_bruto),
+        "total": _json_money(total_liquido),
+        "desconto_percentual": _json_money(venda.desconto_percentual),
+        "desconto_valor": _json_money(venda.desconto_valor),
         "customerName": cliente_nome,
         "payment": pagamento,
         "status": "pendente" if excecao_ativa and excecao_status == "pendente" else "concluido",
@@ -373,8 +426,8 @@ def _venda_json(venda: Venda) -> dict:
                 "productId": str(item.produto_id) if item.produto_id else "",
                 "name": item.produto_nome,
                 "qty": item.quantidade,
-                "price": item.preco_unitario,
-                "subtotal": item.subtotal,
+                "price": _json_money(item.preco_unitario),
+                "subtotal": _json_money(item.subtotal),
             }
             for item in venda.itens
         ],
@@ -401,7 +454,7 @@ def _extrair_cliente(observacao: str) -> str:
 
 def _cliente_json(cliente: Cliente) -> dict:
     vendas = [v for v in cliente.vendas]
-    total_gasto = sum(v.total_liquido or 0 for v in vendas)
+    total_gasto = sum((_money(v.total_liquido) for v in vendas), Decimal("0.00"))
     ultima = max((v.criado_em for v in vendas if v.criado_em), default=None)
     return {
         "id": str(cliente.id),
@@ -412,7 +465,7 @@ def _cliente_json(cliente: Cliente) -> dict:
         "matricula": cliente.matricula or "",
         "isAssociado": cliente.is_associado,
         "orders": len(vendas),
-        "totalSpent": total_gasto,
+        "totalSpent": _json_money(total_gasto),
         "lastOrder": ultima.strftime("%d/%m/%Y") if ultima else "-",
     }
 
@@ -853,6 +906,7 @@ def criar_venda_api(
     produtos = (
         db.query(Produto)
         .filter(Produto.id.in_(produto_ids), Produto.ativo == True)
+        .order_by(Produto.id)
         .with_for_update()
         .all()
     )
@@ -867,6 +921,7 @@ def criar_venda_api(
         for variacao in (
             db.query(ProdutoVariacao)
             .filter(ProdutoVariacao.id.in_(variacao_ids))
+            .order_by(ProdutoVariacao.id)
             .with_for_update()
             .all()
             if variacao_ids else []
@@ -907,12 +962,21 @@ def criar_venda_api(
             .first()
         )
         associado_confirmado = bool(cliente and cliente.is_associado)
-        desconto_percentual = 10.0 if associado_confirmado else 0.0
+        desconto_percentual = Decimal("10.00") if associado_confirmado else Decimal("0.00")
         total_bruto = sum(
-            (variacoes_por_id[variacao_id].preco if variacao_id else produtos_por_id[produto_id].preco) * qtd
-            for (produto_id, variacao_id), qtd in quantidades.items()
+            (
+                _money(
+                    variacoes_por_id[variacao_id].preco
+                    if variacao_id
+                    else produtos_por_id[produto_id].preco
+                )
+                * qtd
+                for (produto_id, variacao_id), qtd in quantidades.items()
+            ),
+            start=Decimal("0.00"),
         )
-        total_liquido = total_bruto * (1 - desconto_percentual / 100)
+        total_bruto = _money(total_bruto)
+        total_liquido = _money(total_bruto * (Decimal("1.00") - desconto_percentual / Decimal("100.00")))
 
         observacoes = [f"Pagamento: {pagamento}."]
         if cliente_nome:
@@ -946,13 +1010,14 @@ def criar_venda_api(
         db.add(venda)
         db.flush()
 
-        for (produto_id, variacao_id), quantidade in quantidades.items():
+        for (produto_id, variacao_id), quantidade in sorted(
+            quantidades.items(),
+            key=lambda item: (item[0][0], item[0][1] or 0),
+        ):
             produto = produtos_por_id[produto_id]
             variacao = variacoes_por_id.get(variacao_id) if variacao_id else None
-            preco_unitario = variacao.preco if variacao else produto.preco
-            produto.estoque_atual -= quantidade
-            if variacao:
-                variacao.estoque_atual -= quantidade
+            preco_unitario = _money(variacao.preco if variacao else produto.preco)
+            _baixar_estoque_atomico(db, produto, variacao, quantidade)
             complemento = f" ({variacao.nome_combinacao})" if variacao else ""
 
             db.add(ItemVenda(
@@ -975,6 +1040,9 @@ def criar_venda_api(
 
         db.commit()
         db.refresh(venda)
+    except HTTPException:
+        db.rollback()
+        raise
     except SQLAlchemyError as exc:
         db.rollback()
         print(f"[PDV] Falha ao registrar venda: {exc}")
@@ -1152,7 +1220,7 @@ def vendas_por_dia_api(
             itens = db.query(func.coalesce(func.sum(ItemVenda.quantidade), 0)).filter(ItemVenda.venda_id.in_(venda_ids)).scalar() or 0
         rows.append({
             "date": dia.isoformat(),
-            "revenue": sum(v.total_liquido or 0 for v in vendas),
+            "revenue": _json_money(sum((_money(v.total_liquido) for v in vendas), Decimal("0.00"))),
             "orders": len(vendas),
             "items": int(itens),
         })
@@ -1176,7 +1244,7 @@ def vendas_por_hora_api(
         hora = venda.criado_em.hour if venda.criado_em else 0
         if hora not in por_hora:
             por_hora[hora] = {"hour": hora, "revenue": 0, "orders": 0}
-        por_hora[hora]["revenue"] += venda.total_liquido or 0
+        por_hora[hora]["revenue"] += _json_money(venda.total_liquido)
         por_hora[hora]["orders"] += 1
     return sorted(por_hora.values(), key=lambda row: row["hour"])
 
@@ -1199,17 +1267,22 @@ def metricas_dashboard_api(
         itens = 0
         if venda_ids:
             itens = db.query(func.coalesce(func.sum(ItemVenda.quantidade), 0)).filter(ItemVenda.venda_id.in_(venda_ids)).scalar() or 0
-        receita = sum(v.total_liquido or 0 for v in vendas)
+        receita = sum((_money(v.total_liquido) for v in vendas), Decimal("0.00"))
         pedidos = len(vendas)
-        ticket = receita / pedidos if pedidos else 0
-        return {"revenue": receita, "items": int(itens), "orders": pedidos, "ticket": ticket}
+        ticket = _money(receita / pedidos) if pedidos else Decimal("0.00")
+        return {
+            "revenue": _json_money(receita),
+            "items": int(itens),
+            "orders": pedidos,
+            "ticket": _json_money(ticket),
+        }
 
     atual = resumo(vendas_hoje)
     anterior = resumo(vendas_ontem)
-    month_revenue = sum(v.total_liquido or 0 for v in vendas_mes)
+    month_revenue = sum((_money(v.total_liquido) for v in vendas_mes), Decimal("0.00"))
     return {
         **atual,
-        "monthRevenue": month_revenue,
+        "monthRevenue": _json_money(month_revenue),
         "revPct": _pct(atual["revenue"], anterior["revenue"]),
         "itemsPct": _pct(atual["items"], anterior["items"]),
         "ordersPct": _pct(atual["orders"], anterior["orders"]),
@@ -1795,7 +1868,7 @@ def suporte_api(
 async def criar_produto_api(
     nome: str = Form(...),
     descricao: str = Form(""),
-    preco: float = Form(...),
+    preco: Decimal = Form(...),
     estoque_atual: int = Form(...),
     categoria_id: int = Form(0),
     imagem: UploadFile = File(None),
@@ -1875,7 +1948,7 @@ async def editar_produto_api(
     produto_id: int,
     nome: str = Form(...),
     descricao: str = Form(""),
-    preco: float = Form(...),
+    preco: Decimal = Form(...),
     estoque_atual: int = Form(...),
     categoria_id: int = Form(0),
     imagem: UploadFile = File(None),

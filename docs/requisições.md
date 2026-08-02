@@ -318,7 +318,7 @@ As permissões granulares reconhecidas são: `smart`, `dashboard`, `products`, `
 
 | ID | Requisito | Prioridade | Situação | Verificação |
 |---|---|---:|---|---|
-| RNF-CON-001 | Operações financeiras devem ser atômicas. | Crítica | Implementado | Teste de falha intermediária confirma rollback integral. |
+| RNF-CON-001 | Operações financeiras devem ser atômicas. | Crítica | Implementado | Testes de falha intermediária e concorrência confirmam rollback integral e impedem consumo duplicado do saldo. |
 | RNF-CON-002 | O sistema deve preservar pedidos e itens quando cliente, produto ou variação forem removidos. | Crítica | Implementado | Teste de exclusão mantém o histórico consultável. |
 | RNF-CON-003 | Chaves únicas e estrangeiras devem proteger e-mails, matrículas, categorias, atributos e códigos de variação. | Alta | Implementado | Inspeção do esquema e testes de conflito. |
 | RNF-CON-004 | Sessões de banco devem ser encerradas ao final de cada requisição. | Alta | Implementado | Dependência `get_db()` fecha a sessão no bloco `finally`. |

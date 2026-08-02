@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey, Boolean
+from decimal import Decimal
+
+from sqlalchemy import Column, Integer, Numeric, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database.database import Base
@@ -24,19 +26,19 @@ class Venda(Base):
 
     # Percentual de desconto aplicado — 0.0 ou 10.0
     # Guardamos o valor histórico para não depender do cadastro do cliente
-    desconto_percentual = Column(Float, nullable=False, default=0.0)
+    desconto_percentual = Column(Numeric(5, 2), nullable=False, default=Decimal("0.00"))
 
     # Campos legados ainda presentes no banco SQLite atual.
     metodo_pagamento = Column(String(150), nullable=False, default="nao informado")
-    desconto = Column(Float, nullable=True, default=0.0)
-    valor_total = Column(Float, nullable=False, default=0.0)
-    valor_final = Column(Float, nullable=False, default=0.0)
+    desconto = Column(Numeric(12, 2), nullable=True, default=Decimal("0.00"))
+    valor_total = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    valor_final = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     data = Column(DateTime, server_default=func.now())
 
     # Valores calculados e persistidos para histórico imutável
     # (mesmo que o preço do produto mude, a venda permanece correta)
-    total_bruto  = Column(Float, nullable=False, default=0.0)
-    total_liquido = Column(Float, nullable=False, default=0.0)
+    total_bruto = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    total_liquido = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
 
     # Observação opcional do operador
     observacao = Column(String(255), nullable=True)
@@ -59,7 +61,7 @@ class Venda(Base):
     )
 
     @property
-    def desconto_valor(self) -> float:
+    def desconto_valor(self) -> Decimal:
         """Valor monetário do desconto."""
         return self.total_bruto - self.total_liquido
 
@@ -92,10 +94,10 @@ class ItemVenda(Base):
     # Dados históricos — não dependem do produto atual no banco
     produto_nome   = Column(String(150), nullable=False)
     quantidade     = Column(Integer, nullable=False)
-    preco_unitario = Column(Float, nullable=False)   # preço no momento da venda
+    preco_unitario = Column(Numeric(12, 2), nullable=False)  # preço no momento da venda
 
     @property
-    def subtotal(self) -> float:
+    def subtotal(self) -> Decimal:
         return self.quantidade * self.preco_unitario
 
     # Relacionamentos

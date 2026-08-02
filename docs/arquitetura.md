@@ -30,7 +30,7 @@ Além delas, a aplicação oferece login e recuperação de senha em `/auth` e o
 |---|---|
 | Aplicação web e API | FastAPI + Uvicorn |
 | Templates | Jinja2 |
-| Persistência | SQLAlchemy 2.x |
+| Persistência | SQLAlchemy 2.x, com `Numeric/Decimal` para valores monetários |
 | Evolução do esquema | Alembic |
 | Banco | Definido por `DATABASE_URL`; o projeto inclui driver PostgreSQL e um banco SQLite local |
 | Autenticação | JWT (`python-jose`) em cookie HttpOnly |
@@ -321,6 +321,8 @@ Tela /pdv
   → atualiza o estoque
   → confirma a transação no banco
 ```
+
+A baixa utiliza bloqueio de linha quando suportado e um `UPDATE` condicional atômico como garantia final. Assim, vendas concorrentes não podem consumir a mesma unidade nem produzir estoque negativo.
 
 ### 7.3 Gestão de estoque
 

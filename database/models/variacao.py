@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, UniqueConstraint
+from decimal import Decimal
+
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database.database import Base
 
@@ -33,7 +35,7 @@ class ProdutoVariacao(Base):
     produto_id = Column(Integer, ForeignKey("produtos.id", ondelete="CASCADE"), nullable=False)
     
     codigo_produto = Column(String(50), unique=True, nullable=False)
-    preco = Column(Float, nullable=False)
+    preco = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     estoque_atual = Column(Integer, nullable=False, default=0)
     produto = relationship("Produto", back_populates="variacoes")
 

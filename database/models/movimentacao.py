@@ -1,6 +1,8 @@
 # Tabela de movimentação
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, func
+from decimal import Decimal
+
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Enum, func
 from sqlalchemy.orm import relationship
 from database.database import Base
 import enum
@@ -15,7 +17,7 @@ class Movimentacao(Base):
     id = Column(Integer, primary_key=True, index=True)
     tipo = Column(Enum(Tipo_movimentacao), nullable=False)
     quantidade = Column(Integer, nullable=False)
-    preco_unitario = Column(Float, nullable=False, default=0.0)
+    preco_unitario = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     observacao = Column(String(255), nullable=True)
     criado_em = Column(DateTime, server_default=func.now())
 

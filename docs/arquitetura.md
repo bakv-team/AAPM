@@ -125,7 +125,7 @@ Não existem atualmente as pastas `core/`, `services/` ou `assets/` globais. Rec
 - publica as páginas `/`, `/dashboard` e `/pdv`;
 - aplica cabeçalhos sem cache aos recursos em `/apps`;
 - trata respostas 404;
-- realiza, no startup, compatibilizações pontuais de colunas de usuários e exceções de pagamento.
+- mantém a inicialização livre de alterações estruturais no banco.
 
 O servidor é iniciado apontando para `database.main:app`.
 
@@ -187,7 +187,7 @@ Administradores possuem acesso integral. Os demais perfis podem receber permiss�
 
 O módulo lê `DATABASE_URL` do ambiente, cria o `engine`, configura `SessionLocal`, declara a classe base dos modelos e fornece `get_db()` como dependência do FastAPI. `pool_pre_ping` e `pool_recycle` ajudam a manter conexões remotas válidas. Há também uma função opcional para conexão PostgreSQL bruta via `psycopg2`.
 
-As alterações estruturais devem ser registradas em `migrations/` com Alembic. As correções executadas no startup existem como compatibilidade, mas não substituem migrations novas.
+As alterações estruturais são registradas em `migrations/` com Alembic. A aplicação não executa DDL no startup; o comando `alembic upgrade head` deve preceder a inicialização de cada versão implantada.
 
 ## 5. Modelos de dados atuais
 

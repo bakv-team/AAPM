@@ -323,7 +323,7 @@ As permissões granulares reconhecidas são: `smart`, `dashboard`, `products`, `
 | RNF-CON-003 | Chaves únicas e estrangeiras devem proteger e-mails, matrículas, categorias, atributos e códigos de variação. | Alta | Implementado | Inspeção do esquema e testes de conflito. |
 | RNF-CON-004 | Sessões de banco devem ser encerradas ao final de cada requisição. | Alta | Implementado | Dependência `get_db()` fecha a sessão no bloco `finally`. |
 | RNF-CON-005 | Conexões remotas devem verificar disponibilidade antes do uso e ser recicladas periodicamente. | Média | Implementado | Engine configurado com `pool_pre_ping` e `pool_recycle`. |
-| RNF-CON-006 | Mudanças de esquema devem ser versionadas e reversíveis com Alembic. | Alta | Parcial | Toda mudança nova possui `upgrade` e `downgrade`; compatibilizações legadas ainda existem no startup. |
+| RNF-CON-006 | Mudanças de esquema devem ser versionadas e reversíveis com Alembic. | Alta | Implementado | Toda mudança possui `upgrade` e `downgrade`, e a aplicação não executa DDL no startup. |
 | RNF-CON-007 | A operação deve possuir política documentada de backup, restauração e teste periódico. | Crítica | Requer validação | Evidência de rotina, retenção e teste de restauração no ambiente alvo. |
 | RNF-CON-008 | Falha de SMTP ou IA não deve comprometer transações de venda. | Alta | Implementado | Simulação de indisponibilidade mantém funções centrais operantes. |
 

@@ -2,14 +2,13 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from database.controllers import auth_controller
 from database.controllers import admin_controller
 from api.v1 import pvd
-from database.database import engine, get_db
+from database.database import get_db
 from database.models.usuario import Usuario
 
 
@@ -37,30 +36,6 @@ async def disable_apps_static_cache(request: Request, call_next):
 app.include_router(auth_controller.router)
 app.include_router(admin_controller.router)
 app.include_router(pvd.router)
-
-
-@app.on_event("startup")
-def garantir_colunas_usuario():
-    inspector = inspect(engine)
-    colunas = {coluna["name"] for coluna in inspector.get_columns("usuarios")}
-    if "permissoes" not in colunas:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE usuarios ADD COLUMN permissoes VARCHAR(255) NOT NULL DEFAULT ''"))
-
-    if inspector.has_table("vendas"):
-        colunas_vendas = {coluna["name"] for coluna in inspector.get_columns("vendas")}
-        novas_colunas_vendas = {
-            "excecao_pagamento": "BOOLEAN NOT NULL DEFAULT 0",
-            "excecao_status": "VARCHAR(30) NOT NULL DEFAULT 'sem_excecao'",
-            "excecao_prazo": "DATETIME",
-            "excecao_observacao": "VARCHAR(255)",
-            "excecao_pago_em": "DATETIME",
-        }
-        faltantes = [(nome, ddl) for nome, ddl in novas_colunas_vendas.items() if nome not in colunas_vendas]
-        if faltantes:
-            with engine.begin() as conn:
-                for nome, ddl in faltantes:
-                    conn.execute(text(f"ALTER TABLE vendas ADD COLUMN {nome} {ddl}"))
 
 
 @app.exception_handler(StarletteHTTPException)

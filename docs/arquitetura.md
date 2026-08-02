@@ -81,8 +81,7 @@ AAPM/
 │       ├── assets/
 │       ├── scripts/
 │       ├── styles/
-│       ├── views/
-│       └── routes.py
+│       └── views/
 ├── database/
 │   ├── auth.py
 │   ├── database.py
@@ -144,11 +143,10 @@ O servidor é iniciado apontando para `database.main:app`.
 
 | Pasta/arquivo | Papel |
 |---|---|
-| `views/` | Templates do dashboard, PDV e cadastro |
+| `views/` | Templates ativos do dashboard e PDV |
 | `scripts/` | Interações da interface e chamadas para `/api/v1/pdv` |
 | `styles/` | Estilos das telas |
 | `assets/` | Logos, ícones e fundos |
-| `routes.py` | Módulo de rotas da aplicação; não está registrado no `main.py` atualmente |
 
 Os templates de login e redefinição de senha permanecem em `database/templates/`, separados das telas do painel.
 

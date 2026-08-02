@@ -1,5 +1,4 @@
 import os
-import smtplib
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from urllib.parse import quote
@@ -13,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from database.database import get_db
 from database.models.usuario import Usuario
+from integrations.smtp_client import send_message, smtp_settings
 from api.middleware import (
     CSRF_COOKIE_NAME,
     access_token_max_age,
@@ -40,27 +40,14 @@ templates = Jinja2Templates(directory="database/templates")
 
 def _enviar_email_recuperacao(destino: str, nome: str, link: str):
     load_dotenv(override=True)
-    smtp_host = os.getenv("SMTP_HOST")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_password = os.getenv("SMTP_PASSWORD")
-    if smtp_password:
-        smtp_password = "".join(smtp_password.split())
-    smtp_from = os.getenv("SMTP_FROM") or smtp_user
-    smtp_tls = os.getenv("SMTP_TLS", "true").strip().lower() != "false"
-    smtp_ssl = os.getenv("SMTP_SSL", "false").strip().lower() == "true" or smtp_port == 465
-
-    if not smtp_host or not smtp_from:
-        raise RuntimeError("SMTP incompleto: confira SMTP_HOST e SMTP_FROM/SMTP_USER no .env.")
-    if not smtp_user or not smtp_password:
-        raise RuntimeError("SMTP incompleto: confira SMTP_USER e SMTP_PASSWORD no .env.")
+    settings = smtp_settings()
 
     message = EmailMessage()
     message["Subject"] = "Redefinição de senha - AAPM"
-    message["From"] = smtp_from
+    message["From"] = settings.sender
     message["To"] = destino
     message["Date"] = formatdate(localtime=True)
-    message["Message-ID"] = make_msgid(domain=(smtp_from.split("@")[-1] if "@" in smtp_from else None))
+    message["Message-ID"] = make_msgid(domain=(settings.sender.split("@")[-1] if "@" in settings.sender else None))
     message.set_content(
         f"Olá, {nome}.\n\n"
         "Recebemos uma solicitação para redefinir sua senha no sistema AAPM.\n"
@@ -137,16 +124,7 @@ def _enviar_email_recuperacao(destino: str, nome: str, link: str):
         subtype="html",
     )
 
-    smtp_client = smtplib.SMTP_SSL if smtp_ssl else smtplib.SMTP
-    timeout = int(os.getenv("SMTP_TIMEOUT", "60"))
-    with smtp_client(smtp_host, smtp_port, timeout=timeout, local_hostname="localhost") as smtp:
-        if smtp_tls and not smtp_ssl:
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.ehlo()
-        if smtp_user and smtp_password:
-            smtp.login(smtp_user, smtp_password)
-        smtp.send_message(message)
+    send_message(message, settings=settings, require_credentials=True)
 
 
 def _base_url_recuperacao(request: Request) -> str:

@@ -102,7 +102,8 @@ A sessão usa JWT em cookie HttpOnly. Administradores têm acesso integral; func
 ```text
 apps/pvd/                  interface, estilos, scripts e recursos visuais
 api/v1/pvd.py              endpoints do PDV e do dashboard
-services/                   casos de uso e regras de vendas/estoque
+services/                   casos de uso de vendas, estoque e relatórios
+integrations/               adaptadores de SMTP e provedores de IA
 database/main.py           composição e inicialização da aplicação
 database/auth.py           JWT, senhas, sessão e autorização
 database/controllers/      autenticação e administração de usuários
@@ -130,7 +131,7 @@ As regras financeiras devem preservar o histórico da venda; alterações futura
 
 ## Estado do projeto
 
-Login, dashboard, PDV, produtos, variações, categorias, associados, estoque, pedidos, exceções de pagamento e gestão de usuários estão implementados. Relatórios e cobertura automatizada continuam em evolução.
+Login, dashboard, PDV, produtos, variações, categorias, associados, estoque, pedidos, exceções de pagamento, relatórios e gestão de usuários estão implementados. A cobertura automatizada acompanha os fluxos críticos e continua em evolução.
 
 <div align="center">
 

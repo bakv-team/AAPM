@@ -54,8 +54,11 @@ Navegador
                          autenticação e autorização
                               database/auth.py
                                         │
-                         casos de uso de venda/estoque
+                    casos de uso de venda/estoque/relatórios
                          services/ + regras restantes
+                                        │
+                          adaptadores SMTP e IA
+                              integrations/
                                         │
                               SQLAlchemy ORM
                          database/models/*.py
@@ -63,7 +66,7 @@ Navegador
                      banco configurado em DATABASE_URL
 ```
 
-As fronteiras são modulares e a extração da camada de serviços está em andamento. Vendas e estoque já possuem casos de uso independentes do protocolo HTTP em `services/`; relatórios, catálogo, clientes e Smart ainda mantêm parte de suas regras em `api/v1/pvd.py`. Os controladores em `database/controllers/` cuidam de autenticação, usuários e upload de produtos.
+As fronteiras são modulares e a extração da camada de serviços está em andamento. Vendas, estoque e relatórios possuem casos de uso independentes do protocolo HTTP em `services/`. SMTP e provedores de IA são acessados por adaptadores em `integrations/`; catálogo, clientes e a composição dos insights Smart ainda mantêm parte de suas regras em `api/v1/pvd.py`. Os controladores em `database/controllers/` cuidam de autenticação, usuários e upload de produtos.
 
 ## 3. Estrutura real do repositório
 
@@ -100,8 +103,12 @@ AAPM/
 │   └── templates/
 ├── migrations/
 │   └── versions/
+├── integrations/
+│   ├── ai_client.py
+│   └── smtp_client.py
 ├── services/
 │   ├── errors.py
+│   ├── report_service.py
 │   ├── sale_service.py
 │   └── stock_service.py
 ├── docs/
@@ -172,9 +179,19 @@ Os serviços encapsulam casos de uso críticos sem depender de FastAPI:
 |---|---|
 | `sale_service.py` | Validar e registrar a venda, calcular desconto e coordenar a transação |
 | `stock_service.py` | Reservar e repor estoque de forma atômica, registrando movimentações |
+| `report_service.py` | Consultar e montar os dados dos relatórios CSV sem depender do protocolo HTTP |
 | `errors.py` | Exceções de negócio convertidas em respostas HTTP pela camada da API |
 
-### 4.5 Controladores — `database/controllers/`
+### 4.5 Integrações — `integrations/`
+
+| Adaptador | Responsabilidade |
+|---|---|
+| `smtp_client.py` | Centralizar configuração, TLS/SSL, autenticação e envio de mensagens SMTP |
+| `ai_client.py` | Isolar chamadas OpenAI/Gemini, estado operacional e seleção do provedor |
+
+Falhas de IA retornam ao modo local do Smart. Os adaptadores não controlam rotas nem transações de venda.
+
+### 4.6 Controladores — `database/controllers/`
 
 | Controlador | Prefixo/função |
 |---|---|
@@ -184,7 +201,7 @@ Os serviços encapsulam casos de uso críticos sem depender de FastAPI:
 
 A recuperação de senha gera um JWT de uso específico, válido por tempo limitado, e envia o link por SMTP.
 
-### 4.6 Segurança — `database/auth.py`
+### 4.7 Segurança — `database/auth.py`
 
 Responsabilidades:
 
@@ -201,7 +218,7 @@ Administradores possuem acesso integral. Os demais perfis podem receber permiss�
 
 O cookie de sessão é HttpOnly e o cookie CSRF é legível pelo frontend apenas para devolução no cabeçalho `X-CSRF-Token`. Em produção, `APP_ENV=production` ativa o atributo `Secure`; `COOKIE_SECURE` permite configuração explícita conforme o ambiente.
 
-### 4.7 Persistência — `database/database.py`
+### 4.8 Persistência — `database/database.py`
 
 O módulo lê `DATABASE_URL` do ambiente, cria o `engine`, configura `SessionLocal`, declara a classe base dos modelos e fornece `get_db()` como dependência do FastAPI. `pool_pre_ping` e `pool_recycle` ajudam a manter conexões remotas válidas. Há também uma função opcional para conexão PostgreSQL bruta via `psycopg2`.
 
@@ -372,7 +389,7 @@ As configurações são lidas do `.env`. Entre as variáveis utilizadas estão:
 - `APP_BASE_URL` ou `RESET_PASSWORD_BASE_URL` para links de recuperação;
 - `APP_ENV` e `COOKIE_SECURE` para segurança dos cookies;
 - `MAX_PRODUCT_IMAGE_BYTES` para o limite de upload, com padrão de 5 MB;
-- credenciais/configurações da OpenAI usadas pelos recursos Smart.
+- `AAPM_AI_PROVIDER` e credenciais/configurações OpenAI ou Gemini usadas pelos recursos Smart.
 
 O `.env` contém segredos e não deve ser versionado. Configurações novas devem continuar externas ao código.
 

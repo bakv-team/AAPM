@@ -4,9 +4,6 @@ import csv
 import io
 import json
 import os
-import smtplib
-import urllib.error
-import urllib.request
 import uuid
 from email.message import EmailMessage
 from pathlib import Path
@@ -20,6 +17,10 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from api.middleware import require_api_csrf
+from integrations.ai_client import RUNTIME_STATUS as _AI_RUNTIME_STATUS
+from integrations.ai_client import call_external_ai as external_ai_answer
+from integrations.ai_client import config_status as _ai_config_status
+from integrations.smtp_client import send_message, smtp_settings
 from database.auth import get_usuario_logado, hash_senha, require_permission, verificar_senha
 from database.controllers.produto_controller import _remover_imagem, _salvar_imagem
 from database.database import get_db
@@ -32,6 +33,7 @@ from database.models.usuario import Usuario
 from database.models.venda import ItemVenda, Venda
 from services.errors import ConflictError, NotFoundError, PersistenceError, ServiceError, ValidationError
 from services.sale_service import RegisterSaleInput, SaleItemInput, register_sale
+from services.report_service import generate_report
 from services.stock_service import replenish_stock
 from utils.money import money as _money
 
@@ -41,12 +43,6 @@ router = APIRouter(
     tags=["API PDV"],
     dependencies=[Depends(require_api_csrf)],
 )
-
-_AI_RUNTIME_STATUS = {
-    "provider": "",
-    "ok": None,
-    "error": "",
-}
 
 PRODUCT_IMAGE_DIR = Path("database/static/uploads")
 PRODUCT_IMAGE_PREFIX = "uploads"
@@ -444,63 +440,10 @@ def _cliente_json(cliente: Cliente) -> dict:
     }
 
 
-def _smtp_config() -> dict:
-    senha = os.getenv("SMTP_PASSWORD") or ""
-    try:
-        port = int(os.getenv("SMTP_PORT", "587"))
-    except (TypeError, ValueError):
-        port = 587
-    return {
-        "host": os.getenv("SMTP_HOST"),
-        "port": port,
-        "user": os.getenv("SMTP_USER"),
-        "password": "".join(senha.split()),
-        "from": os.getenv("SMTP_FROM") or os.getenv("SMTP_USER"),
-        "to": os.getenv("SUPPORT_EMAIL") or os.getenv("SMTP_FROM") or os.getenv("SMTP_USER"),
-        "tls": os.getenv("SMTP_TLS", "true").strip().lower() != "false",
-        "ssl": os.getenv("SMTP_SSL", "false").strip().lower() == "true",
-    }
-
-
-def _secret_configured(value: str | None) -> bool:
-    if not value:
-        return False
-    value = value.strip()
-    placeholders = ("cole_", "sua_", "your_", "changeme", "coloque_")
-    return bool(value) and not value.lower().startswith(placeholders)
-
-
-def _ai_config_status() -> dict:
-    provider = (os.getenv("AAPM_AI_PROVIDER") or "auto").strip().lower()
-    openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("AAPM_AI_API_KEY")
-    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    openai_ready = _secret_configured(openai_key)
-    gemini_ready = _secret_configured(gemini_key)
-
-    if provider == "openai":
-        ready = openai_ready
-        active = "openai"
-    elif provider == "gemini":
-        ready = gemini_ready
-        active = "gemini"
-    else:
-        ready = openai_ready or gemini_ready
-        active = "auto"
-
-    return {
-        "provider": active,
-        "ready": ready,
-        "openai_ready": openai_ready,
-        "gemini_ready": gemini_ready,
-        "model": os.getenv("AAPM_AI_MODEL") if active in ("openai", "auto") else os.getenv("AAPM_GEMINI_MODEL"),
-        "last_runtime": _AI_RUNTIME_STATUS.copy(),
-    }
-
-
 def _system_warnings(db: Session) -> list[dict]:
     warnings = []
     ai_status = _ai_config_status()
-    smtp = _smtp_config()
+    smtp = smtp_settings()
 
     if not ai_status["ready"]:
         warnings.append({
@@ -520,7 +463,7 @@ def _system_warnings(db: Session) -> list[dict]:
             "time": "IA",
         })
 
-    if not smtp["host"] or not smtp["from"] or not smtp["to"]:
+    if not smtp.host or not smtp.sender or not smtp.support_recipient:
         warnings.append({
             "id": "smtp-config",
             "type": "warn",
@@ -565,15 +508,15 @@ def _system_warnings(db: Session) -> list[dict]:
 
 
 def _enviar_email_suporte(usuario: dict, assunto: str, mensagem: str):
-    config = _smtp_config()
-    if not config["host"] or not config["from"] or not config["to"]:
+    settings = smtp_settings()
+    if not settings.ready or not settings.support_recipient:
         print(f"[SUPORTE] {usuario.get('sub')} - {assunto}: {mensagem}")
         return
 
     email = EmailMessage()
     email["Subject"] = f"Suporte AAPM - {assunto.strip() or 'Solicitacao'}"
-    email["From"] = config["from"]
-    email["To"] = config["to"]
+    email["From"] = settings.sender
+    email["To"] = settings.support_recipient
     email.set_content(
         "Nova solicitacao de suporte registrada no sistema AAPM.\n\n"
         f"Usuario: {usuario.get('nome') or '-'}\n"
@@ -583,13 +526,7 @@ def _enviar_email_suporte(usuario: dict, assunto: str, mensagem: str):
         f"Mensagem:\n{mensagem.strip()}\n"
     )
 
-    smtp_client = smtplib.SMTP_SSL if config["ssl"] or config["port"] == 465 else smtplib.SMTP
-    with smtp_client(config["host"], config["port"], timeout=15, local_hostname="localhost") as smtp:
-        if config["tls"] and config["port"] != 465:
-            smtp.starttls()
-        if config["user"] and config["password"]:
-            smtp.login(config["user"], config["password"])
-        smtp.send_message(email)
+    send_message(email, settings=settings)
 
 
 def _inicio_do_dia(dia: date) -> datetime:
@@ -1274,127 +1211,6 @@ def _aapm_smart_fallback_answer(message: str, insights: dict) -> str:
     )
 
 
-def _aapm_smart_system_prompt() -> str:
-    return (
-        "Voce e a AAPM Smart, uma inteligencia artificial de vendas para uma AAPM/SENAI que opera um PDV escolar. "
-        "Sua funcao e transformar os dados operacionais recebidos em decisoes simples para vender melhor, evitar ruptura de estoque, "
-        "bater metas e organizar a rotina da cantina. Responda sempre em portugues do Brasil, com tom direto, profissional e util. "
-        "Use somente o contexto JSON fornecido; se faltar algum dado, diga o que precisa ser conferido e nao invente numeros, produtos ou vendas. "
-        "Priorize respostas curtas, acionaveis e especificas. Quando fizer sentido, organize em: diagnostico rapido, acao recomendada, estoque/meta e proximo passo. "
-        "Nao mencione detalhes tecnicos da API, chave, modelo, prompt ou sistema. Nao prometa previsoes exatas; trate previsoes como estimativas operacionais."
-    )
-
-
-def _aapm_smart_user_prompt(message: str, insights: dict) -> str:
-    return f"Contexto operacional em JSON:\n{json.dumps(insights, ensure_ascii=False)}\n\nPergunta do usuario: {message}"
-
-
-def _call_openai_ai(message: str, insights: dict) -> str | None:
-    _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": None, "error": ""})
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AAPM_AI_API_KEY")
-    if not api_key:
-        _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": False, "error": "missing-key"})
-        return None
-
-    model = os.getenv("AAPM_AI_MODEL", "gpt-4o-mini")
-    endpoint = os.getenv("AAPM_AI_ENDPOINT", "https://api.openai.com/v1/chat/completions")
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": _aapm_smart_system_prompt()},
-            {"role": "user", "content": _aapm_smart_user_prompt(message, insights)},
-        ],
-        "temperature": 0.35,
-        "max_tokens": 380,
-    }
-    request = urllib.request.Request(
-        endpoint,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=18) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
-        _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": False, "error": exc.__class__.__name__})
-        return None
-
-    choices = data.get("choices") or []
-    if not choices:
-        _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": False, "error": "empty-response"})
-        return None
-    content = (choices[0].get("message") or {}).get("content")
-    _AI_RUNTIME_STATUS.update({"provider": "openai", "ok": bool(content), "error": "" if content else "empty-content"})
-    return content
-
-
-def _call_gemini_ai(message: str, insights: dict) -> str | None:
-    _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": None, "error": ""})
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": False, "error": "missing-key"})
-        return None
-
-    model = os.getenv("AAPM_GEMINI_MODEL", "gemini-2.0-flash")
-    endpoint_template = os.getenv(
-        "AAPM_GEMINI_ENDPOINT",
-        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-    )
-    endpoint = endpoint_template.format(model=model)
-    payload = {
-        "systemInstruction": {
-            "parts": [{"text": _aapm_smart_system_prompt()}]
-        },
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": _aapm_smart_user_prompt(message, insights)}],
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.35,
-            "maxOutputTokens": 380,
-        },
-    }
-    request = urllib.request.Request(
-        endpoint,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "x-goog-api-key": api_key,
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=18) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
-        _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": False, "error": exc.__class__.__name__})
-        return None
-
-    candidates = data.get("candidates") or []
-    if not candidates:
-        _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": False, "error": "empty-response"})
-        return None
-    parts = ((candidates[0].get("content") or {}).get("parts") or [])
-    content = "".join(str(part.get("text", "")) for part in parts).strip() or None
-    _AI_RUNTIME_STATUS.update({"provider": "gemini", "ok": bool(content), "error": "" if content else "empty-content"})
-    return content
-
-
-def _call_external_ai(message: str, insights: dict) -> str | None:
-    provider = os.getenv("AAPM_AI_PROVIDER", "").strip().lower()
-    if provider == "gemini":
-        return _call_gemini_ai(message, insights)
-    if provider == "openai":
-        return _call_openai_ai(message, insights)
-    return _call_gemini_ai(message, insights) or _call_openai_ai(message, insights)
-
-
 @router.post("/smart/assistant")
 def aapm_smart_assistant_api(
     payload: SmartAssistantPayload,
@@ -1411,7 +1227,7 @@ def aapm_smart_assistant_api(
         db=db,
         admin=admin,
     )
-    external_answer = _call_external_ai(message, insights)
+    external_answer = external_ai_answer(message, insights)
     if external_answer:
         return {"mode": "external", "answer": external_answer, "insights": insights}
 
@@ -1486,25 +1302,6 @@ def notificacoes_api(
     return itens
 
 
-def _periodo_relatorio(period: str) -> tuple[date, date, int, str]:
-    hoje = _hoje_local()
-    period = (period or "month").strip().lower()
-    periodos = {
-        "today": (hoje, hoje, 1, "hoje"),
-        "week": (hoje - timedelta(days=6), hoje, 7, "ultimos-7-dias"),
-        "month": (hoje - timedelta(days=29), hoje, 30, "ultimos-30-dias"),
-        "year": (hoje - timedelta(days=364), hoje, 365, "ultimos-12-meses"),
-    }
-    return periodos.get(period, periodos["month"])
-
-
-def _filtrar_vendas_por_periodo(query, inicio: date, fim: date):
-    return query.filter(
-        Venda.criado_em >= _inicio_do_dia(inicio),
-        Venda.criado_em <= _fim_do_dia(fim),
-    )
-
-
 @router.get("/reports/{tipo}")
 def baixar_relatorio_api(
     tipo: str,
@@ -1512,124 +1309,11 @@ def baixar_relatorio_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("reports")),
 ):
-    hoje = _hoje_local().isoformat()
-    inicio, fim, dias, periodo_slug = _periodo_relatorio(period)
-
-    if tipo == "sales":
-        vendas = _filtrar_vendas_por_periodo(db.query(Venda), inicio, fim).order_by(Venda.criado_em.desc()).all()
-        return _csv_response(
-            f"relatorio-vendas-{periodo_slug}-{hoje}.csv",
-            ["Pedido", "Cliente", "Pagamento", "Data", "Total bruto", "Desconto", "Total liquido"],
-            [[f"#{v.id:04d}", _venda_json(v)["customerName"], _extrair_pagamento(v.observacao or ""), v.criado_em, v.total_bruto, v.desconto_valor, v.total_liquido] for v in vendas],
-        )
-
-    if tipo == "daily":
-        rows = vendas_por_dia_api(dias=dias, db=db, admin=admin)
-        return _csv_response(
-            f"resumo-diario-{periodo_slug}-{hoje}.csv",
-            ["Data", "Receita", "Pedidos", "Itens"],
-            [[r["date"], r["revenue"], r["orders"], r["items"]] for r in rows],
-        )
-
-    if tipo == "stock":
-        produtos = db.query(Produto).filter(Produto.ativo == True).order_by(Produto.nome).all()
-        return _csv_response(
-            f"estoque-atual-{hoje}.csv",
-            ["Produto", "Categoria", "Preco", "Estoque"],
-            [[p.nome, p.categoria.nome if p.categoria else "", p.preco, p.estoque_atual] for p in produtos],
-        )
-
-    if tipo == "stock-low":
-        produtos = db.query(Produto).filter(Produto.ativo == True, Produto.estoque_atual > 0, Produto.estoque_atual <= 5).order_by(Produto.estoque_atual, Produto.nome).all()
-        return _csv_response(
-            f"estoque-baixo-{hoje}.csv",
-            ["Produto", "Categoria", "Preco", "Estoque"],
-            [[p.nome, p.categoria.nome if p.categoria else "", p.preco, p.estoque_atual] for p in produtos],
-        )
-
-    if tipo == "stock-out":
-        produtos = db.query(Produto).filter(Produto.ativo == True, Produto.estoque_atual <= 0).order_by(Produto.nome).all()
-        return _csv_response(
-            f"sem-estoque-{hoje}.csv",
-            ["Produto", "Categoria", "Preco", "Estoque"],
-            [[p.nome, p.categoria.nome if p.categoria else "", p.preco, p.estoque_atual] for p in produtos],
-        )
-
-    if tipo == "stock-value":
-        produtos = db.query(Produto).filter(Produto.ativo == True).order_by(Produto.nome).all()
-        return _csv_response(
-            f"valor-em-estoque-{hoje}.csv",
-            ["Produto", "Categoria", "Preco", "Estoque", "Subtotal"],
-            [[p.nome, p.categoria.nome if p.categoria else "", p.preco, p.estoque_atual, (p.preco or 0) * (p.estoque_atual or 0)] for p in produtos],
-        )
-
-    if tipo == "abc":
-        rows = (
-            db.query(
-                ItemVenda.produto_id,
-                ItemVenda.produto_nome,
-                func.coalesce(func.sum(ItemVenda.quantidade), 0).label("qty"),
-                func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0).label("revenue"),
-            )
-            .join(Venda, Venda.id == ItemVenda.venda_id)
-            .filter(Venda.criado_em >= _inicio_do_dia(inicio), Venda.criado_em <= _fim_do_dia(fim))
-            .group_by(ItemVenda.produto_id, ItemVenda.produto_nome)
-            .order_by(func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0).desc())
-            .all()
-        )
-        produtos = []
-        for produto_id, nome, qty, revenue in rows:
-            produto = db.query(Produto).filter(Produto.id == produto_id).first() if produto_id else None
-            produtos.append({
-                "name": nome,
-                "categoryName": produto.categoria.nome if produto and produto.categoria else "Sem categoria",
-                "qty": int(qty or 0),
-                "revenue": float(revenue or 0),
-            })
-        return _csv_response(
-            f"curva-abc-{periodo_slug}-{hoje}.csv",
-            ["Produto", "Categoria", "Quantidade vendida", "Receita"],
-            [[p["name"], p["categoryName"], p["qty"], p["revenue"]] for p in produtos],
-        )
-
-    if tipo == "customers":
-        clientes = db.query(Cliente).filter(Cliente.ativo == True).order_by(Cliente.nome).all()
-        rows = []
-        for c in clientes:
-            vendas = _filtrar_vendas_por_periodo(db.query(Venda).filter(Venda.cliente_id == c.id), inicio, fim).all()
-            rows.append([c.nome, c.matricula or "", c.telefone or "", "Sim" if c.is_associado else "Nao", len(vendas), sum(v.total_liquido or 0 for v in vendas)])
-        return _csv_response(
-            f"clientes-ativos-{periodo_slug}-{hoje}.csv",
-            ["Cliente", "Matricula", "Telefone", "Associado", "Pedidos no periodo", "Total gasto no periodo"],
-            rows,
-        )
-
-    if tipo == "categories":
-        categorias = db.query(Categoria).filter(Categoria.ativo == True).order_by(Categoria.nome).all()
-        rows = []
-        for c in categorias:
-            vendidos = (
-                db.query(
-                    func.coalesce(func.sum(ItemVenda.quantidade), 0),
-                    func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0),
-                )
-                .join(Venda, Venda.id == ItemVenda.venda_id)
-                .join(Produto, Produto.id == ItemVenda.produto_id)
-                .filter(
-                    Produto.categoria_id == c.id,
-                    Venda.criado_em >= _inicio_do_dia(inicio),
-                    Venda.criado_em <= _fim_do_dia(fim),
-                )
-                .first()
-            )
-            rows.append([c.nome, len([p for p in c.produtos if p.ativo]), int(vendidos[0] or 0), float(vendidos[1] or 0)])
-        return _csv_response(
-            f"relatorio-categorias-{periodo_slug}-{hoje}.csv",
-            ["Categoria", "Produtos ativos", "Itens vendidos", "Receita"],
-            rows,
-        )
-
-    raise HTTPException(status_code=404, detail="Relatorio nao encontrado.")
+    try:
+        report = generate_report(db, tipo, period, _hoje_local())
+    except ServiceError as exc:
+        raise _service_http_exception(exc)
+    return _csv_response(report.filename, report.header, report.rows)
 
 
 @router.get("/profile")

@@ -1,332 +1,386 @@
-# AAPM — Documentação de Arquitetura do Projeto
+# AAPM — Arquitetura do sistema
 
-> **Versão:** 1.0  
-> **Data:** Abril de 2026  
-> **Descrição:** Sistema administrativo de Ponto de Venda (PDV)
+> **Versão:** 2.0<br>
+> **Atualização:** agosto de 2026<br>
+> **Escopo:** arquitetura atualmente implementada no repositório
 
----
+## 1. Visão geral
 
-## Sumário
+O AAPM é um sistema administrativo de ponto de venda (PDV) construído como um **monólito modular** em Python. A mesma aplicação FastAPI:
 
-1. [Visão Geral](#1-visão-geral)
-2. [Estrutura de Pastas](#2-estrutura-de-pastas)
-3. [Detalhamento de Cada Módulo](#3-detalhamento-de-cada-módulo)
-   - [apps/](#31-apps)
-   - [core/](#32-core)
-   - [services/](#33-services)
-   - [api/](#34-api)
-   - [database/](#35-database)
-   - [assets/](#36-assets)
-   - [tests/](#37-tests)
-   - [docs/](#38-docs)
-   - [utils/](#39-utils)
-4. [Fluxo de Dados](#4-fluxo-de-dados)
-5. [Convenções e Boas Práticas](#5-convenções-e-boas-práticas)
-6. [Arquivos Raiz](#6-arquivos-raiz)
+- renderiza as telas HTML com Jinja2;
+- publica a API REST usada pelo frontend;
+- autentica usuários por JWT armazenado em cookie;
+- executa as regras de vendas, estoque, cadastros e relatórios;
+- acessa o banco por SQLAlchemy;
+- serve os arquivos estáticos e os uploads de produtos.
 
----
+O sistema possui duas experiências autenticadas:
 
-## 1. Visão Geral
+| Área | Rota principal | Público |
+|---|---|---|
+| PDV | `/pdv` | Operadores, funcionários e administradores |
+| Dashboard | `/dashboard` | Administradores ou usuários com permissões específicas |
 
-O projeto **AAPM** é composto por uma aplicação administrativa de PDV, com backend FastAPI, banco SQLite/SQLAlchemy e telas internas para operação e gestão.
+Além delas, a aplicação oferece login e recuperação de senha em `/auth` e operações administrativas de usuários em `/usuarios`.
 
-| Aplicação | Público-alvo | Acesso |
-|-----------|-------------|--------|
-| **PDV (Ponto de Venda)** | Administradores e operadores | Presencial / Interno |
+### Tecnologias atuais
 
-A arquitetura segue o princípio de **separação de responsabilidades**: cada camada tem uma função bem definida, evitando que lógica de negócio, apresentação e dados fiquem misturados.
+| Responsabilidade | Tecnologia |
+|---|---|
+| Aplicação web e API | FastAPI + Uvicorn |
+| Templates | Jinja2 |
+| Persistência | SQLAlchemy 2.x |
+| Evolução do esquema | Alembic |
+| Banco | Definido por `DATABASE_URL`; o projeto inclui driver PostgreSQL e um banco SQLite local |
+| Autenticação | JWT (`python-jose`) em cookie HttpOnly |
+| Senhas | Passlib + bcrypt |
+| Frontend | HTML, CSS e JavaScript sem framework |
+| Uploads | Arquivos servidos por `/static` |
+| Recuperação de senha | SMTP |
+| Recursos inteligentes | API da OpenAI |
 
----
+## 2. Visão em camadas
 
-## 2. Estrutura de Pastas
-
+```text
+Navegador
+   │
+   ├── páginas HTML ───────────────► database/main.py e controllers
+   │                                    │
+   ├── JavaScript/CSS ◄───────────── apps/pvd/
+   │                                    │
+   └── JSON / formulários ──────────► api/v1/pvd.py
+                                        │
+                         autenticação e autorização
+                              database/auth.py
+                                        │
+                         regras e acesso aos dados
+                       endpoints + controllers atuais
+                                        │
+                              SQLAlchemy ORM
+                         database/models/*.py
+                                        │
+                     banco configurado em DATABASE_URL
 ```
+
+As fronteiras são modulares, mas não formam uma arquitetura de serviços independente. No estado atual, `api/v1/pvd.py` concentra validação HTTP, regras de negócio, consultas e serialização. Os controladores em `database/controllers/` fazem o mesmo para autenticação, usuários e parte do cadastro de produtos.
+
+## 3. Estrutura real do repositório
+
+```text
 AAPM/
-├── .env                      # Variáveis de ambiente (nunca versionado)
-├── .gitignore                # Arquivos ignorados pelo Git
-├── README.md                 # Instruções gerais do projeto
-├── requirements.txt          # Dependências Python
-│
-├── apps/                     # Aplicações da interface
-│   └── pdv/                  # Ponto de Venda (administrativo)
-│
-├── core/                     # Núcleo compartilhado da aplicação
-│   ├── config.py
-│   ├── security.py
-│   └── exceptions.py
-│
-├── services/                 # Regras de negócio
-│   ├── produto_service.py
-│   ├── venda_service.py
-│   └── usuario_service.py
-│
-├── api/                      # Endpoints e rotas da API
-│   ├── v1/
-│   │   └── pdv.py
-│   └── middleware.py
-│
-├── database/                 # Banco de dados e modelos
-│   ├── app.db
+├── api/
+│   ├── middleware.py
+│   └── v1/
+│       └── pvd.py
+├── apps/
+│   └── pvd/
+│       ├── assets/
+│       ├── scripts/
+│       ├── styles/
+│       ├── views/
+│       └── routes.py
+├── database/
+│   ├── auth.py
+│   ├── database.py
+│   ├── main.py
+│   ├── controllers/
+│   │   ├── admin_controller.py
+│   │   ├── auth_controller.py
+│   │   └── produto_controller.py
 │   ├── models/
-│   └── migrations/
-│
-├── assets/                   # Arquivos estáticos globais
-│   ├── images/
-│   └── fonts/
-│
-├── tests/                    # Testes automatizados
-│
-├── docs/                     # Documentação do projeto
-│
-└── utils/                    # Funções auxiliares reutilizáveis
+│   │   ├── categoria.py
+│   │   ├── cliente.py
+│   │   ├── movimentacao.py
+│   │   ├── produto.py
+│   │   ├── usuario.py
+│   │   ├── variacao.py
+│   │   └── venda.py
+│   ├── static/uploads/
+│   └── templates/
+├── migrations/
+│   └── versions/
+├── docs/
+├── tests/
+├── utils/
+├── alembic.ini
+├── banco.db
+├── criar_usuario.py
+├── README.md
+└── requirements.txt
 ```
 
----
+Não existem atualmente as pastas `core/`, `services/` ou `assets/` globais. Recursos visuais do PDV ficam em `apps/pvd/assets/`, e imagens enviadas pelos usuários ficam em `database/static/uploads/`.
 
-## 3. Detalhamento de Cada Módulo
+## 4. Componentes
 
----
+### 4.1 Inicialização e composição — `database/main.py`
 
-### 3.1 `apps/`
+É o ponto de entrada da aplicação. Ele:
 
-**Responsabilidade:** Contém a interface administrativa do sistema.
+- cria a instância `FastAPI`;
+- configura os diretórios de templates;
+- monta `/apps` e `/static`;
+- registra os routers de autenticação, usuários e API do PDV;
+- publica as páginas `/`, `/dashboard` e `/pdv`;
+- aplica cabeçalhos sem cache aos recursos em `/apps`;
+- trata respostas 404;
+- realiza, no startup, compatibilizações pontuais de colunas de usuários e exceções de pagamento.
 
-As views, scripts, assets e estilos do PDV ficam agrupados em `apps/pvd/`, mantendo a interface separada do backend.
+O servidor é iniciado apontando para `database.main:app`.
 
----
+### 4.2 Interface — `apps/pvd/`
 
-#### `apps/pvd/` — Ponto de Venda
+| Pasta/arquivo | Papel |
+|---|---|
+| `views/` | Templates do dashboard, PDV e cadastro |
+| `scripts/` | Interações da interface e chamadas para `/api/v1/pdv` |
+| `styles/` | Estilos das telas |
+| `assets/` | Logos, ícones e fundos |
+| `routes.py` | Módulo de rotas da aplicação; não está registrado no `main.py` atualmente |
 
-**Para quem é:** Administradores e operadores internos, com acesso presencial.
+Os templates de login e redefinição de senha permanecem em `database/templates/`, separados das telas do painel.
 
-**O que contém:**
+### 4.3 API do PDV — `api/v1/pvd.py`
 
-| Arquivo / Pasta | Função |
-|-----------------|--------|
-| `__init__.py` | Inicializa o módulo Python |
-| `routes.py` | Define as rotas exclusivas do PDV |
-| `views/` | Telas e páginas do painel administrativo |
-| `components/` | Componentes de interface reutilizáveis dentro do PDV |
-| `styles/` | Estilos visuais específicos do PDV |
+O router usa o prefixo `/api/v1/pdv` e reúne os seguintes grupos de recursos:
 
-**Exemplos de funcionalidades aqui presentes:**
-- Tela de login administrativo
-- Painel de controle de vendas
-- Cadastro de produtos
-- Relatórios e histórico de transações
+| Grupo | Responsabilidades principais |
+|---|---|
+| Categorias | Listar, criar, alterar e desativar/excluir |
+| Produtos | Cadastro, edição, status, imagens e exclusão |
+| Estoque | Movimentações e ajustes de quantidade |
+| Vendas | Catálogo do PDV, criação de venda e baixa de estoque |
+| Clientes | Associados, consulta por matrícula, cadastro e exclusão |
+| Pedidos | Histórico e tratamento de exceções de pagamento |
+| Dashboard | Séries diárias/horárias, métricas e produtos mais vendidos |
+| Smart | Insights e assistente com integração OpenAI |
+| Relatórios | Exportação/consulta por tipo |
+| Sistema | Saúde, notificações, perfil, senha e suporte |
 
-### 3.2 `core/`
+Os contratos de entrada são modelos Pydantic declarados no próprio módulo, como `VendaPayload`, `ClientePayload`, `EstoquePayload` e `ExcecaoPagamentoPayload`.
 
-**Responsabilidade:** Núcleo central da aplicação. Contém configurações, segurança e tratamento de erros que são **compartilhados por todas as partes do sistema**.
+### 4.4 Controladores — `database/controllers/`
 
-Nada de lógica de negócio aqui — apenas a estrutura que sustenta a aplicação.
+| Controlador | Prefixo/função |
+|---|---|
+| `auth_controller.py` | `/auth`: login, logout, solicitação e redefinição de senha |
+| `admin_controller.py` | `/usuarios`: criar, editar e ativar/desativar usuários |
+| `produto_controller.py` | Operações auxiliares de produto |
+
+A recuperação de senha gera um JWT de uso específico, válido por tempo limitado, e envia o link por SMTP.
+
+### 4.5 Segurança — `database/auth.py`
+
+Responsabilidades:
+
+- hash e verificação de senha com bcrypt;
+- criação e validação de JWT;
+- leitura do token no cookie `access_token`;
+- dependências para usuário obrigatório, opcional e administrador;
+- normalização de permissões do dashboard;
+- autorização por função (`role`) e por permissão granular.
+
+Administradores possuem acesso integral. Os demais perfis podem receber permissões como produtos, pedidos, clientes, categorias, estoque, relatórios, configurações e AAPM Smart.
+
+### 4.6 Persistência — `database/database.py`
+
+O módulo lê `DATABASE_URL` do ambiente, cria o `engine`, configura `SessionLocal`, declara a classe base dos modelos e fornece `get_db()` como dependência do FastAPI. `pool_pre_ping` e `pool_recycle` ajudam a manter conexões remotas válidas. Há também uma função opcional para conexão PostgreSQL bruta via `psycopg2`.
+
+As alterações estruturais devem ser registradas em `migrations/` com Alembic. As correções executadas no startup existem como compatibilidade, mas não substituem migrations novas.
+
+## 5. Modelos de dados atuais
+
+O domínio possui **11 classes ORM**, distribuídas em sete módulos.
+
+### 5.1 Usuário — `Usuario` (`usuarios`)
+
+Representa quem acessa e opera o sistema.
+
+| Campo | Descrição |
+|---|---|
+| `id` | Identificador primário |
+| `nome`, `email` | Identificação; e-mail é único |
+| `senha_hash` | Senha armazenada como hash |
+| `role` | Perfil (`admin`, `operador` ou `funcionario`) |
+| `permissoes` | Lista serializada de permissões do dashboard |
+| `ativo` | Libera ou bloqueia o acesso |
+
+Relaciona-se com vendas e movimentações de estoque.
+
+### 5.2 Categoria — `Categoria` (`categorias`)
+
+Classifica produtos. Possui `id`, `nome` único e `ativo`. Uma categoria pode conter vários produtos; ao excluir a categoria, a referência do produto é definida como nula.
+
+### 5.3 Produto — `Produto` (`produtos`)
+
+Cadastro-base do item comercializado. Possui nome, descrição, preço-base, estoque total, estado ativo, caminho da imagem e categoria opcional.
+
+`preco` e `estoque_atual` continuam existindo para produtos antigos e para valores consolidados. Produtos com opções específicas utilizam `ProdutoVariacao`.
+
+### 5.4 Atributo — `Atributo` (`atributos`)
+
+Define uma dimensão de variação, por exemplo `Cor` ou `Tamanho`. O nome é único e o atributo contém vários valores possíveis.
+
+### 5.5 Valor de atributo — `ValorAtributo` (`valores_atributos`)
+
+Representa uma opção de um atributo, como `Preta` ou `M`. O par atributo/valor é único. A exclusão do atributo remove seus valores em cascata.
+
+### 5.6 Variação de produto — `ProdutoVariacao` (`produtos_variacoes`)
+
+Representa uma versão vendável de um produto. Cada variação possui:
+
+- produto pai;
+- `codigo_produto` único;
+- preço próprio;
+- estoque próprio;
+- combinação de valores de atributos.
+
+A exclusão do produto remove suas variações em cascata.
+
+### 5.7 Combinação de variação — `VariacaoCombinacao` (`variacoes_combinacoes`)
+
+Tabela associativa entre `ProdutoVariacao` e `ValorAtributo`. Sua chave primária composta impede repetir o mesmo valor de atributo em uma variação.
+
+### 5.8 Cliente — `Cliente` (`clientes`)
+
+Identifica compradores e associados. Armazena nome, matrícula única opcional, telefone, indicador de associação, situação ativa e data de criação. O indicador `is_associado` permite aplicar o desconto destinado aos associados.
+
+Um cliente pode possuir várias vendas. A venda pode existir sem cliente, para atendimento de balcão.
+
+### 5.9 Venda — `Venda` (`vendas`)
+
+É o cabeçalho de uma transação. Registra cliente e operador opcionais, método de pagamento, desconto, totais bruto e líquido, observação, datas e itens.
+
+Também preserva os campos históricos/legados `desconto`, `valor_total`, `valor_final` e `data`, além dos campos de exceção de pagamento (`excecao_pagamento`, status, prazo, observação e data de quitação).
+
+Se o cliente ou usuário for excluído, a venda é preservada com a referência nula. Ao excluir uma venda, seus itens são removidos em cascata.
+
+### 5.10 Item de venda — `ItemVenda` (`itens_venda`)
+
+Registra cada linha da venda. Mantém quantidade, preço unitário e nome do produto no momento da transação para preservar o histórico mesmo que o cadastro mude.
+
+Pode referenciar o produto e a variação vendidos. Essas referências se tornam nulas se o cadastro correspondente for removido; os dados históricos do item permanecem.
+
+### 5.11 Movimentação — `Movimentacao` (`movimentacoes`)
+
+Registra entradas (`adicionar`) e saídas (`retirar`) de estoque, com quantidade, preço unitário, observação, data, produto e usuário responsável. O valor total é calculado por `quantidade × preco_unitario`.
+
+## 6. Relacionamentos do domínio
+
+```text
+Categoria 1 ───── 0..N Produto
+                         │
+                         ├── 1 ───── 0..N ProdutoVariacao
+                         │                    │
+                         │                    └── N..N ValorAtributo
+                         │                              │
+                         │                              N..1 Atributo
+                         │
+                         ├── 1 ───── 0..N Movimentacao N..1 Usuario
+                         │
+                         └── 1 ───── 0..N ItemVenda N..1 Venda
+                                                   │
+ProdutoVariacao 1 ───── 0..N ItemVenda             ├── N..1 Cliente (opcional)
+                                                   └── N..1 Usuario (opcional)
+```
+
+Regras importantes de preservação:
+
+- vendas podem ser anônimas (`cliente_id` nulo);
+- itens copiam nome e preço para manter o histórico financeiro;
+- produto e variação podem ser removidos sem apagar itens antigos;
+- excluir uma venda remove seus itens;
+- excluir um produto remove variações e movimentações relacionadas;
+- excluir categoria não remove produtos.
+
+## 7. Fluxos principais
+
+### 7.1 Login e autorização
+
+```text
+Formulário /auth/login
+  → busca Usuario pelo e-mail
+  → valida bcrypt e situação ativa
+  → cria JWT com perfil e permissões
+  → grava cookie HttpOnly
+  → redireciona para /dashboard ou /pdv
+```
+
+Cada rota protegida usa uma dependência de autenticação/autorização. A interface oculta áreas sem permissão, mas a API também deve validar o acesso no servidor.
+
+### 7.2 Registro de venda
+
+```text
+Tela /pdv
+  → consulta produtos e variações vendáveis
+  → envia VendaPayload para POST /api/v1/pdv/sales
+  → valida cliente, produto, variação, preço e estoque
+  → calcula desconto e totais
+  → cria Venda e ItemVenda
+  → atualiza o estoque
+  → confirma a transação no banco
+```
+
+### 7.3 Gestão de estoque
+
+```text
+Dashboard
+  → envia ajuste de estoque
+  → valida produto, quantidade e usuário
+  → atualiza o saldo
+  → cria Movimentacao para auditoria
+```
+
+### 7.4 Recuperação de senha
+
+```text
+E-mail informado
+  → token JWT de recuperação (30 minutos)
+  → link enviado por SMTP
+  → validação do token
+  → novo hash de senha salvo no usuário
+```
+
+## 8. Configuração e integrações
+
+As configurações são lidas do `.env`. Entre as variáveis utilizadas estão:
+
+- `DATABASE_URL` para conexão com o banco;
+- `SECRET_KEY`, `ALGORITHM` e `ACCESS_TOKEN_EXPIRE_MINUTES` para JWT;
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` e `SMTP_SSL` para e-mail;
+- `APP_BASE_URL` ou `RESET_PASSWORD_BASE_URL` para links de recuperação;
+- credenciais/configurações da OpenAI usadas pelos recursos Smart.
+
+O `.env` contém segredos e não deve ser versionado. Configurações novas devem continuar externas ao código.
+
+## 9. Convenções para evolução
+
+- Arquivos e módulos Python usam nomes minúsculos com underscore.
+- Endpoints públicos do PDV permanecem versionados sob `/api/v1/pdv`.
+- Mudanças de tabelas devem gerar uma migration Alembic reversível.
+- Regras de autorização devem ser verificadas no backend, mesmo quando a interface já restringe o recurso.
+- Registros financeiros devem preservar valores históricos, sem depender do preço atual do produto.
+- Novos modelos devem declarar claramente nulabilidade, unicidade, chaves estrangeiras e comportamento de exclusão.
+- Novas regras extensas podem ser extraídas dos endpoints para uma camada de serviços; essa camada ainda não existe no projeto atual.
+- Testes devem acompanhar fluxos críticos de autenticação, venda, desconto, estoque e permissões.
+
+## 10. Arquivos da raiz
 
 | Arquivo | Função |
-|---------|--------|
-| `__init__.py` | Inicializa o módulo |
-| `config.py` | Carrega e centraliza todas as configurações do sistema (lê o `.env`, define variáveis globais como `DEBUG`, `SECRET_KEY`, `DATABASE_URL`) |
-| `security.py` | Autenticação, autorização e controle de permissões (quem pode acessar o quê) |
-| `exceptions.py` | Classes de erros customizados do sistema (ex: `ProdutoNaoEncontradoError`, `PermissaoNegadaError`) |
-
-**Por que separar aqui?**  
-Porque o PDV precisa de configuração e segurança consistentes. Colocar isso em `core/` evita duplicação quando esses módulos existirem/forem extraídos.
-
----
-
-### 3.3 `services/`
-
-**Responsabilidade:** Toda a **lógica de negócio** do sistema vive aqui. É a camada mais importante da aplicação.
-
-Os services são chamados pela API e contêm as regras que definem como o sistema funciona: como calcular um desconto, como registrar uma venda, como validar um cadastro.
-
-| Arquivo | Função |
-|---------|--------|
-| `__init__.py` | Inicializa o módulo |
-| `produto_service.py` | Regras relacionadas a produtos (cadastrar, editar, buscar, estoque) |
-| `venda_service.py` | Regras de vendas (registrar, cancelar, calcular totais, aplicar desconto) |
-| `usuario_service.py` | Regras de usuários (criar conta, autenticar, recuperar senha) |
-
-**Princípio fundamental:** Services nunca acessam diretamente a interface do usuário e nunca contêm código de apresentação. Eles recebem dados, processam e retornam resultados.
+|---|---|
+| `.env` | Configuração local e segredos; não deve ser versionado |
+| `.gitignore` | Exclusões do Git |
+| `README.md` | Instalação, execução e visão geral |
+| `requirements.txt` | Dependências Python |
+| `alembic.ini` | Configuração das migrations |
+| `banco.db` | Banco SQLite local presente no repositório |
+| `criar_usuario.py` | Utilitário para criação inicial de usuário |
 
 ---
 
-### 3.4 `api/`
-
-**Responsabilidade:** Define os **endpoints HTTP** que expõem as funcionalidades do sistema. É a ponte entre a interface (apps/) e a lógica de negócio (services/).
-
-A pasta usa versionamento (`v1/`) desde o início para permitir evoluções futuras sem quebrar integrações existentes.
-
-```
-api/
-├── __init__.py
-├── middleware.py       # Interceptações globais (autenticação, logs, CORS)
-└── v1/
-    └── pdv.py          # Endpoints do PDV
-```
-
-| Arquivo | Função |
-|---------|--------|
-| `middleware.py` | Código executado em toda requisição (ex: verificar token, registrar log, tratar CORS) |
-| `v1/pdv.py` | Rotas do painel administrativo (ex: `POST /api/v1/pdv/sales`, `GET /api/v1/pdv/products`) |
-
-**Por que versionar a API?**  
-Se no futuro for necessário mudar o comportamento de um endpoint sem quebrar clientes existentes, basta criar um `/v2/` com as novas regras.
+Consulte também a [especificação de requisitos](requisições.md) para requisitos funcionais, não funcionais, regras de negócio e critérios de homologação.
 
 ---
 
-### 3.5 `database/`
-
-**Responsabilidade:** Tudo relacionado ao **armazenamento e estrutura dos dados**.
-
-```
-database/
-├── app.db              # Arquivo do banco de dados SQLite
-├── models/             # Definição das tabelas e entidades
-│   ├── __init__.py
-│   ├── produto.py
-│   ├── venda.py
-│   └── usuario.py
-└── migrations/         # Histórico de alterações no banco de dados
-```
-
-| Pasta / Arquivo | Função |
-|-----------------|--------|
-| `app.db` | Banco de dados SQLite (arquivo único, ideal para projetos locais/pequenos) |
-| `models/` | Cada arquivo define uma entidade do sistema (tabela no banco). Ex: `Produto`, `Venda`, `Usuario` |
-| `migrations/` | Registra cada alteração feita na estrutura do banco ao longo do tempo (adicionar coluna, renomear tabela, etc.) |
-
-**Por que migrations?**  
-Permitem que a equipe evolua o banco de dados de forma controlada e rastreável, sem perder dados existentes.
-
----
-
-### 3.6 `assets/`
-
-**Responsabilidade:** Arquivos estáticos **globais** compartilhados pela aplicação.
-
-```
-assets/
-├── images/     # Logos, ícones e imagens do sistema
-└── fonts/      # Fontes utilizadas nas interfaces
-```
-
-> **Atenção:** Imagens e estilos específicos da aplicação devem ficar dentro de `apps/pvd/`. Esta pasta é apenas para recursos verdadeiramente compartilhados.
-
----
-
-### 3.7 `tests/`
-
-**Responsabilidade:** Testes automatizados que garantem que o sistema funciona corretamente.
-
-```
-tests/
-├── test_api.py         # Testa os endpoints da API
-├── test_services.py    # Testa a lógica de negócio
-└── test_pdv.py         # Testa funcionalidades específicas do PDV
-```
-
-**Por que testar?**  
-Testes evitam que mudanças no código quebrem funcionalidades que já estavam funcionando. São especialmente importantes em sistemas de venda, onde erros têm impacto financeiro direto.
-
----
-
-### 3.8 `docs/`
-
-**Responsabilidade:** Toda a **documentação** do projeto centralizada em um único lugar.
-
-```
-docs/
-├── arquitetura.md      # Este documento
-├── requisitos.md       # Requisitos funcionais e não-funcionais
-└── api.md              # Documentação dos endpoints da API (futura)
-```
-
-Qualquer texto explicativo, guia, decisão técnica ou especificação deve ser registrado aqui. Evite deixar arquivos temporários espalhados pelas pastas de código.
-
----
-
-### 3.9 `utils/`
-
-**Responsabilidade:** Funções auxiliares pequenas e genéricas que não se encaixam em nenhuma outra camada, mas são usadas em múltiplos lugares.
-
-```
-utils/
-├── __init__.py
-└── helpers.py      # Funções utilitárias gerais
-```
-
-**Exemplos do que colocar aqui:**
-- Função para formatar moeda (`R$ 1.290,00`)
-- Função para validar CPF ou CNPJ
-- Função para formatar datas
-- Função para gerar slugs de URL
-
-**O que NÃO colocar aqui:**
-- Lógica de negócio (vai em `services/`)
-- Configurações (vão em `core/config.py`)
-- Código específico de uma só aplicação (vai em `apps/`)
-
----
-
-## 4. Fluxo de Dados
-
-O diagrama abaixo representa como uma requisição percorre o sistema:
-
-```
-Usuário / Browser
-       │
-       ▼
-   apps/ (PDV ou Site)
-       │  Interface exibe e coleta dados
-       ▼
-   api/v1/ (Endpoints)
-       │  Recebe requisição HTTP, valida autenticação (middleware)
-       ▼
-   services/ (Lógica de Negócio)
-       │  Processa regras, valida dados, toma decisões
-       ▼
-   database/models/ (Acesso ao Banco)
-       │  Lê ou grava dados
-       ▼
-   database/app.db (SQLite)
-```
-
----
-
-## 5. Convenções e Boas Práticas
-
-### Nomenclatura de arquivos
-- Sempre em **letras minúsculas** com **underscore**: `produto_service.py`, `test_api.py`
-- Nunca usar espaços em nomes de pastas ou arquivos
-- Módulos Python sempre com `__init__.py`
-
-### Separação de responsabilidades
-- `apps/` → apresentação apenas (o que o usuário vê)
-- `services/` → lógica de negócio (as regras do sistema)
-- `api/` → comunicação entre interface e serviços
-- `core/` → configuração e segurança compartilhadas
-- `utils/` → funções auxiliares sem regras de negócio
-
-### Variáveis de ambiente
-- Nunca colocar senhas, chaves de API ou configurações sensíveis diretamente no código
-- Usar sempre o arquivo `.env` e acessar via `core/config.py`
-- O arquivo `.env` **jamais** deve ser enviado ao repositório Git
-
-### Versionamento da API
-- Sempre criar endpoints dentro de `/api/v1/`
-- Quando precisar mudar o comportamento de um endpoint, criar `/api/v2/` sem remover o `/v1/`
-
----
-
-## 6. Arquivos Raiz
-
-| Arquivo | Função |
-|---------|--------|
-| `.env` | Variáveis de ambiente sensíveis (chaves, senhas, URLs). **Nunca versionar.** |
-| `.gitignore` | Lista de arquivos e pastas que o Git deve ignorar (ex: `.env`, `venv/`, `__pycache__/`) |
-| `README.md` | Instruções de instalação, configuração e execução do projeto |
-| `requirements.txt` | Lista de todas as bibliotecas Python necessárias para rodar o projeto |
-
----
-
-*Documento gerado em Abril de 2026 — AAPM v1.0*
+*Este documento descreve o código existente em agosto de 2026. Estruturas planejadas devem ser identificadas explicitamente como futuras antes de serem adicionadas aqui.*

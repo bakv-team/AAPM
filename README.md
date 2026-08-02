@@ -1,529 +1,139 @@
-# SISTEMA DE PONTO DE VENDA - Associação de Alunos, Ex Alunos, Pais e Mestres (AAPM) - SENAI Francisco Matarazzo v1.0
-
-> **Sistema Administrativo de Ponto de Venda (PDV) com Gestão Administrativa**
-
 <div align="center">
 
-![Versão](https://img.shields.io/badge/versão-1.0-blue)
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
-![Python](https://img.shields.io/badge/Python-3.10+-green)
-![FastAPI](https://img.shields.io/badge/FastAPI-latest-teal)
-![Licença](https://img.shields.io/badge/licença-MIT-orange)
+<img src="apps/pvd/assets/icones/banner_aapm.png" alt="AAPM — SENAI Francisco Matarazzo" width="720">
 
-**Instituição:** SENAI Francisco Matarazzo — São Paulo/SP  
-**Última atualização:** Junho de 2026
+# AAPM · Gestão e Ponto de Venda
+
+**Vendas, estoque e administração em uma experiência web integrada.**
+
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-D71F00)](https://www.sqlalchemy.org/)
+[![Status](https://img.shields.io/badge/status-em_evolução-F59E0B)](#estado-do-projeto)
+
+Sistema desenvolvido para a **Associação de Alunos, Ex-Alunos, Pais e Mestres**<br>
+do SENAI Francisco Matarazzo · São Paulo/SP
 
 </div>
 
 ---
 
-## 📑 Índice
+## Uma operação simples, do balcão à gestão
 
-1. [Introdução e Propósito](#1-introdução-e-propósito)
-2. [Visão Geral da Arquitetura](#2-visão-geral-da-arquitetura)
-3. [Estrutura de Diretórios](#3-estrutura-de-diretórios)
-4. [Stack Tecnológico](#4-stack-tecnológico)
-5. [Configuração do Ambiente](#5-configuração-do-ambiente)
-6. [Execução](#6-execução)
-7. [Banco de Dados e Migrations](#7-banco-de-dados-e-migrations)
-8. [Componentes Principais](#8-componentes-principais)
-9. [API e Endpoints](#9-api-e-endpoints)
-10. [Frontend e Apps](#10-frontend-e-apps)
-11. [Autenticação e Autorização](#11-autenticação-e-autorização)
-12. [Testes](#12-testes)
-13. [Padrões de Desenvolvimento](#13-padrões-de-desenvolvimento)
-14. [Observabilidade e Operação](#14-observabilidade-e-operação)
-15. [Estado do Projeto](#15-estado-do-projeto)
-16. [Referências de Arquivos](#16-referências-de-arquivos)
+O AAPM conecta o atendimento do PDV ao controle administrativo. Quem vende encontra um fluxo direto para registrar pedidos; quem administra acompanha produtos, associados, estoque, equipe e indicadores no mesmo sistema.
 
----
-
-## 1. Introdução e Propósito
-
-### 1.1 O que é AAPM?
-
-O **AAPM** é um sistema administrativo de ponto de venda desenvolvido para apoiar a operação interna da Associação de Alunos, Ex Alunos, Pais e Mestres do SENAI Francisco Matarazzo.
-
-A aplicação centraliza rotinas de venda, controle de produtos, categorias, clientes, usuários, estoque, relatórios e acompanhamento operacional em uma interface web única.
-
-### 1.2 Funcionalidades principais
-
-| Área | Funcionalidades |
-|---|---|
-| Autenticação | Login, logout, recuperação de senha e controle de sessão por token |
-| Dashboard | Indicadores operacionais, gráficos, métricas e notificações |
-| Produtos | Cadastro, edição, remoção lógica, imagens, categorias e filtros |
-| Categorias | Cadastro, edição, listagem e vínculos com produtos |
-| Vendas/PDV | Registro de vendas, itens, pagamento, exceções de pagamento, desconto de associado e baixa de estoque |
-| Clientes | Cadastro e consulta de clientes/associados |
-| Estoque | Entradas, saídas e histórico de movimentações |
-| Relatórios | Exportações e consultas administrativas |
-| Usuários | Gestão administrativa de contas, permissões e visibilidade do dashboard |
-
-### 1.3 Perfis de uso
-
-| Perfil | Acesso | Responsabilidade |
+| No balcão | Na administração | Nos bastidores |
 |---|---|---|
-| Administrador | Dashboard completo | Gestão de produtos, categorias, usuários, relatórios e configurações |
-| Operador | PDV | Registro de vendas e atendimento |
-| Cliente/Associado | Atendimento interno | Identificação para histórico, desconto e vínculo nas vendas |
+| Venda rápida e identificação de associados | Dashboard, gráficos e relatórios | API REST versionada |
+| Desconto automático de associado | Produtos, categorias e variações | Autenticação JWT |
+| Baixa de estoque durante a venda | Usuários e permissões por área | SQLAlchemy + Alembic |
+| Exceções e prazos de pagamento | Pedidos, clientes e movimentações | Integrações SMTP e OpenAI |
 
----
+> Você acessa o sistema pelo navegador. A interface conversa com uma API FastAPI, que valida permissões, executa as regras e persiste os dados de forma transacional.
 
-## 2. Visão Geral da Arquitetura
+## Como o sistema se organiza
 
-### 2.1 Organização geral
-
-```
-┌─────────────────────────────────────────────────┐
-│                   APPS (UI)                     │
-│         HTML • CSS • JavaScript Vanilla         │
-├─────────────────────────────────────────────────┤
-│                  API v1                         │
-│            FastAPI • Routers JSON               │
-├─────────────────────────────────────────────────┤
-│              DATABASE / MODELS                  │
-│        SQLAlchemy • SQLite • Alembic            │
-└─────────────────────────────────────────────────┘
-```
-
-### 2.2 Diretrizes arquiteturais
-
-| Diretriz | Aplicação no projeto |
-|---|---|
-| Separação de responsabilidades | Interface, API, autenticação e persistência ficam em módulos distintos |
-| API versionada | Endpoints administrativos concentrados em `api/v1/pvd.py` |
-| Persistência estruturada | Modelos SQLAlchemy e migrations Alembic |
-| Interface independente | Frontend em HTML, CSS e JavaScript Vanilla |
-| Segurança básica | Senhas com hash, tokens JWT e rotas protegidas por perfil |
-
----
-
-## 3. Estrutura de Diretórios
-
-```
-aapm/
-├── api/                        # Endpoints HTTP e middleware
-│   ├── v1/
-│   │   └── pvd.py              # API principal do PDV administrativo
-│   └── middleware.py
-│
-├── apps/
-│   └── pvd/                    # Interface administrativa
-│       ├── assets/             # Imagens e ícones
-│       ├── scripts/            # JavaScript da interface
-│       ├── styles/             # Estilos CSS
-│       └── views/              # Templates HTML/Jinja2
-│
-├── database/
-│   ├── controllers/            # Autenticação, usuários e helpers
-│   ├── models/                 # Modelos SQLAlchemy
-│   ├── templates/              # Templates de login e recuperação
-│   ├── auth.py                 # Funções de autenticação/autorização
-│   ├── database.py             # Sessão e conexão com banco
-│   └── main.py                 # Aplicação FastAPI
-│
-├── docs/                       # Documentação complementar
-├── migrations/                 # Migrations Alembic
-├── tests/                      # Testes automatizados
-├── requirements.txt
-└── README.md
-```
-
-### 3.1 Responsabilidades por camada
-
-| Camada | Responsabilidade |
-|---|---|
-| `apps/pvd` | Interface administrativa, navegação, formulários, gráficos e interações |
-| `api/v1` | Endpoints JSON consumidos pelo painel e pelo PDV |
-| `database/models` | Representação das entidades persistidas |
-| `database/controllers` | Rotas HTML de autenticação/admin e helpers compartilhados |
-| `migrations` | Histórico versionado da estrutura do banco |
-| `docs` | Documentação técnica complementar |
-
----
-
-## 4. Stack Tecnológico
-
-### 4.1 Backend
-
-| Tecnologia | Função |
-|---|---|
-| Python 3.10+ | Linguagem principal |
-| FastAPI | Aplicação web e endpoints REST |
-| Uvicorn | Servidor ASGI |
-| SQLAlchemy | ORM e persistência |
-| Alembic | Versionamento do banco |
-| SQLite | Banco de dados local |
-| Jinja2 | Templates HTML |
-| Passlib/Bcrypt | Hash de senhas |
-| JWT | Autenticação baseada em token |
-| python-dotenv | Configuração por variáveis de ambiente |
-
-### 4.2 Frontend
-
-| Tecnologia | Função |
-|---|---|
-| HTML5 | Estrutura das telas |
-| CSS3 | Design visual e responsividade |
-| JavaScript ES6+ | Interações, estado da tela e consumo da API |
-| Chart.js | Gráficos e indicadores |
-| Font Awesome / Lucide | Iconografia |
-| Google Fonts | Tipografia |
-
----
-
-## 5. Configuração do Ambiente
-
-### 5.1 Requisitos
-
-| Item | Versão/Observação |
-|---|---|
-| Python | 3.10 ou superior |
-| pip | Instalador de dependências |
-| SQLite | Usado como banco local |
-| Alembic | Aplicação das migrations |
-| Variáveis de ambiente | Definidas em `.env` |
-
-### 5.2 Variáveis principais
-
-| Variável | Finalidade |
-|---|---|
-| `DATABASE_URL` | String de conexão com o banco |
-| `SECRET_KEY` | Chave de assinatura dos tokens |
-| `ALGORITHM` | Algoritmo JWT |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Tempo de expiração da sessão |
-| `APP_BASE_URL` | Base para links de recuperação de senha |
-| `SMTP_*` | Configurações de envio de e-mail |
-
----
-
-## 6. Execução
-
-### 6.1 Comando principal
-
-```bash
-uvicorn database.main:app --reload
-```
-
-### 6.2 Acessos principais
-
-| Recurso | URL |
-|---|---|
-| Aplicação | `http://localhost:8000` |
-| Login | `http://localhost:8000/auth/login` |
-| PDV | `http://localhost:8000/pdv` |
-| Dashboard | `http://localhost:8000/dashboard` |
-| Swagger | `http://localhost:8000/docs` |
-| ReDoc | `http://localhost:8000/redoc` |
-
----
-
-## 7. Banco de Dados e Migrations
-
-### 7.1 Modelos principais
-
-| Modelo | Responsabilidade |
-|---|---|
-| `Usuario` | Contas, papéis e status de acesso |
-| `Produto` | Cadastro, preço, estoque e imagem |
-| `Categoria` | Agrupamento de produtos |
-| `Cliente` | Clientes e associados |
-| `Venda` | Registro da venda e totais |
-| `ItemVenda` | Produtos vinculados à venda |
-| `Movimentacao` | Entradas e saídas de estoque |
-
-### 7.2 Campos de exceção de pagamento
-
-O modelo `Venda` também guarda exceções de pagamento para pedidos autorizados com quitação futura, como acordos de Pix mensal.
-
-| Campo | Finalidade |
-|---|---|
-| `excecao_pagamento` | Indica se a venda possui exceção ativa |
-| `excecao_status` | Controla `pendente`, `pago` ou `sem_excecao` |
-| `excecao_prazo` | Prazo combinado para pagamento |
-| `excecao_observacao` | Observação do acordo registrado no PDV |
-| `excecao_pago_em` | Data em que a exceção foi marcada como paga |
-
-### 7.3 Migrations
-
-O projeto utiliza **Alembic** para manter o schema do banco versionado. As revisões ficam em `migrations/versions` e representam a evolução controlada das tabelas.
-
-Além das migrations, `database/main.py` contém uma rotina de compatibilidade no startup para adicionar automaticamente colunas incrementais necessárias em bancos SQLite já existentes, como permissões de usuário e campos de exceção de pagamento.
-
----
-
-## 8. Componentes Principais
-
-### 8.1 Aplicação
-
-| Arquivo | Função |
-|---|---|
-| `database/main.py` | Criação da aplicação FastAPI, rotas principais e montagem de arquivos estáticos |
-| `api/v1/pvd.py` | API administrativa do PDV |
-| `database/database.py` | Engine, sessão e dependência de banco |
-| `database/auth.py` | JWT, hash de senha e dependências de autenticação |
-
-### 8.2 Interface
-
-| Arquivo | Função |
-|---|---|
-| `apps/pvd/views/dashboard.html` | Painel administrativo |
-| `apps/pvd/views/vendas.html` | Tela de PDV/vendas |
-| `apps/pvd/scripts/dashboard.js` | Estado, chamadas API, gráficos e páginas do dashboard |
-| `apps/pvd/scripts/base.js` | Comportamento da tela de vendas |
-| `apps/pvd/styles/dashboard.css` | Estilos do painel |
-| `apps/pvd/styles/base.css` | Estilos do PDV |
-
----
-
-## 9. API e Endpoints
-
-### 9.1 PDV administrativo
-
-| Método | Endpoint | Função |
+| Experiência | Aplicação | Dados |
 |---|---|---|
-| `GET` | `/api/v1/pdv/categories` | Lista categorias |
-| `POST` | `/api/v1/pdv/categories` | Cria categoria |
-| `GET` | `/api/v1/pdv/products` | Lista produtos |
-| `POST` | `/api/v1/pdv/products` | Cria produto |
-| `PUT` | `/api/v1/pdv/products/{id}` | Atualiza produto |
-| `DELETE` | `/api/v1/pdv/products/{id}` | Remove produto |
-| `POST` | `/api/v1/pdv/products/{id}/stock` | Registra entrada de estoque |
-| `GET` | `/api/v1/pdv/stock/movements` | Lista movimentações |
-| `POST` | `/api/v1/pdv/sales` | Registra venda |
-| `GET` | `/api/v1/pdv/orders` | Lista pedidos |
-| `PUT` | `/api/v1/pdv/orders/{venda_id}/payment-exception` | Marca exceção de pagamento como paga ou pendente |
-| `GET` | `/api/v1/pdv/notifications` | Lista notificações operacionais, incluindo prazos de exceção próximos ou vencidos |
-| `GET` | `/api/v1/pdv/dashboard/metrics` | Métricas do painel |
-| `GET` | `/api/v1/pdv/reports/{tipo}` | Exportação de relatórios |
+| **HTML + CSS + JavaScript**<br>Telas responsivas do PDV e dashboard, renderizadas com Jinja2. | **FastAPI**<br>Rotas web, API `/api/v1/pdv`, autenticação e regras operacionais. | **SQLAlchemy**<br>Modelos relacionais e evolução do esquema controlada por Alembic. |
+| `apps/pvd/` | `database/main.py` · `api/v1/` | `database/models/` · `migrations/` |
 
-### 9.2 Autenticação
+O projeto adota um **monólito modular**: interface, API, segurança e persistência ficam separadas por responsabilidade, mas são publicadas pela mesma aplicação. A visão completa, incluindo os 11 modelos e seus relacionamentos, está em [docs/arquitetura.md](docs/arquitetura.md).
 
-| Método | Endpoint | Função |
+## Recursos que você encontra
+
+| Operação comercial | Controle administrativo |
+|---|---|
+| **PDV** — produtos, variações, carrinho e fechamento | **Dashboard** — métricas diárias, séries horárias e destaques |
+| **Associados** — busca por matrícula e desconto de 10% | **Catálogo** — produtos, imagens, categorias, preços e status |
+| **Pedidos** — histórico e dados preservados da venda | **Estoque** — entradas, saídas e trilha de movimentações |
+| **Pagamentos** — exceções, prazo, observação e quitação | **Equipe** — perfis, ativação e permissões por seção |
+| **Atendimento** — notificações de pendências | **AAPM Smart** — insights e assistente integrado |
+
+## Coloque para funcionar
+
+Você precisa do **Python 3.10 ou superior**, `pip` e uma URL de banco compatível com SQLAlchemy.
+
+```powershell
+# 1. Crie e ative o ambiente virtual
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 2. Instale as dependências
+pip install -r requirements.txt
+
+# 3. Aplique as migrations
+alembic upgrade head
+
+# 4. Inicie a aplicação
+python -m uvicorn database.main:app --reload
+```
+
+Abra **http://localhost:8000**. Durante o desenvolvimento, a documentação interativa da API fica disponível em **http://localhost:8000/docs**.
+
+### Configuração essencial
+
+Crie um arquivo `.env` na raiz. Estes são os grupos de configuração usados pela aplicação:
+
+| Banco e sessão | Recuperação de senha | Recursos externos |
 |---|---|---|
-| `GET` | `/auth/login` | Tela de login |
-| `POST` | `/auth/login` | Autenticação |
-| `POST` | `/auth/forgot-password` | Solicitação de recuperação |
-| `GET` | `/auth/reset-password` | Tela de redefinição |
-| `GET` | `/auth/logout` | Encerramento da sessão |
+| `DATABASE_URL` | `SMTP_HOST` · `SMTP_PORT` | Credenciais da OpenAI |
+| `SECRET_KEY` | `SMTP_USER` · `SMTP_PASSWORD` | `APP_BASE_URL` |
+| `ALGORITHM` | `SMTP_FROM` · `SMTP_TLS` · `SMTP_SSL` | `RESET_PASSWORD_BASE_URL` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `SMTP_TIMEOUT` | — |
 
----
+Não publique o `.env`: ele contém credenciais e chaves privadas. O banco utilizado é determinado por `DATABASE_URL`; o repositório possui suporte a PostgreSQL e um banco SQLite local.
 
-## 10. Frontend e Apps
+## Acessos da aplicação
 
-### 10.1 Dashboard
+| Endereço | O que você encontra | Quem utiliza |
+|---|---|---|
+| `/auth/login` | Entrada e recuperação de acesso | Todos os usuários |
+| `/pdv` | Atendimento e registro de vendas | Operadores e administradores |
+| `/dashboard` | Gestão, indicadores e relatórios | Admin ou usuário autorizado |
+| `/docs` | Contratos e testes da API | Desenvolvimento |
 
-O dashboard usa `apps/pvd/scripts/dashboard.js` como ponto central de integração entre interface, API, gráficos e estado local de tela.
+A sessão usa JWT em cookie HttpOnly. Administradores têm acesso integral; funcionários visualizam somente as áreas liberadas em suas permissões. As restrições são verificadas no servidor, não apenas escondidas na interface.
 
-| Objeto global | Responsabilidade |
+## Mapa rápido do código
+
+```text
+apps/pvd/                  interface, estilos, scripts e recursos visuais
+api/v1/pvd.py              endpoints do PDV e do dashboard
+database/main.py           composição e inicialização da aplicação
+database/auth.py           JWT, senhas, sessão e autorização
+database/controllers/      autenticação e administração de usuários
+database/models/           entidades SQLAlchemy
+migrations/                histórico do esquema do banco
+tests/                     testes automatizados
+docs/                      arquitetura e requisitos
+```
+
+## Desenvolvimento
+
+Antes de entregar uma mudança, mantenha três pontos alinhados: o modelo SQLAlchemy, a migration Alembic e o contrato consumido pelo frontend. Para validar o projeto:
+
+```powershell
+python -m pytest
+```
+
+As regras financeiras devem preservar o histórico da venda; alterações futuras de produto ou preço não podem modificar pedidos já registrados. Novas rotas do domínio permanecem sob `/api/v1/pdv`, e toda autorização deve ser confirmada no backend.
+
+| Quero entender… | Consulte |
 |---|---|
-| `window.API` | Comunicação com endpoints FastAPI |
-| `window.DB` | Cache de tela preenchido pela API |
-| `window.UI` | Formatação, modais, toasts e utilitários |
-| `window.CHARTS` | Gráficos e visualizações |
+| Componentes, fluxos e modelos de dados | [Arquitetura técnica](docs/arquitetura.md) |
+| Requisitos funcionais, não funcionais e regras de negócio | [Especificação de requisitos](docs/requisições.md) |
+| Evolução das tabelas | [`migrations/versions`](migrations/versions) |
 
-### 10.2 PDV e exceções de pagamento
+## Estado do projeto
 
-A tela de vendas em `apps/pvd/views/vendas.html` permite registrar exceções de pagamento abaixo das formas de pagamento. Quando ativada, a venda exige um prazo, aceita uma observação e aparece no dashboard como pedido pendente até ser marcada como paga.
-
-| Elemento | Comportamento |
-|---|---|
-| Exceção de pagamento | Ativa o acordo de pagamento futuro |
-| Prazo para pagar | Define o limite de pagamento da exceção |
-| Observação | Guarda detalhes do acordo, como Pix mensal ou parcelamento combinado |
-| Revisão da compra | Mostra o resumo da exceção antes de finalizar |
-
-### 10.3 Pedidos e acompanhamento
-
-Na página `#pedidos`, pedidos comuns ficam na tabela principal. Pedidos com exceção aparecem em uma tabela separada de **Exceções de pagamento**, com prazo, observação, status e ação para marcar como pago.
-
-As notificações do PDV e do dashboard alertam quando uma exceção pendente está próxima do prazo ou vencida, orientando o vendedor a falar com o cliente.
-
-### 10.4 Rotas internas do painel
-
-| Hash | Tela |
-|---|---|
-| `#dashboard` | Dashboard principal |
-| `#smart` | AAPM Smart |
-| `#admin` | Produtos |
-| `#grafico` | Indicadores e gráficos |
-| `#pedidos` | Pedidos |
-| `#clientes` | Clientes/associados |
-| `#funcionarios` | Funcionários e permissões |
-| `#categorias` | Categorias |
-| `#estoque` | Estoque |
-| `#movimentacoes` | Movimentações de estoque |
-| `#relatorios` | Relatórios |
-| `#configuracoes` | Configurações |
-
----
-
-## 11. Autenticação e Autorização
-
-### 11.1 Segurança
-
-| Recurso | Implementação |
-|---|---|
-| Hash de senha | Bcrypt/Passlib |
-| Sessão | JWT em cookie HTTP-only |
-| Proteção de rotas | Dependências `get_admin`, `get_usuario_logado` e `get_usuario_opcional` |
-| Perfis | `admin`, `operador` e cliente/associado para vínculo operacional |
-| Recuperação de senha | Token temporário e envio opcional por SMTP |
-
-### 11.2 Controle de acesso
-
-| Perfil | Acesso |
-|---|---|
-| Admin | Dashboard, cadastros, estoque, relatórios e usuários |
-| Operador | Tela de PDV e rotinas de venda |
-| Não autenticado | Login e recuperação de senha |
-
-### 11.3 Permissões do dashboard
-
-Funcionários podem receber permissões específicas por aba do dashboard. A sidebar é renderizada conforme as permissões do usuário: abas não autorizadas não aparecem no menu lateral, evitando cliques em telas bloqueadas e mantendo a navegação limpa.
-
-| Permissão | Área liberada |
-|---|---|
-| `smart` | AAPM Smart |
-| `dashboard` | Dashboard principal |
-| `products` | Produtos |
-| `charts` | Painel gráfico |
-| `orders` | Pedidos e exceções de pagamento |
-| `customers` | Associados |
-| `categories` | Categorias |
-| `stock` | Estoque |
-| `movements` | Movimentações |
-| `reports` | Relatórios |
-
----
-
-## 12. Testes
-
-### 12.1 Estado atual
-
-A pasta `tests/` está reservada para a cobertura automatizada do projeto. A prioridade recomendada é cobrir autenticação, endpoints do PDV e fluxos críticos de venda/estoque.
-
-### 12.2 Escopo recomendado
-
-| Área | Casos principais |
-|---|---|
-| Autenticação | Login, senha inválida, usuário inativo e recuperação |
-| Produtos | CRUD, upload de imagem e filtros |
-| Vendas | Registro, baixa de estoque e desconto de associado |
-| Exceções de pagamento | Registro com prazo, listagem separada, notificação e marcação como pago |
-| Estoque | Entrada, saída e histórico |
-| Dashboard | Métricas e endpoints agregados |
-
----
-
-## 13. Padrões de Desenvolvimento
-
-### 13.1 Convenções
-
-| Item | Padrão |
-|---|---|
-| Python | `snake_case` para funções e variáveis |
-| JavaScript | `camelCase` para funções e estado |
-| Rotas API | Prefixo `/api/v1/pdv` |
-| Templates | Views em `apps/pvd/views` ou `database/templates` |
-| Estilos | CSS segmentado por área da aplicação |
-| Banco | Alterações estruturais por migration |
-
-### 13.2 Diretrizes
-
-- Manter regras de API em `api/v1/pvd.py` quando fizerem parte do fluxo administrativo.
-- Usar models SQLAlchemy para persistência.
-- Evitar mocks, dados locais temporários e código não referenciado.
-- Preservar compatibilidade entre dashboard, PDV e endpoints existentes.
-- Atualizar documentação quando houver mudança de rota, entidade ou fluxo principal.
-
----
-
-## 14. Observabilidade e Operação
-
-### 14.1 Pontos de atenção
-
-| Área | Observação |
-|---|---|
-| Logs | Falhas de e-mail e suporte são registradas no console quando SMTP não está configurado |
-| Cache estático | Arquivos em `/apps` recebem headers para evitar cache em desenvolvimento |
-| Uploads | Imagens de produtos são salvas em `database/static/uploads` |
-| Banco | SQLite é adequado para uso local/institucional pequeno |
-| E-mail | Recuperação de senha depende de configuração SMTP |
-| Exceções de pagamento | Notificações avisam sobre prazos próximos ou vencidos |
-
-### 14.2 Relatórios
-
-Os relatórios administrativos são expostos pela API do PDV e podem ser exportados pelo painel conforme os tipos disponíveis em `/api/v1/pdv/reports/{tipo}`.
-
----
-
-## 15. Estado do Projeto
-
-### 15.1 Status funcional
-
-| Módulo | Status |
-|---|---|
-| Login e recuperação de senha | Implementado |
-| Dashboard administrativo | Implementado |
-| Produtos e categorias | Implementado |
-| PDV/vendas | Implementado |
-| Exceções de pagamento | Implementado |
-| Clientes/associados | Implementado |
-| Estoque e movimentações | Implementado |
-| Relatórios | Em evolução |
-| Testes automatizados | Planejado |
-
-### 15.2 Próximas prioridades
-
-| Prioridade | Objetivo |
-|---|---|
-| Testes | Cobrir fluxos críticos de autenticação, vendas e estoque |
-| Relatórios | Consolidar formatos e indicadores finais |
-| Permissões | Expandir auditoria e testes de limites por perfil operacional |
-| Produção | Ajustar segurança, SMTP, backup e variáveis de ambiente |
-
----
-
-## 16. Referências de Arquivos
-
-### 16.1 Arquivos principais
-
-| Arquivo | Descrição |
-|---|---|
-| `database/main.py` | Aplicação FastAPI e rotas de tela |
-| `api/v1/pvd.py` | Endpoints administrativos |
-| `database/auth.py` | Autenticação e autorização |
-| `database/controllers/auth_controller.py` | Login e recuperação de senha |
-| `database/controllers/admin_controller.py` | Gestão de usuários |
-| `database/controllers/produto_controller.py` | Helpers de upload de produto |
-| `apps/pvd/views/dashboard.html` | Tela do dashboard |
-| `apps/pvd/views/vendas.html` | Tela do PDV |
-| `apps/pvd/scripts/dashboard.js` | Lógica do painel |
-| `apps/pvd/scripts/base.js` | Lógica da tela de vendas |
-
-### 16.2 Documentação complementar
-
-| Arquivo | Descrição |
-|---|---|
-| `docs/arquitetura.md` | Arquitetura técnica do projeto |
-| `docs/requisitos.md` | Requisitos funcionais e não funcionais |
-| `migrations/versions` | Histórico de alterações do banco |
-
----
-
-## Conclusão
-
-O **AAPM v1.0** consolida um PDV administrativo para gestão de produtos, vendas, clientes, estoque, usuários e indicadores operacionais em uma aplicação web integrada.
-
-O projeto está estruturado para evolução incremental, com API versionada, banco controlado por migrations, autenticação por token e uma interface administrativa conectada aos dados reais do sistema.
-
----
+Login, dashboard, PDV, produtos, variações, categorias, associados, estoque, pedidos, exceções de pagamento e gestão de usuários estão implementados. Relatórios e cobertura automatizada continuam em evolução.
 
 <div align="center">
 
-**AAPM v1.0** • Desenvolvido pela equipe de estudantes para o SENAI Francisco Matarazzo — São Paulo/SP  
-Junho de 2026 • Status: Ativo em Desenvolvimento
+---
+
+**AAPM · tecnologia a serviço da comunidade escolar**<br>
+SENAI Francisco Matarazzo · 2026
 
 </div>

@@ -133,6 +133,52 @@ As regras financeiras devem preservar o histórico da venda; alterações futura
 
 Login, dashboard, PDV, produtos, variações, categorias, associados, estoque, pedidos, exceções de pagamento, relatórios e gestão de usuários estão implementados. A cobertura automatizada acompanha os fluxos críticos e continua em evolução.
 
+---
+
+## 📄 Direitos Autorais
+
+**© AAPM · Tecnologia a serviço da comunidade escolar**
+**SENAI Francisco Matarazzo · 2026**
+
+Este projeto foi desenvolvido pelos integrantes listados abaixo, no âmbito do SENAI Francisco Matarazzo, sendo os direitos autorais reservados à AAPM (Associação de Alunos, Ex-Alunos, Pais e Mestres) conforme descrito acima. É proibida a reprodução, distribuição ou uso comercial deste material sem autorização prévia dos autores e da instituição.
+
+
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center" width="150">
+      <a href="https://github.com/victorylapdev">
+        <img src="https://github.com/victorylapdev.png" width="70" height="70" style="border-radius: 50%;" alt="victorylapdev"/><br/>
+        <b>victorylapdev</b>
+      </a><br/>
+      <sub>Líder, Product Owner e<br/>Desenvolvedora Front-end</sub><br/><br/>
+    </td>
+    <td align="center" width="150">
+      <a href="https://github.com/Cassio-Rosa">
+        <img src="https://github.com/Cassio-Rosa.png" width="70" height="70" style="border-radius: 50%;" alt="Cassio-Rosa"/><br/>
+        <b>Cassio-Rosa</b>
+      </a><br/>
+      <sub>Scrum Master e<br/>Desenvolvedor Back-end</sub><br/><br/>
+    </td>
+    <td align="center" width="150">
+      <a href="https://github.com/BalderB4ss">
+        <img src="https://github.com/BalderB4ss.png" width="70" height="70" style="border-radius: 50%;" alt="BalderB4ss"/><br/>
+        <b>BalderB4ss</b>
+      </a><br/>
+      <sub>Desenvolvedor<br/>Back-end</sub><br/><br/>
+    </td>
+    <td align="center" width="150">
+      <a href="https://github.com/emmy-qssd">
+        <img src="https://github.com/emmy-qssd.png" width="70" height="70" style="border-radius: 50%;" alt="emmy-qssd"/><br/>
+        <b>emmy-qssd</b>
+      </a><br/>
+      <sub>Desenvolvedora<br/>Front-end</sub><br/><br/>
+    </td>
+  </tr>
+</table>
+</div>
+
 <div align="center">
 
 ---

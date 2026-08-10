@@ -2,4 +2,3 @@ __pycache__/
 .env
 *.pyc
 criar_usuario.py
-banco.db

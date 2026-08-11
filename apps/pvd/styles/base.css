@@ -6880,6 +6880,13 @@ body.checkout-returning .app-shell {
     border: 1px solid rgba(10, 23, 56, 0.1);
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.58);
+    transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+
+.payment-exception-box:has(.payment-exception-toggle input:checked) {
+    border-color: rgba(241, 124, 32, 0.48);
+    background: rgba(255, 143, 31, 0.08);
+    box-shadow: 0 8px 20px rgba(241, 124, 32, 0.09);
 }
 
 .payment-exception-toggle {
@@ -6892,9 +6899,45 @@ body.checkout-returning .app-shell {
 }
 
 .payment-exception-toggle input {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--orange);
+    appearance: none;
+    -webkit-appearance: none;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    border: 2px solid rgba(100, 116, 139, 0.62);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.88);
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.payment-exception-toggle input::after {
+    content: "";
+    width: 8px;
+    height: 4px;
+    border-bottom: 2px solid #fff;
+    border-left: 2px solid #fff;
+    opacity: 0;
+    transform: rotate(-45deg) translate(1px, -1px) scale(.7);
+    transition: opacity .16s ease, transform .16s ease;
+}
+
+.payment-exception-toggle input:checked {
+    border-color: var(--orange);
+    background: var(--orange);
+    box-shadow: 0 0 0 4px rgba(241, 124, 32, 0.16);
+}
+
+.payment-exception-toggle input:checked::after {
+    opacity: 1;
+    transform: rotate(-45deg) translate(1px, -1px) scale(1);
+}
+
+.payment-exception-toggle input:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 4px rgba(57, 88, 214, 0.18);
 }
 
 .payment-exception-toggle span {
@@ -6905,6 +6948,13 @@ body.checkout-returning .app-shell {
     border-radius: 8px;
     color: var(--orange);
     background: rgba(255, 143, 31, 0.13);
+    transition: color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.payment-exception-toggle:has(input:checked) span {
+    color: #fff;
+    background: var(--orange);
+    transform: scale(1.04);
 }
 
 .payment-exception-toggle strong {
@@ -6944,6 +6994,16 @@ body.checkout-returning .app-shell {
 
 [data-theme="dark"] .payment-exception-toggle {
     color: rgba(255, 255, 255, 0.92);
+}
+
+[data-theme="dark"] .payment-exception-toggle input {
+    border-color: rgba(255, 255, 255, 0.42);
+    background: rgba(10, 18, 42, 0.72);
+}
+
+[data-theme="dark"] .payment-exception-toggle input:checked {
+    border-color: var(--orange);
+    background: var(--orange);
 }
 
 [data-theme="dark"] .payment-exception-toggle span {

@@ -3493,8 +3493,97 @@ window.Dashboard = (function () {
       }
     });
 
-    // Global search routes to products if there's a query
-    document.getElementById("globalSearch").addEventListener("input", e => {
+    const globalSearch = document.getElementById("globalSearch");
+    const globalSearchResults = document.getElementById("globalSearchResults");
+
+    function closeGlobalSearchResults() {
+      globalSearchResults?.replaceChildren();
+      globalSearchResults?.classList.add("hidden");
+    }
+
+    function globalSearchMatches(query) {
+      const q = query.toLocaleLowerCase("pt-BR");
+      const matches = [];
+      const include = value => String(value || "").toLocaleLowerCase("pt-BR").includes(q);
+      const categoryName = id => window.DB.categories.find(category => String(category.id) === String(id))?.name || "Sem categoria";
+
+      if (can("products")) {
+        window.DB.products.filter(product => include(`${product.name} ${product.description || ""} ${categoryName(product.categoryId)} ${product.stock}`)).forEach(product => {
+          matches.push({ route: "admin", filter: "productSearch", icon: "fa-box", type: "Produto", title: product.name, detail: `${categoryName(product.categoryId)} · Estoque: ${product.stock}` });
+        });
+      }
+      if (can("orders")) {
+        window.DB.orders.filter(order => include(`${order.number} ${order.customerName} ${order.status} ${order.payment} ${order.total}`)).forEach(order => {
+          matches.push({ route: "pedidos", filter: "orderSearch", icon: "fa-receipt", type: "Pedido", title: order.number, detail: `${order.customerName || "Cliente nao informado"} · ${UI.money(order.total)}` });
+        });
+      }
+      if (can("customers")) {
+        window.DB.customers.filter(customer => include(`${customer.name} ${customer.email || ""} ${customer.matricula || ""} ${customer.phone || ""}`)).forEach(customer => {
+          matches.push({ route: "clientes", filter: "customerSearch", icon: "fa-user-group", type: "Associado", title: customer.name, detail: customer.matricula || customer.email || customer.phone || "Sem dados de contato" });
+        });
+      }
+      if (can("categories")) {
+        window.DB.categories.filter(category => include(`${category.name} ${category.description || ""}`)).forEach(category => {
+          const productCount = category.productCount ?? window.DB.products.filter(product => String(product.categoryId) === String(category.id)).length;
+          matches.push({ route: "categorias", icon: "fa-tags", type: "Categoria", title: category.name, detail: `${productCount} produto(s)` });
+        });
+      }
+      if (IS_ADMIN) {
+        document.querySelectorAll("[data-employee-row]").forEach(row => {
+          if (!include(`${row.dataset.name || ""} ${row.dataset.email || ""} ${row.dataset.role || ""}`)) return;
+          matches.push({ route: "funcionarios", filter: "employeeSearch", icon: "fa-user-tie", type: "Funcionario", title: row.dataset.name || "Funcionario", detail: row.dataset.email || row.dataset.role || "" });
+        });
+      }
+      return matches.slice(0, 12);
+    }
+
+    function openGlobalSearchResult(result) {
+      navigate(result.route);
+      const target = result.filter ? document.getElementById(result.filter) : null;
+      if (target) {
+        target.value = globalSearch.value.trim();
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      closeGlobalSearchResults();
+    }
+
+    function renderGlobalSearchResults() {
+      const query = globalSearch?.value.trim() || "";
+      closeGlobalSearchResults();
+      if (!query || !globalSearchResults) return;
+
+      const results = globalSearchMatches(query);
+      if (!results.length) {
+        const empty = document.createElement("div");
+        empty.className = "global-search-result";
+        empty.textContent = "Nenhuma informacao encontrada.";
+        globalSearchResults.append(empty);
+      } else {
+        results.forEach(result => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "global-search-result";
+          button.setAttribute("role", "option");
+          button.innerHTML = `<i class="fa-solid ${result.icon}"></i><div><strong>${UI.escapeHTML(result.title)}</strong><span>${UI.escapeHTML(result.detail)}</span></div><em>${UI.escapeHTML(result.type)}</em>`;
+          button.addEventListener("click", () => openGlobalSearchResult(result));
+          globalSearchResults.append(button);
+        });
+      }
+      globalSearchResults.classList.remove("hidden");
+    }
+
+    globalSearch?.addEventListener("input", renderGlobalSearchResults);
+    globalSearch?.addEventListener("keydown", event => {
+      if (event.key !== "Enter") return;
+      const firstResult = globalSearchResults?.querySelector(".global-search-result[role='option']");
+      if (!firstResult) return;
+      event.preventDefault();
+      firstResult.click();
+    });
+    globalSearch?.addEventListener("blur", () => window.setTimeout(closeGlobalSearchResults, 150));
+
+    // Global search routes to products if there's a query.
+    globalSearch?.addEventListener("input", e => {
       const q = e.target.value.trim();
       if (!q || !can("products")) return;
       document.getElementById("productSearch").value = q;

@@ -14,6 +14,7 @@ from database.models import (
     movimentacao,
     cliente,
     variacao,
+    armario,
 )
 
 # Configuração do objeto Alembic

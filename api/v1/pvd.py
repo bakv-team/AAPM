@@ -31,6 +31,7 @@ from database.models.produto import Produto
 from database.models.variacao import Atributo, ProdutoVariacao, ValorAtributo
 from database.models.usuario import Usuario
 from database.models.venda import ItemVenda, Venda
+from database.models.armario import Armario, StatusArmario
 from services.errors import ConflictError, NotFoundError, PersistenceError, ServiceError, ValidationError
 from services.sale_service import RegisterSaleInput, SaleItemInput, register_sale
 from services.report_service import generate_report

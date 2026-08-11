@@ -141,6 +141,9 @@
                     <h2 class="cart-title">
                         <span>Carrinho</span>
                         <small id="cartItemCount">0 itens</small>
+                        <button type="button" id="btnEsvaziarCarrinho" class="cart-clear-btn" disabled aria-label="Esvaziar carrinho" title="Esvaziar carrinho">
+                            <i class="fa-solid fa-trash-can"></i><span>Esvaziar</span>
+                        </button>
                         <i class="fa-solid fa-cart-shopping cart-icon"></i>
                     </h2>
 
@@ -307,6 +310,21 @@
                 <button type="button" class="checkout-primary" id="confirmPurchaseYes">
                     <i class="fa-solid fa-lock"></i>
                     <span>Sim, finalizar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="confirm-modal clear-cart-confirm hidden" id="clearCartConfirmModal" role="dialog" aria-modal="true" aria-labelledby="clearCartConfirmTitle">
+        <div class="confirm-panel">
+            <div class="confirm-icon"><i class="fa-solid fa-trash-can"></i></div>
+            <h2 id="clearCartConfirmTitle">Esvaziar carrinho?</h2>
+            <p>Todos os itens desta venda em andamento serão removidos do carrinho.</p>
+            <div class="confirm-actions">
+                <button type="button" class="checkout-secondary" id="clearCartConfirmNo">Cancelar</button>
+                <button type="button" class="checkout-primary" id="clearCartConfirmYes">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Sim, esvaziar</span>
                 </button>
             </div>
         </div>

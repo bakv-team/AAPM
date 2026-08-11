@@ -103,6 +103,7 @@ const cartTotalElement = document.getElementById("cartTotal");
 const cartSubtotalElement = document.getElementById("cartSubtotal");
 const cartDiscountElement = document.getElementById("cartDiscount");
 const cartItemCountElement = document.getElementById("cartItemCount");
+const btnEsvaziarCarrinho = document.getElementById("btnEsvaziarCarrinho");
 const searchInput = document.getElementById("searchInput");
 const btnToggleAssociado = document.getElementById("btnToggleAssociado");
 const btnFecharPedido = document.getElementById("btnFecharPedido");
@@ -152,6 +153,9 @@ const checkoutTotal = document.getElementById("checkoutTotal");
 const confirmPurchaseModal = document.getElementById("confirmPurchaseModal");
 const confirmPurchaseNo = document.getElementById("confirmPurchaseNo");
 const confirmPurchaseYes = document.getElementById("confirmPurchaseYes");
+const clearCartConfirmModal = document.getElementById("clearCartConfirmModal");
+const clearCartConfirmNo = document.getElementById("clearCartConfirmNo");
+const clearCartConfirmYes = document.getElementById("clearCartConfirmYes");
 const checkoutSuccess = document.getElementById("checkoutSuccess");
 const successOrderNumber = document.getElementById("successOrderNumber");
 const successOrderSummary = document.getElementById("successOrderSummary");
@@ -688,6 +692,33 @@ function removerDoCarrinho(chaveItem) {
   window.AAPMSound?.play("remove");
 }
 
+function esvaziarCarrinho() {
+  if (!carrinho.length) return;
+  if (clearCartConfirmModal?._closeTimer) window.clearTimeout(clearCartConfirmModal._closeTimer);
+  clearCartConfirmModal?.classList.remove("hidden", "modal-closing");
+}
+
+function fecharConfirmacaoEsvaziarCarrinho() {
+  if (!clearCartConfirmModal || clearCartConfirmModal.classList.contains("hidden")) return;
+
+  clearCartConfirmModal.classList.add("modal-closing");
+  if (clearCartConfirmModal._closeTimer) window.clearTimeout(clearCartConfirmModal._closeTimer);
+  clearCartConfirmModal._closeTimer = window.setTimeout(() => {
+    clearCartConfirmModal.classList.add("hidden");
+    clearCartConfirmModal.classList.remove("modal-closing");
+    clearCartConfirmModal._closeTimer = null;
+  }, 180);
+}
+
+function confirmarEsvaziarCarrinho() {
+  carrinho = [];
+  salvarCarrinho();
+  renderCarrinho();
+  fecharConfirmacaoEsvaziarCarrinho();
+  window.AAPMSound?.play("remove");
+  toast("Carrinho esvaziado.", "success");
+}
+
 function totaisCarrinho() {
   const totalBruto = carrinho.reduce((sum, item) => sum + cartItemPrice(item) * cartItemQuantity(item), 0);
   const desconto = ehAssociado ? totalBruto * DISCOUNT : 0;
@@ -739,6 +770,7 @@ function renderCarrinho() {
   const items = carrinho.filter(Boolean);
   const itemCount = items.reduce((sum, item) => sum + cartItemQuantity(item), 0);
   if (cartItemCountElement) cartItemCountElement.textContent = `${itemCount} ${itemCount === 1 ? "item" : "itens"}`;
+  if (btnEsvaziarCarrinho) btnEsvaziarCarrinho.disabled = itemCount === 0;
 
   cartItemsContainer.classList.add("cart-lines-list");
   cartItemsContainer.hidden = false;
@@ -1659,6 +1691,7 @@ function bindEventos() {
   });
 
   btnFecharPedido?.addEventListener("click", abrirCheckout);
+  btnEsvaziarCarrinho?.addEventListener("click", esvaziarCarrinho);
   checkoutBackBtn?.addEventListener("click", fecharCheckout);
   checkoutCancelBtn?.addEventListener("click", fecharCheckout);
   checkoutPrintBtn?.addEventListener("click", emitirNotaPreview);
@@ -1682,6 +1715,11 @@ function bindEventos() {
   confirmPurchaseModal?.addEventListener("click", event => {
     if (event.target === confirmPurchaseModal) fecharConfirmacaoCompra();
   });
+  clearCartConfirmNo?.addEventListener("click", fecharConfirmacaoEsvaziarCarrinho);
+  clearCartConfirmYes?.addEventListener("click", confirmarEsvaziarCarrinho);
+  clearCartConfirmModal?.addEventListener("click", event => {
+    if (event.target === clearCartConfirmModal) fecharConfirmacaoEsvaziarCarrinho();
+  });
 
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape") return;
@@ -1691,6 +1729,10 @@ function bindEventos() {
     }
     if (!confirmPurchaseModal?.classList.contains("hidden")) {
       fecharConfirmacaoCompra();
+      return;
+    }
+    if (!clearCartConfirmModal?.classList.contains("hidden")) {
+      fecharConfirmacaoEsvaziarCarrinho();
       return;
     }
     if (!checkoutScreen?.classList.contains("hidden")) {

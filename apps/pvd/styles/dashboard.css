@@ -4551,6 +4551,7 @@ html:not([data-theme="dark"]) #productsTable .product-variation-count { border-c
   width: 100%;
   aspect-ratio: 1;
   object-fit: contain;
+  image-rendering: auto;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.72);
 }

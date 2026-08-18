@@ -244,7 +244,10 @@ def solicitar_recuperacao_senha(
             print(f"[RECUPERACAO DE SENHA] Falha ao enviar e-mail para {usuario.email}: {exc}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Não foi possível enviar o e-mail de recuperação: {exc}",
+                detail=(
+                    "O serviço de recuperação está temporariamente indisponível. "
+                    "Tente novamente em alguns minutos."
+                ),
             )
 
     return {

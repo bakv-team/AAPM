@@ -362,9 +362,14 @@ forgotPasswordLink?.addEventListener("click", async event => {
       body: formData,
       credentials: "same-origin"
     });
-    const data = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+      ? await response.json()
+      : {};
     if(!response.ok){
-      throw new Error(data.detail || "Não foi possível solicitar a recuperação.");
+      throw new Error(
+        data.detail || "Nao foi possivel solicitar a recuperacao. Tente novamente em alguns minutos."
+      );
     }
     if(forgotPasswordFeedback){
       forgotPasswordFeedback.hidden = false;

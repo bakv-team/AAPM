@@ -364,7 +364,7 @@ forgotPasswordLink?.addEventListener("click", async event => {
     });
     const data = await response.json();
     if(!response.ok){
-      throw new Error(data.detail || "Nao foi possivel solicitar a recuperacao.");
+      throw new Error(data.detail || "Não foi possível solicitar a recuperação.");
     }
     if(forgotPasswordFeedback){
       forgotPasswordFeedback.hidden = false;
@@ -376,7 +376,7 @@ forgotPasswordLink?.addEventListener("click", async event => {
     if(forgotPasswordFeedback){
       forgotPasswordFeedback.hidden = false;
       forgotPasswordFeedback.className = "auth-feedback error";
-      forgotPasswordFeedback.textContent = error.message || "Nao foi possivel solicitar a recuperacao.";
+      forgotPasswordFeedback.textContent = error.message || "Não foi possível solicitar a recuperação.";
       replayEntryAnimation(forgotPasswordFeedback);
     }
   }finally{

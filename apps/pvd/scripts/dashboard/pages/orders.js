@@ -1,4 +1,4 @@
-﻿/* Dashboard: página de pedidos. */
+/* Dashboard: página de pedidos. */
 
 window.OrdersPage = (function () {
   let filters = { q: "", status: "" };
@@ -7,7 +7,7 @@ window.OrdersPage = (function () {
   let total = 0;
 
   function statusPill(s) {
-    if (s === "concluido") return `<span class="pill green">ConcluÃ­do</span>`;
+    if (s === "concluido") return `<span class="pill green">Concluído</span>`;
     if (s === "pendente")  return `<span class="pill yellow">Pendente</span>`;
     if (s === "cancelado") return `<span class="pill red">Cancelado</span>`;
     return `<span class="pill gray">${UI.escapeHTML(s)}</span>`;
@@ -64,7 +64,7 @@ window.OrdersPage = (function () {
       await render();
     } catch (err) {
       console.error("Falha ao marcar excecao como paga:", err);
-      UI.toast(err.message || "Nao foi possivel marcar como pago.", "error");
+      UI.toast(err.message || "Não foi possível marcar como pago.", "error");
     }
   }
 
@@ -114,7 +114,7 @@ window.OrdersPage = (function () {
       total = Number(result.total) || 0;
     } catch (err) {
       console.error("Falha ao carregar pedidos:", err);
-      UI.toast("Nao foi possivel carregar os pedidos.", "warn");
+      UI.toast("Não foi possível carregar os pedidos.", "warn");
     }
   }
 
@@ -164,7 +164,7 @@ window.OrdersPage = (function () {
             </td>
           </tr>
         `;
-      }).join("") : `<tr><td colspan="8" style="text-align:center;padding:36px;color:var(--text-mute)">Nenhuma exceÃ§Ã£o de pagamento encontrada.</td></tr>`;
+      }).join("") : `<tr><td colspan="8" style="text-align:center;padding:36px;color:var(--text-mute)">Nenhuma exceção de pagamento encontrada.</td></tr>`;
     }
 
     [body, exceptionsBody].filter(Boolean).forEach(tableBody => tableBody.querySelectorAll("[data-order-items]").forEach(button => {

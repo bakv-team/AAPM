@@ -1,4 +1,4 @@
-﻿/* Dashboard: página de categorias. */
+/* Dashboard: página de categorias. */
 
 window.CategoriesPage = (function () {
   function syncProductCategoryFilter() {
@@ -104,7 +104,7 @@ window.CategoriesPage = (function () {
       if (window.Dashboard) window.Dashboard.refresh();
     } catch (err) {
       console.error("Falha ao salvar categoria:", err);
-      UI.toast(err.message || "NÃ£o foi possÃ­vel salvar a categoria.", "error");
+      UI.toast(err.message || "Não foi possível salvar a categoria.", "error");
     }
   }
 
@@ -114,7 +114,7 @@ window.CategoriesPage = (function () {
 
     const ok = await UI.confirmDialog({
       title: "Remover categoria",
-      text: `Remover "${category.name}"? Categorias com produtos ativos vinculados nÃ£o podem ser removidas.`,
+      text: `Remover "${category.name}"? Categorias com produtos ativos vinculados não podem ser removidas.`,
       okLabel: "Remover"
     });
     if (!ok) return;
@@ -129,7 +129,7 @@ window.CategoriesPage = (function () {
       if (window.Dashboard) window.Dashboard.refresh();
     } catch (err) {
       console.error("Falha ao remover categoria:", err);
-      UI.toast(err.message || "NÃ£o foi possÃ­vel remover. Verifique se hÃ¡ produtos vinculados.", "error");
+      UI.toast(err.message || "Não foi possível remover. Verifique se há produtos vinculados.", "error");
     }
   }
 

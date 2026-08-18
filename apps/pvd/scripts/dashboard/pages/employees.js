@@ -1,4 +1,4 @@
-﻿/* Dashboard: página de funcionários. */
+/* Dashboard: página de funcionários. */
 
 window.EmployeesPage = (function () {
   function rows() {
@@ -23,7 +23,7 @@ window.EmployeesPage = (function () {
     });
 
     const count = document.getElementById("employeesCount");
-    if (count) count.textContent = `${visible} funcionÃ¡rio${visible === 1 ? "" : "s"}`;
+    if (count) count.textContent = `${visible} funcionário${visible === 1 ? "" : "s"}`;
 
     const empty = document.getElementById("employeesEmptyRow");
     if (empty) empty.style.display = rows().length && visible === 0 ? "" : "none";
@@ -43,7 +43,7 @@ window.EmployeesPage = (function () {
     });
     if (employee) {
       form.action = `/usuarios/${employee.id}/editar`;
-      document.getElementById("employeeModalTitle").textContent = "Editar funcionÃ¡rio";
+      document.getElementById("employeeModalTitle").textContent = "Editar funcionário";
       document.getElementById("employeeName").value = employee.name || "";
       document.getElementById("employeeEmail").value = employee.email || "";
       document.getElementById("employeeRole").value = employee.role === "admin" ? "admin" : "funcionario";
@@ -56,7 +56,7 @@ window.EmployeesPage = (function () {
       password.placeholder = "Deixe em branco para manter";
     } else {
       form.action = "/usuarios/novo";
-      document.getElementById("employeeModalTitle").textContent = "Novo funcionÃ¡rio";
+      document.getElementById("employeeModalTitle").textContent = "Novo funcionário";
       document.getElementById("employeeRole").value = "funcionario";
       password.required = true;
       password.placeholder = "";

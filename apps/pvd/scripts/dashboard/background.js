@@ -1,8 +1,8 @@
-﻿/* Dashboard: animação de fundo. */
+/* Dashboard: animação de fundo. */
 
 
 /* =====================================================================
- *  BACKGROUND DO DASHBOARD â€” mesmo canvas da tela de login, atrÃ¡s do app shell
+ *  BACKGROUND DO DASHBOARD — mesmo canvas da tela de login, atrás do app shell
  * ===================================================================== */
 (function () {
   const canvas = document.getElementById("particles");
@@ -110,8 +110,8 @@
 })();
 
 /* =====================================================================
- *  CAMADA DE API â€” ponte com FastAPI + SQLite + Alembic
+ *  CAMADA DE API — ponte com FastAPI + SQLite + Alembic
  *  ---------------------------------------------------------------------
- *  As funÃ§Ãµes abaixo conversam com FastAPI e mantÃªm window.DB apenas como
- *  cache de tela para os componentes jÃ¡ existentes.
+ *  As funções abaixo conversam com FastAPI e mantêm window.DB apenas como
+ *  cache de tela para os componentes já existentes.
  * ===================================================================== */

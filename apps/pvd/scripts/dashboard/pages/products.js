@@ -1,12 +1,24 @@
 /* Dashboard: página de produtos. */
 
 window.ProductsPage = (function () {
-  let page = 1;
+  let page = Math.max(1, Number(window.AAPM_INITIAL_PAGE) || 1);
   const perPage = 10;
   let filters = { q: "", category: "", stock: "", status: "active" };
   let imageLibraryItems = [];
   let productsPageItems = [];
   let totalProducts = 0;
+
+  function pageFromUrl() {
+    const value = Number(new URLSearchParams(window.location.search).get("page"));
+    return Number.isInteger(value) && value > 0 ? value : 1;
+  }
+
+  function syncPageToUrl(mode = "replace") {
+    const url = new URL(window.location.href);
+    if (page > 1) url.searchParams.set("page", String(page));
+    else url.searchParams.delete("page");
+    window.history[`${mode}State`](null, "", url);
+  }
 
 
   async function loadProductsPage() {
@@ -14,6 +26,12 @@ window.ProductsPage = (function () {
       const result = await window.API.getProducts({ ...filters, offset: (page - 1) * perPage, limit: perPage });
       productsPageItems = result.items || [];
       totalProducts = Number(result.total) || 0;
+      const lastPage = Math.max(1, Math.ceil(totalProducts / perPage));
+      if (page > lastPage) {
+        page = lastPage;
+        syncPageToUrl();
+        return loadProductsPage();
+      }
     } catch (err) {
       console.error("Falha ao carregar produtos paginados:", err);
       UI.toast("Não foi possível carregar os produtos.", "error");
@@ -110,6 +128,7 @@ window.ProductsPage = (function () {
         if (v === "prev") page = Math.max(1, page - 1);
         else if (v === "next") page = Math.min(pages, page + 1);
         else page = Number(v);
+        syncPageToUrl("push");
         loadProductsPage().then(render);
       });
     });
@@ -501,15 +520,16 @@ window.ProductsPage = (function () {
       window.DB.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 
     document.getElementById("productSearch").addEventListener("input", e => {
-      filters.q = e.target.value; page = 1; loadProductsPage().then(render);
+      filters.q = e.target.value; page = 1; syncPageToUrl(); loadProductsPage().then(render);
     });
-    sel.addEventListener("change", e => { filters.category = e.target.value; page = 1; loadProductsPage().then(render); });
+    sel.addEventListener("change", e => { filters.category = e.target.value; page = 1; syncPageToUrl(); loadProductsPage().then(render); });
     document.getElementById("productStockFilter").addEventListener("change", e => {
-      filters.stock = e.target.value; page = 1; loadProductsPage().then(render);
+      filters.stock = e.target.value; page = 1; syncPageToUrl(); loadProductsPage().then(render);
     });
     document.getElementById("productStatusFilter").addEventListener("change", async e => {
       filters.status = e.target.value;
       page = 1;
+      syncPageToUrl();
       await loadProductsPage();
       render();
     });
@@ -595,6 +615,13 @@ window.ProductsPage = (function () {
     });
     document.getElementById("imageLibraryModal").addEventListener("click", e => {
       if (e.target.id === "imageLibraryModal") UI.closeModal("imageLibraryModal");
+    });
+
+    window.addEventListener("popstate", () => {
+      const nextPage = pageFromUrl();
+      if (nextPage === page) return;
+      page = nextPage;
+      loadProductsPage().then(render);
     });
 
     loadProductsPage().then(render);

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -88,7 +88,8 @@ def tela_home(
 def tela_dashboard(
     request: Request,
     usuario = Depends(get_usuario_opcional),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
 ):
     if usuario is None:
         return RedirectResponse(url="/auth/login", status_code=302)
@@ -109,6 +110,7 @@ def tela_dashboard(
             "permissoes_usuario": normalizar_permissoes(usuario.get("permissoes")),
             "usuarios": usuarios,
             "csrf_token": csrf_token_for_request(request),
+            "initial_page": page,
         }
     )
 

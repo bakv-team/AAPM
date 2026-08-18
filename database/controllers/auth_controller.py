@@ -127,6 +127,8 @@ def _enviar_email_recuperacao(destino: str, nome: str, link: str):
     send_message(message, settings=settings, require_credentials=True)
 
 
+#auth 01
+
 def _base_url_recuperacao(request: Request) -> str:
     configured_url = os.getenv("APP_BASE_URL") or os.getenv("RESET_PASSWORD_BASE_URL")
     if configured_url:

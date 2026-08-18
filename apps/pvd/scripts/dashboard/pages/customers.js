@@ -2,6 +2,9 @@
 
 window.CustomersPage = (function () {
   let q = "";
+  let page = 1;
+  const perPage = 10;
+  let total = 0;
 
   async function deleteCustomer(id) {
     const customer = window.DB.customers.find(c => String(c.id) === String(id));
@@ -26,17 +29,23 @@ window.CustomersPage = (function () {
     }
   }
 
-  function render() {
+  async function render() {
     const grid = document.getElementById("customersGrid");
     if (!grid) return;
-
-    const rows = window.DB.customers.filter(c =>
-      !q || `${c.name} ${c.email || ""} ${c.matricula || ""} ${c.phone || ""}`.toLowerCase().includes(q.toLowerCase())
-    );
+    try {
+      const result = await window.API.getCustomers({ q, offset: (page - 1) * perPage, limit: perPage });
+      window.DB.customers = result.items || [];
+      total = Number(result.total) || 0;
+    } catch (err) {
+      UI.toast(err.message || "Não foi possível carregar os associados.", "error");
+      window.DB.customers = [];
+      total = 0;
+    }
+    const rows = window.DB.customers;
 
     if (!rows.length) {
       grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center;padding:32px">Nenhum associado encontrado.</p>`;
-      document.getElementById("pager-customers")?.remove();
+      document.getElementById("server-pager-customers")?.remove();
       return;
     }
 
@@ -103,7 +112,7 @@ window.CustomersPage = (function () {
       </div>
     `;
     bindActions();
-    UI.paginateTable(grid.querySelector("tbody"), "customers");
+    UI.renderServerPager(grid.querySelector(".table-wrap"), "customers", page, total, perPage, nextPage => { page = nextPage; render(); });
   }
 
   function bindActions() {
@@ -116,7 +125,7 @@ window.CustomersPage = (function () {
   }
 
   function init() {
-    document.getElementById("customerSearch").addEventListener("input", e => { q = e.target.value; render(); });
+    document.getElementById("customerSearch").addEventListener("input", e => { q = e.target.value; page = 1; render(); });
     document.getElementById("newCustomerBtn").addEventListener("click", () => {
       document.getElementById("associateForm")?.reset();
       const discount = document.getElementById("associateActiveDiscount");

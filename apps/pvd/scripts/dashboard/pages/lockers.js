@@ -3,6 +3,9 @@
 window.LockersPage = (function () {
   let lockers = [];
   let associates = [];
+  let page = 1;
+  const perPage = 10;
+  let total = 0;
   let summary = { total: 0, disponiveis: 0, alugados: 0 };
 
   const $ = id => document.getElementById(id);
@@ -12,10 +15,13 @@ window.LockersPage = (function () {
     const result = await window.API.getLockers({
       status: $("lockerStatusFilter")?.value,
       location: $("lockerLocationFilter")?.value,
-      includeInactive: $("lockerIncludeInactive")?.checked
+      includeInactive: $("lockerIncludeInactive")?.checked,
+      offset: (page - 1) * perPage,
+      limit: perPage
     });
     lockers = result.armarios || [];
     summary = result.resumo || summary;
+    total = Number(result.total) || 0;
     updateLocations(result.localizacoes || []);
   }
 
@@ -49,10 +55,10 @@ window.LockersPage = (function () {
     $("lockersRented").textContent = summary.alugados || 0;
 
     const items = filteredLockers();
-    $("lockersCount").textContent = `${items.length} armário${items.length === 1 ? "" : "s"} encontrado${items.length === 1 ? "" : "s"}`;
+    $("lockersCount").textContent = `${total} armário${total === 1 ? "" : "s"} encontrado${total === 1 ? "" : "s"}`;
     if (!items.length) {
       body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum armário encontrado.</td></tr>';
-      UI.paginateTable(body, "lockers");
+      UI.renderServerPager(body.closest(".table-wrap"), "lockers", page, total, perPage, nextPage => { page = nextPage; refresh(); });
       return;
     }
     body.innerHTML = items.map(locker => {
@@ -73,7 +79,7 @@ window.LockersPage = (function () {
       </tr>`;
     }).join("");
     body.querySelectorAll("[data-locker-action]").forEach(button => button.addEventListener("click", () => handleAction(button.dataset.lockerAction, button.dataset.id)));
-    UI.paginateTable(body, "lockers");
+    UI.renderServerPager(body.closest(".table-wrap"), "lockers", page, total, perPage, nextPage => { page = nextPage; refresh(); });
   }
 
   function openLockerForm(locker = null) {
@@ -131,9 +137,7 @@ window.LockersPage = (function () {
 
   function init() {
     $("lockerSearch")?.addEventListener("input", render);
-    $("lockerStatusFilter")?.addEventListener("change", refresh);
-    $("lockerLocationFilter")?.addEventListener("change", refresh);
-    $("lockerIncludeInactive")?.addEventListener("change", refresh);
+    ["lockerStatusFilter", "lockerLocationFilter", "lockerIncludeInactive"].forEach(id => $(id)?.addEventListener("change", () => { page = 1; refresh(); }));
     $("newLockerBtn")?.addEventListener("click", () => openLockerForm());
     $("lockerForm")?.addEventListener("submit", async event => {
       event.preventDefault();

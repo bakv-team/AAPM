@@ -65,6 +65,19 @@ window.UI = (function () {
     body.closest(".table-wrap")?.insertAdjacentElement("afterend", pager);
   }
 
+  function renderServerPager(anchor, key, page, total, perPage, onPage) {
+    const pagerId = `server-pager-${key}`;
+    document.getElementById(pagerId)?.remove();
+    const pages = Math.max(1, Math.ceil((Number(total) || 0) / perPage));
+    if (pages <= 1 || !anchor) return;
+    const pager = document.createElement("div");
+    pager.id = pagerId;
+    pager.className = "pager table-pagination";
+    pager.innerHTML = `<button type="button" data-page="${page - 1}" ${page === 1 ? "disabled" : ""} aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>${Array.from({ length: pages }, (_, index) => `<button type="button" data-page="${index + 1}" class="${index + 1 === page ? "active" : ""}">${index + 1}</button>`).join("")}<button type="button" data-page="${page + 1}" ${page === pages ? "disabled" : ""} aria-label="Próxima página"><i class="fa-solid fa-chevron-right"></i></button>`;
+    pager.querySelectorAll("button[data-page]").forEach(button => button.addEventListener("click", () => onPage(Number(button.dataset.page))));
+    anchor.insertAdjacentElement("afterend", pager);
+  }
+
   // Toast notification
   function toast(message, type = "info") {
     if (window.AAPMSound?.shouldPlayToast?.() !== false) {
@@ -145,6 +158,6 @@ window.UI = (function () {
 
   const palette = ["#FF6B35", "#2D7BFF", "#7C5CFF", "#16C784", "#F5A623", "#FF4D6D", "#22D3EE", "#A855F7"];
 
-  return { money, num, pct, todayBR, dayShort, dateBR, stockStatus, initialsFromName, escapeHTML, paginateTable, toast, openModal, closeModal, confirmDialog, downloadCSV, palette };
+  return { money, num, pct, todayBR, dayShort, dateBR, stockStatus, initialsFromName, escapeHTML, paginateTable, renderServerPager, toast, openModal, closeModal, confirmDialog, downloadCSV, palette };
 
 })();

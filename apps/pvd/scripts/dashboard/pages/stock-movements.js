@@ -1,9 +1,14 @@
 ﻿/* Dashboard: página de movimentações de estoque. */
 
 window.StockMovementsPage = (function () {
+  let page = 1;
+  const perPage = 10;
+  let total = 0;
   async function refreshMovements() {
     try {
-      window.DB.stockMovements = await window.API.getStockMovements({ limit: 80 });
+      const result = await window.API.getStockMovements({ offset: (page - 1) * perPage, limit: perPage });
+      window.DB.stockMovements = result.items || [];
+      total = Number(result.total) || 0;
     } catch (err) {
       console.error("Falha ao carregar movimentaÃ§Ãµes de estoque:", err);
       window.DB.stockMovements = [];
@@ -37,7 +42,7 @@ window.StockMovementsPage = (function () {
         <td colspan="7" class="empty-cell">Nenhuma movimentaÃ§Ã£o registrada ainda.</td>
       </tr>
     `;
-    UI.paginateTable(body, "stock-movements");
+    UI.renderServerPager(body.closest(".table-wrap"), "stock-movements", page, total, perPage, nextPage => { page = nextPage; render(); });
   }
 
   async function render() {

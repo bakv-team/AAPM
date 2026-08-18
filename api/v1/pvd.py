@@ -560,15 +560,19 @@ def _csv_response(nome_arquivo: str, cabecalho: list[str], linhas: list[list[obj
 
 @router.get("/categories")
 def listar_categorias_api(
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
     usuario=Depends(get_usuario_logado),
 ):
-    categorias = (
-        db.query(Categoria)
-        .filter(Categoria.ativo == True)
-        .order_by(Categoria.nome)
-        .all()
-    )
+    query = db.query(Categoria).filter(Categoria.ativo == True).order_by(Categoria.nome)
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    if offset is not None:
+        total = query.count()
+        categorias = query.offset(offset).limit(limit).all()
+        return {"items": [_categoria_json(categoria) for categoria in categorias], "total": total, "offset": offset, "limit": limit}
+    categorias = query.all()
     return [_categoria_json(categoria) for categoria in categorias]
 
 
@@ -651,7 +655,8 @@ def remover_categoria_api(
 def listar_movimentacoes_estoque_api(
     produto_id: int | None = Query(default=None),
     tipo: str = "",
-    limit: int = Query(default=80, ge=1, le=200),
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=200),
     db: Session = Depends(get_db),
     admin=Depends(require_permission("stock", "movements", "stock_movements")),
 ):
@@ -673,7 +678,13 @@ def listar_movimentacoes_estoque_api(
             raise HTTPException(status_code=400, detail="Tipo de movimentacao invalido.")
         query = query.filter(Movimentacao.tipo == tipo_enum)
 
-    movimentos = query.limit(limit).all()
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    if offset is not None:
+        total = query.count()
+        movimentos = query.offset(offset).limit(limit).all()
+        return {"items": [_movimentacao_json(movimento) for movimento in movimentos], "total": total, "offset": offset, "limit": limit}
+    movimentos = query.limit(80).all()
     return [_movimentacao_json(movimento) for movimento in movimentos]
 
 
@@ -830,6 +841,8 @@ def criar_venda_api(
 @router.get("/customers")
 def listar_clientes_api(
     q: str = Query("", max_length=100),
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
     admin=Depends(require_permission("customers", "reports")),
 ):
@@ -839,7 +852,14 @@ def listar_clientes_api(
         like = f"%{termo}%"
         query = query.filter(or_(Cliente.nome.ilike(like), Cliente.matricula.ilike(like), Cliente.telefone.ilike(like)))
 
-    clientes = query.order_by(Cliente.nome).all()
+    query = query.order_by(Cliente.nome)
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    if offset is not None:
+        total = query.count()
+        clientes = query.offset(offset).limit(limit).all()
+        return {"items": [_cliente_json(cliente) for cliente in clientes], "total": total, "offset": offset, "limit": limit}
+    clientes = query.all()
     return [_cliente_json(cliente) for cliente in clientes]
 
 
@@ -929,6 +949,8 @@ def remover_cliente_api(
 def listar_pedidos_api(
     q: str = Query("", max_length=100),
     status_filtro: str = Query("", alias="status"),
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
     admin=Depends(require_permission("orders", "dashboard", "charts", "reports", "smart")),
 ):
@@ -945,6 +967,11 @@ def listar_pedidos_api(
             row for row in rows
             if termo in f"{row['number']} {row['customerName']} {row['payment']}".lower()
         ]
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    if offset is not None:
+        total = len(rows)
+        return {"items": rows[offset:offset + limit], "total": total, "offset": offset, "limit": limit}
     return rows
 
 

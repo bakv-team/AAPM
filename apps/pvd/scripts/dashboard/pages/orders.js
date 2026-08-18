@@ -2,6 +2,9 @@
 
 window.OrdersPage = (function () {
   let filters = { q: "", status: "" };
+  let page = 1;
+  const perPage = 10;
+  let total = 0;
 
   function statusPill(s) {
     if (s === "concluido") return `<span class="pill green">ConcluÃ­do</span>`;
@@ -106,7 +109,9 @@ window.OrdersPage = (function () {
 
   async function refreshFromApi() {
     try {
-      window.DB.orders = await window.API.getOrders(filters);
+      const result = await window.API.getOrders({ ...filters, offset: (page - 1) * perPage, limit: perPage });
+      window.DB.orders = result.items || [];
+      total = Number(result.total) || 0;
     } catch (err) {
       console.error("Falha ao carregar pedidos:", err);
       UI.toast("Nao foi possivel carregar os pedidos.", "warn");
@@ -119,11 +124,7 @@ window.OrdersPage = (function () {
     if (!body) return;
 
     await refreshFromApi();
-    const rows = window.DB.orders.filter(o => {
-      if (filters.q && !(`${o.number} ${o.customerName}`.toLowerCase().includes(filters.q.toLowerCase()))) return false;
-      if (filters.status && o.status !== filters.status) return false;
-      return true;
-    });
+    const rows = window.DB.orders;
     const regularRows = rows.filter(o => !paymentExceptionMeta(o).enabled);
     const exceptionRows = rows.filter(o => paymentExceptionMeta(o).enabled);
 
@@ -172,13 +173,12 @@ window.OrdersPage = (function () {
     exceptionsBody?.querySelectorAll("[data-mark-exception-paid]").forEach(button => {
       button.addEventListener("click", () => markPaymentExceptionPaid(button.dataset.markExceptionPaid));
     });
-    UI.paginateTable(body, "orders");
-    UI.paginateTable(exceptionsBody, "payment-exceptions");
+    UI.renderServerPager(body.closest(".table-wrap"), "orders", page, total, perPage, nextPage => { page = nextPage; render(); });
   }
 
   function init() {
-    document.getElementById("orderSearch").addEventListener("input", e => { filters.q = e.target.value; render(); });
-    document.getElementById("orderStatusFilter").addEventListener("change", e => { filters.status = e.target.value; render(); });
+    document.getElementById("orderSearch").addEventListener("input", e => { filters.q = e.target.value; page = 1; render(); });
+    document.getElementById("orderStatusFilter").addEventListener("change", e => { filters.status = e.target.value; page = 1; render(); });
     document.querySelectorAll("[data-close-modal='orderItemsModal']").forEach(button => {
       button.addEventListener("click", () => UI.closeModal("orderItemsModal"));
     });

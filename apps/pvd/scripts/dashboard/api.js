@@ -94,8 +94,11 @@ window.API = (function () {
   }
 
   // ----- Categorias -----
-  async function getCategories() {
-    return apiGet("/api/v1/pdv/categories");
+  async function getCategories(filters = {}) {
+    const qs = new URLSearchParams();
+    if (Number.isInteger(filters.offset)) qs.set("offset", filters.offset);
+    if (Number.isInteger(filters.limit)) qs.set("limit", filters.limit);
+    return apiGet(`/api/v1/pdv/categories${qs.toString() ? `?${qs}` : ""}`);
   }
   async function createCategory(payload) {
     return apiPost("/api/v1/pdv/categories", payload);
@@ -135,7 +138,8 @@ window.API = (function () {
     const qs = new URLSearchParams();
     if (filters.productId) qs.set("produto_id", filters.productId);
     if (filters.type) qs.set("tipo", filters.type);
-    if (filters.limit) qs.set("limit", filters.limit);
+    if (Number.isInteger(filters.offset)) qs.set("offset", filters.offset);
+    if (Number.isInteger(filters.limit)) qs.set("limit", filters.limit);
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return apiGet(`/api/v1/pdv/stock/movements${suffix}`);
   }
@@ -147,9 +151,13 @@ window.API = (function () {
   }
 
   // ----- Associados -----
-  async function getCustomers(q = "") {
-    const qs = q ? `?q=${encodeURIComponent(q)}` : "";
-    return apiGet(`/api/v1/pdv/customers${qs}`);
+  async function getCustomers(filters = {}) {
+    const options = typeof filters === "string" ? { q: filters } : filters;
+    const qs = new URLSearchParams();
+    if (options.q) qs.set("q", options.q);
+    if (Number.isInteger(options.offset)) qs.set("offset", options.offset);
+    if (Number.isInteger(options.limit)) qs.set("limit", options.limit);
+    return apiGet(`/api/v1/pdv/customers${qs.toString() ? `?${qs}` : ""}`);
   }
   async function createCustomer(payload) {
     return apiPost("/api/v1/pdv/customers", payload);
@@ -201,8 +209,12 @@ window.API = (function () {
   async function getLockers(filters = {}) {
     const qs = new URLSearchParams();
     if (filters.status) qs.set("status", filters.status);
+    if (Number.isInteger(filters.offset)) qs.set("offset", filters.offset);
+    if (Number.isInteger(filters.limit)) qs.set("limit", filters.limit);
     if (filters.location) qs.set("localizacao", filters.location);
     if (filters.includeInactive) qs.set("incluir_inativos", "true");
+    if (Number.isInteger(filters.offset)) qs.set("offset", filters.offset);
+    if (Number.isInteger(filters.limit)) qs.set("limit", filters.limit);
     const suffix = qs.toString() ? `?${qs}` : "";
     return apiGet(`/api/v1/armarios${suffix}`);
   }

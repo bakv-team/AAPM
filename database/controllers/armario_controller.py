@@ -122,6 +122,8 @@ def listar_armarios(
     status_armario: StatusArmario | None = Query(None, alias="status"),
     localizacao: str | None = Query(None, max_length=100),
     incluir_inativos: bool = False,
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
     usuario: dict = Depends(get_usuario_logado),
 ):
@@ -135,11 +137,18 @@ def listar_armarios(
     if localizacao_normalizada:
         consulta = consulta.filter(Armario.localizacao.ilike(f"%{localizacao_normalizada}%"))
 
-    armarios = consulta.order_by(Armario.numero).all()
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    consulta = consulta.order_by(Armario.numero)
+    total_filtrado = consulta.count()
+    armarios = consulta.offset(offset).limit(limit).all() if offset is not None else consulta.all()
     todos_ativos = db.query(Armario).filter(Armario.ativo.is_(True)).all()
     localizacoes = sorted({a.localizacao for a in todos_ativos if a.localizacao})
     return {
         "armarios": [_armario_json(armario) for armario in armarios],
+        "total": total_filtrado,
+        "offset": offset,
+        "limit": limit,
         "resumo": {
             "total": len(todos_ativos),
             "disponiveis": sum(a.status == StatusArmario.DISPONIVEL for a in todos_ativos),

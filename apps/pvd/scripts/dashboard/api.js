@@ -171,6 +171,8 @@ window.API = (function () {
     const qs = new URLSearchParams();
     if (filters.q) qs.set("q", filters.q);
     if (filters.status) qs.set("status", filters.status);
+    if (Number.isInteger(filters.offset)) qs.set("offset", filters.offset);
+    if (Number.isInteger(filters.limit)) qs.set("limit", filters.limit);
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return apiGet(`/api/v1/pdv/orders${suffix}`);
   }

@@ -410,7 +410,7 @@ Não são fixados números de latência ou concorrência sem medição do ambien
 | Clientes | RF-CLI-001–007 | RN-CLI-001–007 | `cliente.py`, `api/v1/pvd.py` |
 | Vendas | RF-VEN-001–011 | RN-VEN-001–014 | `sale_service.py`, `stock_service.py`, `venda.py`, `api/v1/pvd.py` |
 | Pedidos | RF-PED-001–006 | RN-PED-001–005 | `venda.py`, `api/v1/pvd.py` |
-| Dashboard | RF-DSH-001–008 | RN-DSH-001–003 | `dashboard.js`, `api/v1/pvd.py` |
+| Dashboard | RF-DSH-001–008 | RN-DSH-001–003 | `apps/pvd/scripts/dashboard/`, `api/v1/pvd.py` |
 | Relatórios | RF-REL-001–008 | RN-REL-001–003 | `report_service.py`, `api/v1/pvd.py` |
 | Smart e sistema | RF-SYS-001–006 | RN-AI-001–002 | `ai_client.py`, `smtp_client.py`, `api/v1/pvd.py`, `auth_controller.py` |
 

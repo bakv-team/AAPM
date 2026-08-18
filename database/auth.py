@@ -173,14 +173,6 @@ def get_admin(usuario=Depends(get_usuario_logado)):
     else:
         return usuario
 
-def get_dashboard_user(usuario=Depends(get_usuario_logado)):
-    if usuario.get("role") == "admin" or normalizar_permissoes(usuario.get("permissoes")):
-        return usuario
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Sem permissoes para acessar o dashboard"
-    )
-
 def require_permission(*permissoes_aceitas: str):
     def dependency(usuario=Depends(get_usuario_logado)):
         if usuario.get("role") == "admin":

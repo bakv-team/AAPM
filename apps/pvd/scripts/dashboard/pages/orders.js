@@ -172,6 +172,8 @@ window.OrdersPage = (function () {
     exceptionsBody?.querySelectorAll("[data-mark-exception-paid]").forEach(button => {
       button.addEventListener("click", () => markPaymentExceptionPaid(button.dataset.markExceptionPaid));
     });
+    UI.paginateTable(body, "orders");
+    UI.paginateTable(exceptionsBody, "payment-exceptions");
   }
 
   function init() {

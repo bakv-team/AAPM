@@ -36,6 +36,7 @@ window.CustomersPage = (function () {
 
     if (!rows.length) {
       grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center;padding:32px">Nenhum associado encontrado.</p>`;
+      document.getElementById("pager-customers")?.remove();
       return;
     }
 
@@ -102,6 +103,7 @@ window.CustomersPage = (function () {
       </div>
     `;
     bindActions();
+    UI.paginateTable(grid.querySelector("tbody"), "customers");
   }
 
   function bindActions() {

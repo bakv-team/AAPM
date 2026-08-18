@@ -197,6 +197,21 @@ window.API = (function () {
     return apiPost("/api/v1/pdv/smart/assistant", payload);
   }
 
+  // ----- Armários -----
+  async function getLockers(filters = {}) {
+    const qs = new URLSearchParams();
+    if (filters.status) qs.set("status", filters.status);
+    if (filters.location) qs.set("localizacao", filters.location);
+    if (filters.includeInactive) qs.set("incluir_inativos", "true");
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return apiGet(`/api/v1/armarios${suffix}`);
+  }
+  async function createLocker(payload) { return apiPost("/api/v1/armarios", payload); }
+  async function updateLocker(id, payload) { return apiPut(`/api/v1/armarios/${id}`, payload); }
+  async function rentLocker(id, payload) { return apiPost(`/api/v1/armarios/${id}/alugar`, payload); }
+  async function releaseLocker(id) { return apiPost(`/api/v1/armarios/${id}/liberar`, {}); }
+  async function toggleLockerActive(id) { return apiPost(`/api/v1/armarios/${id}/toggle-ativo`, {}); }
+
   // ----- NotificaÃ§Ãµes -----
   async function getNotifications() {
     return apiGet("/api/v1/pdv/notifications");
@@ -228,6 +243,7 @@ window.API = (function () {
     getCustomers, createCustomer, deleteCustomer,
     getOrders, createOrder, markPaymentExceptionPaid,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts, getSmartInsights, askSmartAssistant,
+    getLockers, createLocker, updateLocker, rentLocker, releaseLocker, toggleLockerActive,
     getNotifications, getSystemHealth, getProfile, changePassword, sendSupport, downloadReport
   };
 })();

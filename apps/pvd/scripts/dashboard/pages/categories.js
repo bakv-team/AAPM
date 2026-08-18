@@ -16,6 +16,7 @@ window.CategoriesPage = (function () {
 
     if (!window.DB.categories.length) {
       grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center;padding:32px">Nenhuma categoria cadastrada.</p>`;
+      document.getElementById("pager-categories")?.remove();
       syncProductCategoryFilter();
       return;
     }
@@ -61,6 +62,7 @@ window.CategoriesPage = (function () {
       </div>
     `;
     bindActions();
+    UI.paginateTable(grid.querySelector("tbody"), "categories");
     syncProductCategoryFilter();
   }
 

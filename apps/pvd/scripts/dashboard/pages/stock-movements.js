@@ -37,6 +37,7 @@ window.StockMovementsPage = (function () {
         <td colspan="7" class="empty-cell">Nenhuma movimentaÃ§Ã£o registrada ainda.</td>
       </tr>
     `;
+    UI.paginateTable(body, "stock-movements");
   }
 
   async function render() {

@@ -41,6 +41,30 @@ window.UI = (function () {
     return div.innerHTML;
   }
 
+  const paginationState = new Map();
+  function paginateTable(body, key, perPage = 10) {
+    if (!body) return;
+    const rows = Array.from(body.querySelectorAll(":scope > tr")).filter(row => !row.querySelector("td[colspan]") && row.dataset.paginationEligible !== "false");
+    const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
+    const current = Math.min(paginationState.get(key) || 1, totalPages);
+    paginationState.set(key, current);
+    rows.forEach((row, index) => { row.hidden = index < (current - 1) * perPage || index >= current * perPage; });
+
+    const pagerId = `pager-${key}`;
+    document.getElementById(pagerId)?.remove();
+    if (rows.length <= perPage) return;
+    const pager = document.createElement("div");
+    pager.id = pagerId;
+    pager.className = "pager table-pagination";
+    pager.setAttribute("aria-label", "Paginação da tabela");
+    pager.innerHTML = `<button type="button" data-page="${current - 1}" ${current === 1 ? "disabled" : ""} aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>${Array.from({ length: totalPages }, (_, index) => `<button type="button" data-page="${index + 1}" class="${index + 1 === current ? "active" : ""}">${index + 1}</button>`).join("")}<button type="button" data-page="${current + 1}" ${current === totalPages ? "disabled" : ""} aria-label="Próxima página"><i class="fa-solid fa-chevron-right"></i></button>`;
+    pager.querySelectorAll("button[data-page]").forEach(button => button.addEventListener("click", () => {
+      paginationState.set(key, Number(button.dataset.page));
+      paginateTable(body, key, perPage);
+    }));
+    body.closest(".table-wrap")?.insertAdjacentElement("afterend", pager);
+  }
+
   // Toast notification
   function toast(message, type = "info") {
     if (window.AAPMSound?.shouldPlayToast?.() !== false) {
@@ -121,6 +145,6 @@ window.UI = (function () {
 
   const palette = ["#FF6B35", "#2D7BFF", "#7C5CFF", "#16C784", "#F5A623", "#FF4D6D", "#22D3EE", "#A855F7"];
 
-  return { money, num, pct, todayBR, dayShort, dateBR, stockStatus, initialsFromName, escapeHTML, toast, openModal, closeModal, confirmDialog, downloadCSV, palette };
+  return { money, num, pct, todayBR, dayShort, dateBR, stockStatus, initialsFromName, escapeHTML, paginateTable, toast, openModal, closeModal, confirmDialog, downloadCSV, palette };
 
 })();

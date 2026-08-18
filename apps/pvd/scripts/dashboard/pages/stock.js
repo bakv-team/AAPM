@@ -90,6 +90,7 @@ window.StockPage = (function () {
         openStockForm(p);
       });
     });
+    UI.paginateTable(body, "stock");
 
   }
 

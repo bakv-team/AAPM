@@ -18,6 +18,7 @@ window.EmployeesPage = (function () {
         (!active || row.dataset.active === active);
 
       row.style.display = matches ? "" : "none";
+      row.dataset.paginationEligible = String(matches);
       if (matches) visible += 1;
     });
 
@@ -26,6 +27,7 @@ window.EmployeesPage = (function () {
 
     const empty = document.getElementById("employeesEmptyRow");
     if (empty) empty.style.display = rows().length && visible === 0 ? "" : "none";
+    UI.paginateTable(document.getElementById("employeesBody"), "employees");
   }
 
   function openForm(employee = null) {

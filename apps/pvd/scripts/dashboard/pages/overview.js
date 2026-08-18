@@ -70,9 +70,10 @@ window.Dashboard = (function () {
       : `<span class="pill red">Cancelado</span>`;
     if (!window.DB.orders.length) {
       body.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text-mute)">Nenhum pedido registrado.</td></tr>`;
+      UI.paginateTable(body, "recent-orders");
       return;
     }
-    body.innerHTML = window.DB.orders.slice(0, 5).map(o => `
+    body.innerHTML = window.DB.orders.map(o => `
       <tr>
         <td><strong>${o.number}</strong></td>
         <td>${o.customerName}</td>
@@ -80,6 +81,7 @@ window.Dashboard = (function () {
         <td>${status(o.status)}</td>
       </tr>
     `).join("");
+    UI.paginateTable(body, "recent-orders");
   }
 
   function renderDashboardInsights() {

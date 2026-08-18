@@ -7888,3 +7888,16 @@ img, svg, canvas { max-width: 100%; }
   .toolbar-right { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .toolbar-right button { justify-content: center; width: 100% !important; }
 }
+
+/* Armários */
+.locker-inactive-toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--text-mute); font-size: 13px; white-space: nowrap; }
+.locker-inactive-toggle input { accent-color: var(--orange); }
+.locker-table .locker-number { display: flex; align-items: center; gap: 10px; }
+.locker-table .locker-number > i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--blue); background: color-mix(in srgb, var(--blue) 14%, transparent); }
+.locker-table .locker-number strong { display: block; }
+.locker-table .locker-number small { color: var(--text-mute); }
+.locker-table .actions-cell { justify-content: flex-end; }
+.locker-table .act-btn.rent { color: var(--green); }
+.locker-table .act-btn.release { color: var(--orange); }
+.locker-table .act-btn.history { color: var(--blue); }
+@media (max-width: 700px) { .locker-inactive-toggle { width: 100%; padding: 4px 2px; } }

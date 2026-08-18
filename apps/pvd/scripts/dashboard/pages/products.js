@@ -2,11 +2,12 @@
 
 window.ProductsPage = (function () {
   let page = 1;
-  const perPage = 8;
+  const perPage = 10;
   let filters = { q: "", category: "", stock: "", status: "active" };
   let imageLibraryItems = [];
   let productsPageItems = [];
   let totalProducts = 0;
+
 
   async function loadProductsPage() {
     try {

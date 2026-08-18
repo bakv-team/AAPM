@@ -11,6 +11,7 @@
     pedidos: "orders",
     clientes: "customers",
     funcionarios: "admin",
+    armarios: "admin",
     relatorios: "reports",
     configuracoes: "settings",
     admin: "products",
@@ -26,6 +27,7 @@
     pedidos:       { title: "Pedidos",               sub: "Acompanhe transaÃ§Ãµes e status." },
     clientes:      { title: "Associados",            sub: "Cadastre associados e acompanhe benefÃ­cios de desconto." },
     funcionarios:  { title: "FuncionÃ¡rios",          sub: "Cadastre acessos e acompanhe permissÃµes da equipe." },
+    armarios:      { title: "ArmÃ¡rios",              sub: "Controle a disponibilidade e valide os aluguÃ©is." },
     categorias:    { title: "Categorias",            sub: "Organize seus produtos por categoria." },
     estoque:       { title: "Estoque",               sub: "Controle de produtos, mÃ­nimos e reposiÃ§Ãµes." },
     movimentacoes: { title: "MovimentaÃ§Ãµes",         sub: "Acompanhe entradas, saÃ­das e ajustes do estoque." },
@@ -153,6 +155,7 @@
       if (route === "pedidos" && can("orders"))    window.OrdersPage.render();
       if (route === "clientes" && can("customers"))   window.CustomersPage.render();
       if (route === "funcionarios" && IS_ADMIN && window.EmployeesPage) window.EmployeesPage.render();
+      if (route === "armarios" && IS_ADMIN && window.LockersPage) window.LockersPage.render();
       if (route === "categorias" && can("categories")) window.CategoriesPage.render();
       if (route === "estoque" && (can("stock") || can("stock_movements")))    window.StockPage.render();
       if (route === "movimentacoes" && (can("movements") || can("stock_movements"))) window.StockMovementsPage.render();
@@ -1067,6 +1070,7 @@
     if (can("products")) safeInit("produtos", () => window.ProductsPage.init());
     if (can("orders")) safeInit("pedidos", () => window.OrdersPage.init());
     if (can("customers")) safeInit("associados", () => window.CustomersPage.init());
+    if (IS_ADMIN && window.LockersPage) safeInit("armarios", () => window.LockersPage.init());
     if (IS_ADMIN) safeInit("funcionarios", () => window.EmployeesPage.init());
     if (can("categories")) safeInit("categorias", () => window.CategoriesPage.init());
     if (can("stock") || can("stock_movements")) safeInit("estoque", () => window.StockPage.init());

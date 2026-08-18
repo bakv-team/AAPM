@@ -1428,7 +1428,7 @@ async function confirmarPedido() {
     renderCarrinho();
     mostrarCompraFinalizada(venda, customerName);
   } catch (error) {
-    toast(error.message || "Nao foi possivel fechar a venda.", "error");
+    toast(error.message || "Não foi possível fechar a venda.", "error");
   } finally {
     btnFecharPedido.disabled = false;
     btnFecharPedido.innerHTML = `<i class="fa-solid fa-file-invoice-dollar"></i><span>Fechar Pedido</span>`;
@@ -1750,6 +1750,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     await carregarDados();
     await carregarNotificacoes();
   } catch (error) {
-    toast("Nao foi possivel carregar o ponto de venda.", "error");
+    toast("Não foi possível carregar o ponto de venda.", "error");
   }
 });

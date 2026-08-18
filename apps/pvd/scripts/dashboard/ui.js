@@ -1,4 +1,4 @@
-﻿/* Dashboard: utilitários de interface. */
+/* Dashboard: utilitários de interface. */
 
 window.UI = (function () {
   const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -119,7 +119,7 @@ window.UI = (function () {
   }
 
   // Confirm dialog (returns Promise<boolean>)
-  function confirmDialog({ title = "Confirmar aÃ§Ã£o", text = "Tem certeza?", okLabel = "Confirmar", cancelLabel = "Cancelar" } = {}) {
+  function confirmDialog({ title = "Confirmar ação", text = "Tem certeza?", okLabel = "Confirmar", cancelLabel = "Cancelar" } = {}) {
     return new Promise(resolve => {
       const m = document.getElementById("confirmModal");
       document.getElementById("confirmTitle").textContent = title;

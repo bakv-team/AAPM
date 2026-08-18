@@ -1,4 +1,4 @@
-﻿/* Dashboard: página de estoque. */
+/* Dashboard: página de estoque. */
 
 window.StockPage = (function () {
   function openStockForm(product) {
@@ -13,7 +13,7 @@ window.StockPage = (function () {
     variationField.hidden = !product.hasVariations;
     variationSelect.required = product.hasVariations;
     variationSelect.innerHTML = product.hasVariations
-      ? product.variations.map(v => `<option value="${v.id}" data-stock="${v.stock}">${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))} â€” ${v.stock} un.</option>`).join("")
+      ? product.variations.map(v => `<option value="${v.id}" data-stock="${v.stock}">${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))} — ${v.stock} un.</option>`).join("")
       : "";
     if (product.hasVariations) {
       document.getElementById("stockCurrent").value = product.variations[0]?.stock || 0;
@@ -47,7 +47,7 @@ window.StockPage = (function () {
       if (window.Dashboard) window.Dashboard.refresh();
     } catch (err) {
       console.error("Falha ao repor estoque:", err);
-      UI.toast("NÃ£o foi possÃ­vel atualizar o estoque.", "error");
+      UI.toast("Não foi possível atualizar o estoque.", "error");
     }
   }
 
@@ -62,7 +62,7 @@ window.StockPage = (function () {
       return `
         <tr>
           <td><strong>${p.name}</strong>${p.hasVariations ? `<div class="stock-variation-list">${p.variations.map(v => `<span>${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))}: <b>${v.stock} un.</b></span>`).join("")}</div>` : ""}</td>
-          <td><span class="pill gray">${cat?.name || "â€”"}</span></td>
+          <td><span class="pill gray">${cat?.name || "—"}</span></td>
           <td><strong>${p.stock}</strong></td>
           <td><span class="pill ${s.pill}">${s.label}</span></td>
           <td class="right">

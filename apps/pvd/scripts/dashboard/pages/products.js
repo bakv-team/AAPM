@@ -1,4 +1,4 @@
-﻿/* Dashboard: página de produtos. */
+/* Dashboard: página de produtos. */
 
 window.ProductsPage = (function () {
   let page = 1;
@@ -16,7 +16,7 @@ window.ProductsPage = (function () {
       totalProducts = Number(result.total) || 0;
     } catch (err) {
       console.error("Falha ao carregar produtos paginados:", err);
-      UI.toast("Nao foi possivel carregar os produtos.", "error");
+      UI.toast("Não foi possível carregar os produtos.", "error");
       productsPageItems = window.DB.products.slice((page - 1) * perPage, page * perPage);
       totalProducts = window.DB.products.length;
     }
@@ -45,7 +45,7 @@ window.ProductsPage = (function () {
         const maxVariationPrice = variationPrices.length ? Math.max(...variationPrices) : Number(p.price) || 0;
         const totalVariationStock = variations.reduce((totalStock, variation) => totalStock + (Number(variation.stock) || 0), 0);
         const variationChips = variations.slice(0, 2).map(variation => {
-          const label = [variation.size, variation.color].filter(Boolean).join(" Â· ") || "OpÃ§Ã£o";
+          const label = [variation.size, variation.color].filter(Boolean).join(" · ") || "Opção";
           return `<span class="product-variation-chip">${UI.escapeHTML(label)}</span>`;
         }).join("") + (variations.length > 2 ? `<span class="product-variation-chip more">+${variations.length - 2}</span>` : "");
         const thumb = p.imageUrl
@@ -69,14 +69,14 @@ window.ProductsPage = (function () {
                 <div class="prod-name product-table-name">
                   <strong>${p.name}</strong>
                   ${variations.length
-                    ? `<div class="product-table-variations"><span class="product-variation-count"><i class="fa-solid fa-shapes"></i>${variations.length} opÃ§${variations.length === 1 ? "Ã£o" : "Ãµes"}</span>${variationChips}</div>`
+                    ? `<div class="product-table-variations"><span class="product-variation-count"><i class="fa-solid fa-shapes"></i>${variations.length} opç${variations.length === 1 ? "ão" : "ões"}</span>${variationChips}</div>`
                     : `<span class="product-simple-label">Produto simples</span>`}
                 </div>
               </div>
             </td>
-            <td><span class="pill gray">${cat?.name || "â€”"}</span></td>
-            <td><div class="product-table-value"><strong>${variations.length && minVariationPrice !== maxVariationPrice ? `${UI.money(minVariationPrice)} â€“ ${UI.money(maxVariationPrice)}` : UI.money(variations.length ? minVariationPrice : p.price)}</strong><span>${variations.length ? (minVariationPrice === maxVariationPrice ? "Mesmo preÃ§o" : "Faixa de preÃ§o") : "PreÃ§o unitÃ¡rio"}</span></div></td>
-            <td><div class="product-table-value stock"><strong>${variations.length ? totalVariationStock : p.stock}<small> un.</small></strong><span>${variations.length ? `Somado em ${variations.length} opÃ§${variations.length === 1 ? "Ã£o" : "Ãµes"}` : "Estoque atual"}</span></div></td>
+            <td><span class="pill gray">${cat?.name || "—"}</span></td>
+            <td><div class="product-table-value"><strong>${variations.length && minVariationPrice !== maxVariationPrice ? `${UI.money(minVariationPrice)} – ${UI.money(maxVariationPrice)}` : UI.money(variations.length ? minVariationPrice : p.price)}</strong><span>${variations.length ? (minVariationPrice === maxVariationPrice ? "Mesmo preço" : "Faixa de preço") : "Preço unitário"}</span></div></td>
+            <td><div class="product-table-value stock"><strong>${variations.length ? totalVariationStock : p.stock}<small> un.</small></strong><span>${variations.length ? `Somado em ${variations.length} opç${variations.length === 1 ? "ão" : "ões"}` : "Estoque atual"}</span></div></td>
             <td><span class="pill ${s.pill}">${s.label}</span></td>
             <td><span class="pill ${active ? "green" : "red"}">${active ? "Ativo" : "Inativo"}</span></td>
             <td class="right">
@@ -132,7 +132,7 @@ window.ProductsPage = (function () {
     if (!p) return;
     const ok = await UI.confirmDialog({
       title: "Desativar produto",
-      text: `Tem certeza que deseja desativar "${p.name}"? Ele sairÃ¡ do PDV, mas poderÃ¡ ser ativado novamente.`,
+      text: `Tem certeza que deseja desativar "${p.name}"? Ele sairá do PDV, mas poderá ser ativado novamente.`,
       okLabel: "Desativar"
     });
     if (!ok) return;
@@ -152,7 +152,7 @@ window.ProductsPage = (function () {
       if (window.StockPage) window.StockPage.render();
     } catch (err) {
       console.error("Falha ao desativar produto:", err);
-      UI.toast("Nao foi possivel desativar o produto.", "error");
+      UI.toast("Não foi possível desativar o produto.", "error");
     }
   }
 
@@ -179,7 +179,7 @@ window.ProductsPage = (function () {
       if (window.StockPage) window.StockPage.render();
     } catch (err) {
       console.error("Falha ao excluir produto:", err);
-      UI.toast("NÃ£o foi possÃ­vel excluir o produto.", "error");
+      UI.toast("Não foi possível excluir o produto.", "error");
     }
   }
 
@@ -204,11 +204,11 @@ window.ProductsPage = (function () {
       if (window.StockPage) window.StockPage.render();
     } catch (err) {
       console.error("Falha ao ativar produto:", err);
-      UI.toast("Nao foi possivel ativar o produto.", "error");
+      UI.toast("Não foi possível ativar o produto.", "error");
     }
   }
 
-  function resetProductImageChoice(text = "Escolher imagem", hint = "PNG, JPG ou WEBP, com atÃ© 5 MB. Voce tambem pode escolher uma imagem ja salva.") {
+  function resetProductImageChoice(text = "Escolher imagem", hint = "PNG, JPG ou WEBP, com até 5 MB. Você também pode escolher uma imagem já salva.") {
     const fileInput = document.getElementById("productImage");
     const existingInput = document.getElementById("productExistingImage");
     const fileName = document.getElementById("productImageFileName");
@@ -229,7 +229,7 @@ window.ProductsPage = (function () {
     if (imageHint) {
       imageHint.textContent = file
         ? "Imagem nova selecionada. Ela sera salva no projeto ao cadastrar o produto."
-        : "PNG, JPG ou WEBP, com atÃ© 5 MB. Voce tambem pode escolher uma imagem ja salva.";
+        : "PNG, JPG ou WEBP, com até 5 MB. Você também pode escolher uma imagem ja salva.";
     }
   }
 
@@ -289,8 +289,8 @@ window.ProductsPage = (function () {
       renderImageLibrary(imageLibraryItems);
     } catch (err) {
       console.error("Falha ao carregar galeria de produtos:", err);
-      if (grid) grid.innerHTML = `<div class="image-library-empty">Nao foi possivel carregar as imagens.</div>`;
-      UI.toast("Nao foi possivel abrir a galeria de imagens.", "error");
+      if (grid) grid.innerHTML = `<div class="image-library-empty">Não foi possível carregar as imagens.</div>`;
+      UI.toast("Não foi possível abrir a galeria de imagens.", "error");
     }
   }
 
@@ -301,11 +301,11 @@ window.ProductsPage = (function () {
     row.innerHTML = `
       <label data-mobile-label="Tamanho"><span class="sr-only">Tamanho (opcional)</span><input type="text" data-variation-size list="productSizeSuggestions" maxlength="50" placeholder="Ex.: M"></label>
       <label data-mobile-label="Cor"><span class="sr-only">Cor (opcional)</span><input type="text" data-variation-color list="productColorSuggestions" maxlength="50" placeholder="Ex.: Azul"></label>
-      <label data-mobile-label="PreÃ§o"><span class="sr-only">PreÃ§o</span><div class="variation-number-field"><span class="variation-number-prefix">R$</span><input type="number" data-variation-price min="0" step="0.01" placeholder="0,00" required><span class="variation-number-controls"><button type="button" data-variation-step="up" aria-label="Aumentar preÃ§o"><i class="fa-solid fa-chevron-up"></i></button><button type="button" data-variation-step="down" aria-label="Diminuir preÃ§o"><i class="fa-solid fa-chevron-down"></i></button></span></div></label>
+      <label data-mobile-label="Preço"><span class="sr-only">Preço</span><div class="variation-number-field"><span class="variation-number-prefix">R$</span><input type="number" data-variation-price min="0" step="0.01" placeholder="0,00" required><span class="variation-number-controls"><button type="button" data-variation-step="up" aria-label="Aumentar preço"><i class="fa-solid fa-chevron-up"></i></button><button type="button" data-variation-step="down" aria-label="Diminuir preço"><i class="fa-solid fa-chevron-down"></i></button></span></div></label>
       <label data-mobile-label="Estoque"><span class="sr-only">Estoque</span><div class="variation-number-field"><input type="number" data-variation-stock min="0" step="1" placeholder="0" required><span class="variation-number-controls"><button type="button" data-variation-step="up" aria-label="Aumentar estoque"><i class="fa-solid fa-chevron-up"></i></button><button type="button" data-variation-step="down" aria-label="Diminuir estoque"><i class="fa-solid fa-chevron-down"></i></button></span></div></label>
       <div class="variation-row-actions">
-        <button type="button" class="act-btn variation-duplicate" data-duplicate-variation title="Duplicar opÃ§Ã£o" aria-label="Duplicar opÃ§Ã£o"><i class="fa-regular fa-copy"></i></button>
-        <button type="button" class="act-btn delete variation-remove" data-remove-variation title="Remover opÃ§Ã£o" aria-label="Remover opÃ§Ã£o"><i class="fa-solid fa-trash"></i></button>
+        <button type="button" class="act-btn variation-duplicate" data-duplicate-variation title="Duplicar opção" aria-label="Duplicar opção"><i class="fa-regular fa-copy"></i></button>
+        <button type="button" class="act-btn delete variation-remove" data-remove-variation title="Remover opção" aria-label="Remover opção"><i class="fa-solid fa-trash"></i></button>
       </div>
     `;
     row.querySelector("[data-variation-size]").value = variation.size || variation.tamanho || "";
@@ -327,7 +327,7 @@ window.ProductsPage = (function () {
     document.querySelectorAll(".product-variation-row").forEach((row, index) => {
       const size = row.querySelector("[data-variation-size]")?.value.trim();
       const color = row.querySelector("[data-variation-color]")?.value.trim();
-      row.setAttribute("aria-label", `OpÃ§Ã£o ${index + 1}: ${[size, color].filter(Boolean).join(", ") || "sem identificaÃ§Ã£o"}`);
+      row.setAttribute("aria-label", `Opção ${index + 1}: ${[size, color].filter(Boolean).join(", ") || "sem identificação"}`);
     });
     renderProductVariationSummary();
   }
@@ -340,14 +340,14 @@ window.ProductsPage = (function () {
     const footerCount = document.getElementById("productVariationFooterCount");
     if (!summary || !title || !chips) return;
     summary.hidden = rows.length === 0;
-    title.textContent = `${rows.length} combinaÃ§${rows.length === 1 ? "Ã£o" : "Ãµes"}`;
-    if (footerCount) footerCount.textContent = `${rows.length} combinaÃ§${rows.length === 1 ? "Ã£o configurada" : "Ãµes configuradas"}`;
+    title.textContent = `${rows.length} combinaç${rows.length === 1 ? "ão" : "ões"}`;
+    if (footerCount) footerCount.textContent = `${rows.length} combinaç${rows.length === 1 ? "ão configurada" : "ões configuradas"}`;
     chips.replaceChildren();
     rows.slice(0, 3).forEach((row, index) => {
       const size = row.querySelector("[data-variation-size]")?.value.trim();
       const color = row.querySelector("[data-variation-color]")?.value.trim();
       const chip = document.createElement("span");
-      chip.textContent = [size, color].filter(Boolean).join(" Â· ") || `CombinaÃ§Ã£o ${index + 1}`;
+      chip.textContent = [size, color].filter(Boolean).join(" · ") || `Combinação ${index + 1}`;
       chips.appendChild(chip);
     });
     if (rows.length > 3) {
@@ -394,8 +394,8 @@ window.ProductsPage = (function () {
     }
     updateVariationRowLabels();
     if (hint) hint.textContent = hasVariations
-      ? `${count} variaÃ§Ã£o${count === 1 ? "" : "Ãµes"}. PreÃ§o e estoque sÃ£o definidos somente em cada combinaÃ§Ã£o.`
-      : "Crie opÃ§Ãµes por tamanho ou cor; sem variaÃ§Ãµes, o preÃ§o e o estoque gerais serÃ£o usados.";
+      ? `${count} variação${count === 1 ? "" : "ões"}. Preço e estoque são definidos somente em cada combinação.`
+      : "Crie opções por tamanho ou cor; sem variações, o preço e o estoque gerais serão usados.";
   }
 
   function openProductForm(id) {
@@ -415,7 +415,7 @@ window.ProductsPage = (function () {
       setProductVariations(p.variations || p.variacoes || []);
       resetProductImageChoice(
         p.imageUrl ? "Manter imagem atual" : "Escolher imagem",
-        p.imageUrl ? "Imagem atual mantida. Escolha outra se quiser trocar." : "PNG, JPG ou WEBP, com atÃ© 5 MB. Voce tambem pode escolher uma imagem ja salva."
+        p.imageUrl ? "Imagem atual mantida. Escolha outra se quiser trocar." : "PNG, JPG ou WEBP, com até 5 MB. Você também pode escolher uma imagem já salva."
       );
       document.getElementById("productDesc").value = p.description || "";
     } else {
@@ -442,7 +442,7 @@ window.ProductsPage = (function () {
     };
     data.variations = readProductVariations();
     if (!data.name) { UI.toast("Informe o nome do produto.", "error"); return; }
-    if (data.stock < 0) { UI.toast("O estoque nao pode ser negativo.", "error"); return; }
+    if (data.stock < 0) { UI.toast("O estoque não pode ser negativo.", "error"); return; }
     const variationRows = [...document.querySelectorAll(".product-variation-row")];
     const invalidVariationRow = variationRows.find(row => {
       const price = row.querySelector("[data-variation-price]");
@@ -452,7 +452,7 @@ window.ProductsPage = (function () {
       return (!size && !color) || !price.value || !stock.value || !price.checkValidity() || !stock.checkValidity();
     });
     if (invalidVariationRow) {
-      UI.toast("Revise tamanho/cor, preÃ§o e estoque das variaÃ§Ãµes.", "error");
+      UI.toast("Revise tamanho/cor, preço e estoque das variações.", "error");
       UI.openModal("productVariationsModal");
       invalidVariationRow.querySelector(":invalid, [data-variation-size]")?.focus();
       return;
@@ -479,11 +479,11 @@ window.ProductsPage = (function () {
         }
         window.AAPMSound?.play("add");
         window.AAPMSound?.suppressNextToast();
-        UI.toast(existing ? `Nova variaÃ§Ã£o adicionada a "${data.name}".` : `Produto "${data.name}" criado.`, "success");
+        UI.toast(existing ? `Nova variação adicionada a "${data.name}".` : `Produto "${data.name}" criado.`, "success");
       }
     } catch (err) {
       console.error("Falha ao salvar produto:", err);
-      UI.toast(err.message || "NÃ£o foi possÃ­vel salvar o produto.", "error");
+      UI.toast(err.message || "Não foi possível salvar o produto.", "error");
       return;
     }
     UI.closeModal("productModal");
@@ -529,9 +529,9 @@ window.ProductsPage = (function () {
         if (document.querySelector(".product-variation-row")) {
           const confirmed = await UI.confirmDialog({
             title: "Voltar para produto simples?",
-            text: "As combinaÃ§Ãµes configuradas serÃ£o removidas. O produto voltarÃ¡ a usar apenas um preÃ§o e um estoque.",
+            text: "As combinações configuradas serão removidas. O produto voltará a usar apenas um preço e um estoque.",
             okLabel: "Voltar para simples",
-            cancelLabel: "Manter variaÃ§Ãµes"
+            cancelLabel: "Manter variações"
           });
           if (!confirmed) return;
         }
@@ -575,13 +575,13 @@ window.ProductsPage = (function () {
     });
 
     document.getElementById("exportProducts").addEventListener("click", async () => {
-      const rows = [["Nome", "VariaÃ§Ãµes", "Categoria", "PreÃ§o", "Estoque", "Situacao"]];
+      const rows = [["Nome", "Variações", "Categoria", "Preço", "Estoque", "Situação"]];
       const exportItems = await window.API.getProducts(filters);
       exportItems.forEach(p => {
         rows.push([p.name, (p.variations || []).map(v => [v.size, v.color].filter(Boolean).join(" / ")).join("; "), window.DB.getCategory(p.categoryId)?.name || "", p.price.toFixed(2).replace(".", ","), p.stock, p.ativo !== false ? "Ativo" : "Inativo"]);
       });
       UI.downloadCSV("produtos.csv", rows);
-      UI.toast("ExportaÃ§Ã£o CSV gerada.", "success");
+      UI.toast("Exportação CSV gerada.", "success");
     });
 
     document.querySelectorAll("[data-close-modal]").forEach(btn => {

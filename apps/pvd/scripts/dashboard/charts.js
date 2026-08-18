@@ -1,4 +1,4 @@
-﻿/* Dashboard: gráficos e agregações. */
+/* Dashboard: gráficos e agregações. */
 
 window.CHARTS = (function () {
   const instances = {};
@@ -32,7 +32,7 @@ window.CHARTS = (function () {
 
   function shortLabel(value, max = 26) {
     const text = String(value || "");
-    return text.length > max ? `${text.slice(0, Math.max(0, max - 1))}â€¦` : text;
+    return text.length > max ? `${text.slice(0, Math.max(0, max - 1))}…` : text;
   }
 
   function shortMoneyTick(value) {
@@ -121,7 +121,7 @@ window.CHARTS = (function () {
       data: {
         labels: data.map(d => UI.dayShort(d.date)),
         datasets: [{
-          label: "Ticket mÃ©dio",
+          label: "Ticket médio",
           data: data.map(d => d.ticket),
           borderColor: "#16C784",
           backgroundColor: grad,
@@ -170,7 +170,7 @@ window.CHARTS = (function () {
     }, { associados: 0, outros: 0 });
     const data = [
       { name: "Associados", value: totals.associados, color: "#2D7BFF" },
-      { name: "NÃ£o associados", value: totals.outros, color: "#F5A623" }
+      { name: "Não associados", value: totals.outros, color: "#F5A623" }
     ];
 
     instances[canvasId] = new Chart(ctx, {

@@ -381,7 +381,7 @@ forgotPasswordLink?.addEventListener("click", async event => {
     if(forgotPasswordFeedback){
       forgotPasswordFeedback.hidden = false;
       forgotPasswordFeedback.className = "auth-feedback error";
-      forgotPasswordFeedback.textContent = error.message || "Nao foi possivel solicitar a recuperacao.";
+      forgotPasswordFeedback.textContent = error.message || "Não foi possível solicitar a recuperação.";
       replayEntryAnimation(forgotPasswordFeedback);
     }
   }finally{

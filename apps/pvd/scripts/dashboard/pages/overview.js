@@ -1,4 +1,4 @@
-﻿/* Dashboard: visão geral e atualização em tempo real. */
+/* Dashboard: visão geral e atualização em tempo real. */
 
 window.Dashboard = (function () {
   const REALTIME_REFRESH_MS = 5000;
@@ -65,7 +65,7 @@ window.Dashboard = (function () {
   function renderRecentOrders() {
     const body = document.getElementById("recentOrdersBody");
 
-    const status = s => s === "concluido" ? `<span class="pill green">ConcluÃ­do</span>`
+    const status = s => s === "concluido" ? `<span class="pill green">Concluído</span>`
       : s === "pendente" ? `<span class="pill yellow">Pendente</span>`
       : `<span class="pill red">Cancelado</span>`;
     if (!window.DB.orders.length) {
@@ -103,36 +103,36 @@ window.Dashboard = (function () {
       {
         icon: "fa-receipt",
         tone: "info",
-        title: "Ticket mÃ©dio de hoje",
-        text: today.orders ? `${UI.money(ticket)} por pedido concluÃ­do.` : "Ainda sem pedidos concluÃ­dos hoje."
+        title: "Ticket médio de hoje",
+        text: today.orders ? `${UI.money(ticket)} por pedido concluído.` : "Ainda sem pedidos concluídos hoje."
       },
       {
         icon: "fa-ranking-star",
         tone: "success",
         title: "Produto destaque",
-        text: topProduct ? `${topProduct.name} lidera com ${UI.money(topProduct.revenue || 0)} em receita.` : "Os produtos destaque aparecem apÃ³s as primeiras vendas."
+        text: topProduct ? `${topProduct.name} lidera com ${UI.money(topProduct.revenue || 0)} em receita.` : "Os produtos destaque aparecem após as primeiras vendas."
       },
       {
         icon: "fa-clock",
         tone: "info",
-        title: "HorÃ¡rio de pico",
-        text: peak && peak.orders ? `Maior movimento por volta de ${peak.hour}h, com ${UI.num(peak.orders)} pedido(s).` : "Ainda nÃ£o hÃ¡ pico de vendas identificado."
+        title: "Horário de pico",
+        text: peak && peak.orders ? `Maior movimento por volta de ${peak.hour}h, com ${UI.num(peak.orders)} pedido(s).` : "Ainda não há pico de vendas identificado."
       },
       {
         icon: "fa-layer-group",
         tone: "success",
-        title: "Categoria lÃ­der",
-        text: leadingCategory ? `${leadingCategory.name} representa ${leadingPct.toFixed(1)}% da receita por categoria.` : "Categorias serÃ£o destacadas conforme as vendas entrarem."
+        title: "Categoria líder",
+        text: leadingCategory ? `${leadingCategory.name} representa ${leadingPct.toFixed(1)}% da receita por categoria.` : "Categorias serão destacadas conforme as vendas entrarem."
       },
       {
         icon: "fa-triangle-exclamation",
         tone: lowStock.length || outStock.length ? "warn" : "success",
-        title: "AtenÃ§Ã£o ao estoque",
+        title: "Atenção ao estoque",
         text: outStock.length
           ? `${outStock.length} produto(s) sem estoque e ${lowStock.length} com estoque baixo.`
           : lowStock.length
-            ? `${lowStock.length} produto(s) precisam de reposiÃ§Ã£o preventiva.`
-            : "Estoque sem alertas crÃ­ticos no momento."
+            ? `${lowStock.length} produto(s) precisam de reposição preventiva.`
+            : "Estoque sem alertas críticos no momento."
       }
     ];
 

@@ -1,4 +1,4 @@
-﻿/* Dashboard: rotas, integrações globais e inicialização. */
+/* Dashboard: rotas, integrações globais e inicialização. */
 
 (function () {
   const USER_ROLE = window.AAPM_USER_ROLE || document.body.dataset.userRole || "";
@@ -21,18 +21,18 @@
   };
   const ROUTE_META = {
     smart:         { title: "AAPM Smart",            sub: "Inteligencia artificial de vendas" },
-    dashboard:     { title: "Dashboard",             sub: "VisÃ£o geral das vendas e operaÃ§Ãµes." },
+    dashboard:     { title: "Dashboard",             sub: "Visão geral das vendas e operações." },
     admin:         { title: "Produtos",              sub: "Gerencie os produtos da sua loja." },
-    grafico:       { title: "Painel GrÃ¡fico",        sub: "Indicadores e grÃ¡ficos em tempo real." },
-    pedidos:       { title: "Pedidos",               sub: "Acompanhe transaÃ§Ãµes e status." },
-    clientes:      { title: "Associados",            sub: "Cadastre associados e acompanhe benefÃ­cios de desconto." },
-    funcionarios:  { title: "FuncionÃ¡rios",          sub: "Cadastre acessos e acompanhe permissÃµes da equipe." },
-    armarios:      { title: "ArmÃ¡rios",              sub: "Controle a disponibilidade e valide os aluguÃ©is." },
+    grafico:       { title: "Painel Gráfico",        sub: "Indicadores e gráficos em tempo real." },
+    pedidos:       { title: "Pedidos",               sub: "Acompanhe transações e status." },
+    clientes:      { title: "Associados",            sub: "Cadastre associados e acompanhe benefícios de desconto." },
+    funcionarios:  { title: "Funcionários",          sub: "Cadastre acessos e acompanhe permissões da equipe." },
+    armarios:      { title: "Armários",              sub: "Controle a disponibilidade e valide os aluguéis." },
     categorias:    { title: "Categorias",            sub: "Organize seus produtos por categoria." },
-    estoque:       { title: "Estoque",               sub: "Controle de produtos, mÃ­nimos e reposiÃ§Ãµes." },
-    movimentacoes: { title: "MovimentaÃ§Ãµes",         sub: "Acompanhe entradas, saÃ­das e ajustes do estoque." },
-    relatorios:    { title: "RelatÃ³rios",            sub: "ExportaÃ§Ãµes e anÃ¡lises detalhadas." },
-    configuracoes: { title: "ConfiguraÃ§Ãµes",         sub: "PreferÃªncias da loja e do painel." }
+    estoque:       { title: "Estoque",               sub: "Controle de produtos, mínimos e reposições." },
+    movimentacoes: { title: "Movimentações",         sub: "Acompanhe entradas, saídas e ajustes do estoque." },
+    relatorios:    { title: "Relatórios",            sub: "Exportações e análises detalhadas." },
+    configuracoes: { title: "Configurações",         sub: "Preferências da loja e do painel." }
   };
 
   function can(permission) {
@@ -161,7 +161,7 @@
       if (route === "movimentacoes" && (can("movements") || can("stock_movements"))) window.StockMovementsPage.render();
     } catch (err) {
       console.error(`Falha ao renderizar rota ${route}:`, err);
-      UI.toast("Nao foi possivel atualizar esta tela.", "warn");
+      UI.toast("Não foi possível atualizar esta tela.", "warn");
     }
 
     location.hash = "#" + route;
@@ -193,14 +193,14 @@
       }
 
       if (missing <= 5) {
-        return `A meta ficou perto: faltam ${missing} vendas. Para amanha, tente um combo simples com os produtos mais comprados e deixe esses itens prontos antes do intervalo.`;
+        return `A meta ficou perto: faltam ${missing} vendas. Para amanhã, tente um combo simples com os produtos mais comprados e deixe esses itens prontos antes do intervalo.`;
       }
 
       if (missing <= 12) {
-        return `A meta nao foi atingida: faltam ${missing} vendas. Para o proximo dia, reduza a friccao do atendimento, destaque produtos de giro rapido e crie uma oferta curta no horario de pico.`;
+        return `A meta não foi atingida: faltam ${missing} vendas. Para o próximo dia, reduza a fricção do atendimento, destaque produtos de giro rápido e crie uma oferta curta no horário de pico.`;
       }
 
-      return `A meta ficou distante: faltam ${missing} vendas. Para amanha, revise a meta, confira estoque antes da abertura e use uma estrategia mais agressiva: combo promocional, produto destaque e reposicao antecipada.`;
+      return `A meta ficou distante: faltam ${missing} vendas. Para amanhã, revise a meta, confira estoque antes da abertura e use uma estratégia mais agressiva: combo promocional, produto destaque e reposição antecipada.`;
     }
 
     function render() {
@@ -241,12 +241,12 @@
       setText("smartItemsToday", UI.num(forecast.itemsToday || 0));
       setText("smartRiskCount", `${UI.num(forecast.stockRiskCount || 0)} produtos`);
       setText("smartConfidence", `${forecast.confidence || 0}%`);
-      setText("smartPeakHint", forecast.peakHint || "Maior saÃ­da entre 09h e 10h");
-      setText("smartDemandTitle", data.summary?.title || `Demanda ${String(forecast.demand || "em anÃ¡lise").toLowerCase()}`);
-      setText("smartSummaryText", data.summary?.text || "A AAPM Smart estÃ¡ lendo histÃ³rico recente, estoque e giro dos produtos.");
-      setText("smartStockAlert", `${UI.num(forecast.stockRiskCount || 0)} produto(s) perto do limite mÃ­nimo.`);
+      setText("smartPeakHint", forecast.peakHint || "Maior saída entre 09h e 10h");
+      setText("smartDemandTitle", data.summary?.title || `Demanda ${String(forecast.demand || "em análise").toLowerCase()}`);
+      setText("smartSummaryText", data.summary?.text || "A AAPM Smart está lendo histórico recente, estoque e giro dos produtos.");
+      setText("smartStockAlert", `${UI.num(forecast.stockRiskCount || 0)} produto(s) perto do limite mínimo.`);
       const revenueHint = document.getElementById("smartRevenueHint");
-      if (revenueHint) revenueHint.innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> PrevisÃ£o gerada pela AAPM Smart`;
+      if (revenueHint) revenueHint.innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> Previsão gerada pela AAPM Smart`;
       const confidenceMeter = document.getElementById("smartConfidenceMeter");
       if (confidenceMeter) confidenceMeter.style.width = `${Math.min(100, Math.max(0, forecast.confidence || 0))}%`;
 
@@ -459,14 +459,14 @@
           SmartGoals.renderSmartData(response.insights);
         }
         loadingMessage?.remove();
-        appendMessage("ai", response?.answer || "Nao consegui gerar uma resposta agora.");
+        appendMessage("ai", response?.answer || "Não consegui gerar uma resposta agora.");
         setStatus(response?.mode === "external" ? "IA externa ativa" : "IA local ativa", response?.mode || "local");
       } catch (error) {
         console.error("Falha na AAPM Smart externa:", error);
         await waitRemaining(startedAt);
         loadingMessage?.remove();
-        appendMessage("ai", "Nao consegui acessar a IA agora. Verifique a conexao ou a chave configurada.");
-        setStatus("IA indisponivel", "local");
+        appendMessage("ai", "Não consegui acessar a IA agora. Verifique a conexão ou a chave configurada.");
+        setStatus("IA indisponível", "local");
       } finally {
         form?.querySelector("button")?.removeAttribute("disabled");
         form?.classList.remove("is-sending");
@@ -492,7 +492,7 @@
     renderNotifications._lastCount = visible.length;
     document.querySelector("#notifBtn .dot")?.classList.toggle("hidden", !visible.length);
     if (!visible.length) {
-      list.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificaÃ§Ãµes no momento.<time>Agora</time></div></li>`;
+      list.innerHTML = `<li class="info"><i class="fa-solid fa-circle-info"></i><div>Sem notificações no momento.<time>Agora</time></div></li>`;
       return;
     }
     list.innerHTML = visible.map(n => `
@@ -560,13 +560,13 @@
       const profile = await window.API.getProfile();
       document.getElementById("profileName").textContent = profile.nome || "Usuario";
       document.getElementById("profileEmail").textContent = profile.email || "-";
-      document.getElementById("profileRole").textContent = profile.role === "admin" ? "Administrador" : "Funcionario";
+      document.getElementById("profileRole").textContent = profile.role === "admin" ? "Administrador" : "Funcionário";
       document.getElementById("profileStatus").textContent = profile.ativo ? "Ativo" : "Inativo";
       document.getElementById("profileInitials").textContent = UI.initialsFromName(profile.nome || profile.email || "U") || "U";
       UI.openModal("profileModal");
     } catch (err) {
       console.error("Falha ao carregar perfil:", err);
-      UI.toast("Nao foi possivel carregar o perfil.", "error");
+      UI.toast("Não foi possível carregar o perfil.", "error");
     }
   }
 
@@ -591,7 +591,7 @@
       return;
     }
     if (nova !== confirma) {
-      UI.toast("A confirmacao da senha nao confere.", "error");
+      UI.toast("A confirmação da senha não confere.", "error");
       return;
     }
     try {
@@ -605,7 +605,7 @@
       UI.toast("Senha atualizada com sucesso.", "success");
     } catch (err) {
       console.error("Falha ao atualizar senha:", err);
-      UI.toast(err.message || "Nao foi possivel atualizar a senha.", "error");
+      UI.toast(err.message || "Não foi possível atualizar a senha.", "error");
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -627,10 +627,10 @@
       await window.API.sendSupport({ assunto, mensagem });
       UI.closeModal("supportModal");
       document.getElementById("supportForm")?.reset();
-      UI.toast("Solicitacao enviada para o suporte.", "success");
+      UI.toast("Solicitação enviada para o suporte.", "success");
     } catch (err) {
       console.error("Falha ao registrar suporte:", err);
-      UI.toast("Nao foi possivel registrar o suporte.", "error");
+      UI.toast("Não foi possível registrar o suporte.", "error");
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -665,7 +665,7 @@
       UI.toast("Associado cadastrado.", "success");
     } catch (err) {
       console.error("Falha ao cadastrar associado:", err);
-      UI.toast("Nao foi possivel cadastrar o associado.", "error");
+      UI.toast("Não foi possível cadastrar o associado.", "error");
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -882,12 +882,12 @@
 
       if (can("products")) {
         window.DB.products.filter(product => include(`${product.name} ${product.description || ""} ${categoryName(product.categoryId)} ${product.stock}`)).forEach(product => {
-          matches.push({ route: "admin", filter: "productSearch", icon: "fa-box", type: "Produto", title: product.name, detail: `${categoryName(product.categoryId)} Â· Estoque: ${product.stock}` });
+          matches.push({ route: "admin", filter: "productSearch", icon: "fa-box", type: "Produto", title: product.name, detail: `${categoryName(product.categoryId)} · Estoque: ${product.stock}` });
         });
       }
       if (can("orders")) {
         window.DB.orders.filter(order => include(`${order.number} ${order.customerName} ${order.status} ${order.payment} ${order.total}`)).forEach(order => {
-          matches.push({ route: "pedidos", filter: "orderSearch", icon: "fa-receipt", type: "Pedido", title: order.number, detail: `${order.customerName || "Cliente nao informado"} Â· ${UI.money(order.total)}` });
+          matches.push({ route: "pedidos", filter: "orderSearch", icon: "fa-receipt", type: "Pedido", title: order.number, detail: `${order.customerName || "Cliente não informado"} · ${UI.money(order.total)}` });
         });
       }
       if (can("customers")) {
@@ -904,7 +904,7 @@
       if (IS_ADMIN) {
         document.querySelectorAll("[data-employee-row]").forEach(row => {
           if (!include(`${row.dataset.name || ""} ${row.dataset.email || ""} ${row.dataset.role || ""}`)) return;
-          matches.push({ route: "funcionarios", filter: "employeeSearch", icon: "fa-user-tie", type: "Funcionario", title: row.dataset.name || "Funcionario", detail: row.dataset.email || row.dataset.role || "" });
+          matches.push({ route: "funcionarios", filter: "employeeSearch", icon: "fa-user-tie", type: "Funcionário", title: row.dataset.name || "Funcionário", detail: row.dataset.email || row.dataset.role || "" });
         });
       }
       return matches.slice(0, 12);
@@ -929,7 +929,7 @@
       if (!results.length) {
         const empty = document.createElement("div");
         empty.className = "global-search-result";
-        empty.textContent = "Nenhuma informacao encontrada.";
+        empty.textContent = "Nenhuma informação encontrada.";
         globalSearchResults.append(empty);
       } else {
         results.forEach(result => {
@@ -975,7 +975,7 @@
           cell.removeAttribute("data-label");
           return;
         }
-        cell.dataset.label = labels[index] || "InformaÃ§Ã£o";
+        cell.dataset.label = labels[index] || "Informação";
       });
     });
   }
@@ -1051,7 +1051,7 @@
       window.DB.metrics = null;
       window.DB.topProducts = [];
       window.DB.smart = null;
-      UI.toast("Dados do banco indisponiveis no momento.", "warn");
+      UI.toast("Dados do banco indisponíveis no momento.", "warn");
     }
 
     bindGlobal();
@@ -1061,7 +1061,7 @@
         fn?.();
       } catch (err) {
         console.error(`Falha ao iniciar ${label}:`, err);
-        UI.toast(`Nao foi possivel iniciar ${label}.`, "warn");
+        UI.toast(`Não foi possível iniciar ${label}.`, "warn");
       }
     };
 

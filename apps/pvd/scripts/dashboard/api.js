@@ -1,4 +1,4 @@
-﻿/* Dashboard: cliente da API e cache compartilhado. */
+/* Dashboard: cliente da API e cache compartilhado. */
 
 window.API = (function () {
   const BASE_URL = window.location.origin;
@@ -181,7 +181,7 @@ window.API = (function () {
     return apiPut(`/api/v1/pdv/orders/${id}/payment-exception`, { pago: true });
   }
 
-  // ----- Dashboard / MÃ©tricas -----
+  // ----- Dashboard / Métricas -----
   async function getDashboardMetrics() {
     return apiGet("/api/v1/pdv/dashboard/metrics");
   }
@@ -224,7 +224,7 @@ window.API = (function () {
   async function releaseLocker(id) { return apiPost(`/api/v1/armarios/${id}/liberar`, {}); }
   async function toggleLockerActive(id) { return apiPost(`/api/v1/armarios/${id}/toggle-ativo`, {}); }
 
-  // ----- NotificaÃ§Ãµes -----
+  // ----- Notificações -----
   async function getNotifications() {
     return apiGet("/api/v1/pdv/notifications");
   }
@@ -262,7 +262,7 @@ window.API = (function () {
 
 
 /* =====================================================================
- *  CACHE DE TELA â€” preenchido exclusivamente pela API real.
+ *  CACHE DE TELA — preenchido exclusivamente pela API real.
  * ===================================================================== */
 (function () {
   window.DB = {

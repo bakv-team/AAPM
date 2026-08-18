@@ -1,4 +1,4 @@
-﻿/* Dashboard: página de associados. */
+/* Dashboard: página de associados. */
 
 window.CustomersPage = (function () {
   let q = "";
@@ -12,7 +12,7 @@ window.CustomersPage = (function () {
 
     const ok = await UI.confirmDialog({
       title: "Excluir associado",
-      text: `Tem certeza que deseja excluir "${customer.name}"? O histÃ³rico de vendas serÃ¡ preservado.`,
+      text: `Tem certeza que deseja excluir "${customer.name}"? O histórico de vendas será preservado.`,
       okLabel: "Excluir"
     });
     if (!ok) return;
@@ -20,12 +20,12 @@ window.CustomersPage = (function () {
     try {
       await window.API.deleteCustomer(id);
       window.DB.customers = window.DB.customers.filter(c => String(c.id) !== String(id));
-      UI.toast(`Associado "${customer.name}" excluÃ­do.`, "success");
+      UI.toast(`Associado "${customer.name}" excluído.`, "success");
       render();
       if (window.Dashboard) window.Dashboard.refresh();
     } catch (err) {
       console.error("Falha ao excluir associado:", err);
-      UI.toast("NÃ£o foi possÃ­vel excluir o associado.", "error");
+      UI.toast("Não foi possível excluir o associado.", "error");
     }
   }
 
@@ -57,7 +57,7 @@ window.CustomersPage = (function () {
             <strong title="${c.name}">${c.name}</strong>
           </div>
         </td>
-        <p><i class="fa-solid fa-id-card"></i> ${c.matricula || "Sem matrÃ­cula"}</p>
+        <p><i class="fa-solid fa-id-card"></i> ${c.matricula || "Sem matrícula"}</p>
         <p><i class="fa-solid fa-phone"></i> ${c.phone || "Sem telefone"}</p>
         <p><i class="fa-solid ${c.isAssociado ? "fa-circle-check" : "fa-circle-minus"}"></i> ${c.isAssociado ? "Desconto ativo" : "Sem desconto"}</p>
         <div class="customer-meta">
@@ -75,7 +75,7 @@ window.CustomersPage = (function () {
             <strong title="${c.name}">${c.name}</strong>
           </div>
         </td>
-        <td title="${c.matricula || "Sem matricula"}">${c.matricula || "Sem matricula"}</td>
+        <td title="${c.matricula || "Sem matrícula"}">${c.matricula || "Sem matrícula"}</td>
         <td title="${c.phone || "Sem telefone"}">${c.phone || "Sem telefone"}</td>
         <td><span class="pill ${c.isAssociado ? "green" : "gray"}">${c.isAssociado ? "Ativo" : "Sem desconto"}</span></td>
         <td class="right"><strong>${UI.money(c.totalSpent)}</strong></td>

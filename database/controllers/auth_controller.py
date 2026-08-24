@@ -127,6 +127,8 @@ def _enviar_email_recuperacao(destino: str, nome: str, link: str):
     send_message(message, settings=settings, require_credentials=True)
 
 
+#auth 01
+
 def _base_url_recuperacao(request: Request) -> str:
     configured_url = os.getenv("APP_BASE_URL") or os.getenv("RESET_PASSWORD_BASE_URL")
     if configured_url:
@@ -242,7 +244,10 @@ def solicitar_recuperacao_senha(
             print(f"[RECUPERACAO DE SENHA] Falha ao enviar e-mail para {usuario.email}: {exc}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Não foi possível enviar o e-mail de recuperação: {exc}",
+                detail=(
+                    "O serviço de recuperação está temporariamente indisponível. "
+                    "Tente novamente em alguns minutos."
+                ),
             )
 
     return {

@@ -36,6 +36,9 @@ from services.errors import ConflictError, NotFoundError, PersistenceError, Serv
 from services.sale_service import RegisterSaleInput, SaleItemInput, register_sale
 from services.report_service import generate_report
 from services.stock_service import replenish_stock
+from services.dashboard_service import daily_sales, dashboard_metrics, hourly_sales, top_products
+from services.notification_service import notifications, system_health
+from services.smart_service import fallback_answer, smart_insights
 from utils.money import money as _money
 
 
@@ -557,15 +560,19 @@ def _csv_response(nome_arquivo: str, cabecalho: list[str], linhas: list[list[obj
 
 @router.get("/categories")
 def listar_categorias_api(
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
     usuario=Depends(get_usuario_logado),
 ):
-    categorias = (
-        db.query(Categoria)
-        .filter(Categoria.ativo == True)
-        .order_by(Categoria.nome)
-        .all()
-    )
+    query = db.query(Categoria).filter(Categoria.ativo == True).order_by(Categoria.nome)
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    if offset is not None:
+        total = query.count()
+        categorias = query.offset(offset).limit(limit).all()
+        return {"items": [_categoria_json(categoria) for categoria in categorias], "total": total, "offset": offset, "limit": limit}
+    categorias = query.all()
     return [_categoria_json(categoria) for categoria in categorias]
 
 
@@ -648,7 +655,8 @@ def remover_categoria_api(
 def listar_movimentacoes_estoque_api(
     produto_id: int | None = Query(default=None),
     tipo: str = "",
-    limit: int = Query(default=80, ge=1, le=200),
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=200),
     db: Session = Depends(get_db),
     admin=Depends(require_permission("stock", "movements", "stock_movements")),
 ):
@@ -670,7 +678,13 @@ def listar_movimentacoes_estoque_api(
             raise HTTPException(status_code=400, detail="Tipo de movimentacao invalido.")
         query = query.filter(Movimentacao.tipo == tipo_enum)
 
-    movimentos = query.limit(limit).all()
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    if offset is not None:
+        total = query.count()
+        movimentos = query.offset(offset).limit(limit).all()
+        return {"items": [_movimentacao_json(movimento) for movimento in movimentos], "total": total, "offset": offset, "limit": limit}
+    movimentos = query.limit(80).all()
     return [_movimentacao_json(movimento) for movimento in movimentos]
 
 
@@ -680,6 +694,8 @@ def listar_produtos_api(
     category_id: int | None = Query(default=None),
     stock: str = "",
     status_filtro: str = Query("active", alias="status"),
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
     usuario=Depends(require_permission("products", "stock", "movements", "stock_movements", "dashboard", "charts", "reports", "smart")),
 ):
@@ -701,16 +717,27 @@ def listar_produtos_api(
     if category_id:
         query = query.filter(Produto.categoria_id == category_id)
 
-    produtos = query.order_by(Produto.nome).all()
-
     if stock == "in":
-        produtos = [p for p in produtos if p.estoque_atual > 0]
+        query = query.filter(Produto.estoque_atual > 0)
     elif stock == "low":
-        produtos = [p for p in produtos if 0 < p.estoque_atual <= 5]
+        query = query.filter(Produto.estoque_atual > 0, Produto.estoque_atual <= 5)
     elif stock == "out":
-        produtos = [p for p in produtos if p.estoque_atual <= 0]
+        query = query.filter(Produto.estoque_atual <= 0)
 
-    return [_produto_json(produto) for produto in produtos]
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+
+    if offset is None:
+        return [_produto_json(produto) for produto in query.order_by(Produto.nome).all()]
+
+    total = query.count()
+    produtos = query.order_by(Produto.nome).offset(offset).limit(limit).all()
+    return {
+        "items": [_produto_json(produto) for produto in produtos],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
 
 
 @router.get("/product-images")
@@ -814,6 +841,8 @@ def criar_venda_api(
 @router.get("/customers")
 def listar_clientes_api(
     q: str = Query("", max_length=100),
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
     admin=Depends(require_permission("customers", "reports")),
 ):
@@ -823,7 +852,14 @@ def listar_clientes_api(
         like = f"%{termo}%"
         query = query.filter(or_(Cliente.nome.ilike(like), Cliente.matricula.ilike(like), Cliente.telefone.ilike(like)))
 
-    clientes = query.order_by(Cliente.nome).all()
+    query = query.order_by(Cliente.nome)
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    if offset is not None:
+        total = query.count()
+        clientes = query.offset(offset).limit(limit).all()
+        return {"items": [_cliente_json(cliente) for cliente in clientes], "total": total, "offset": offset, "limit": limit}
+    clientes = query.all()
     return [_cliente_json(cliente) for cliente in clientes]
 
 
@@ -913,6 +949,8 @@ def remover_cliente_api(
 def listar_pedidos_api(
     q: str = Query("", max_length=100),
     status_filtro: str = Query("", alias="status"),
+    offset: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
     admin=Depends(require_permission("orders", "dashboard", "charts", "reports", "smart")),
 ):
@@ -929,6 +967,11 @@ def listar_pedidos_api(
             row for row in rows
             if termo in f"{row['number']} {row['customerName']} {row['payment']}".lower()
         ]
+    if (offset is None) != (limit is None):
+        raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
+    if offset is not None:
+        total = len(rows)
+        return {"items": rows[offset:offset + limit], "total": total, "offset": offset, "limit": limit}
     return rows
 
 
@@ -963,28 +1006,7 @@ def vendas_por_dia_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("dashboard", "charts", "reports", "smart")),
 ):
-    hoje = _hoje_local()
-    inicio = hoje - timedelta(days=dias - 1)
-    rows = []
-
-    for offset in range(dias):
-        dia = inicio + timedelta(days=offset)
-        vendas = (
-            db.query(Venda)
-            .filter(Venda.criado_em >= _inicio_do_dia(dia), Venda.criado_em <= _fim_do_dia(dia))
-            .all()
-        )
-        venda_ids = [v.id for v in vendas]
-        itens = 0
-        if venda_ids:
-            itens = db.query(func.coalesce(func.sum(ItemVenda.quantidade), 0)).filter(ItemVenda.venda_id.in_(venda_ids)).scalar() or 0
-        rows.append({
-            "date": dia.isoformat(),
-            "revenue": _json_money(sum((_money(v.total_liquido) for v in vendas), Decimal("0.00"))),
-            "orders": len(vendas),
-            "items": int(itens),
-        })
-    return rows
+    return daily_sales(db, dias, _hoje_local())
 
 
 @router.get("/dashboard/hourly")
@@ -992,21 +1014,7 @@ def vendas_por_hora_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("dashboard", "charts")),
 ):
-    hoje = _hoje_local()
-    vendas = (
-        db.query(Venda)
-        .filter(Venda.criado_em >= _inicio_do_dia(hoje), Venda.criado_em <= _fim_do_dia(hoje))
-        .all()
-    )
-    rows = [{"hour": hora, "revenue": 0, "orders": 0} for hora in range(8, 19)]
-    por_hora = {row["hour"]: row for row in rows}
-    for venda in vendas:
-        hora = venda.criado_em.hour if venda.criado_em else 0
-        if hora not in por_hora:
-            por_hora[hora] = {"hour": hora, "revenue": 0, "orders": 0}
-        por_hora[hora]["revenue"] += _json_money(venda.total_liquido)
-        por_hora[hora]["orders"] += 1
-    return sorted(por_hora.values(), key=lambda row: row["hour"])
+    return hourly_sales(db, _hoje_local())
 
 
 @router.get("/dashboard/metrics")
@@ -1014,41 +1022,7 @@ def metricas_dashboard_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("dashboard", "charts")),
 ):
-    hoje = _hoje_local()
-    ontem = hoje - timedelta(days=1)
-    inicio_mes = hoje.replace(day=1)
-
-    vendas_hoje = db.query(Venda).filter(Venda.criado_em >= _inicio_do_dia(hoje), Venda.criado_em <= _fim_do_dia(hoje)).all()
-    vendas_ontem = db.query(Venda).filter(Venda.criado_em >= _inicio_do_dia(ontem), Venda.criado_em <= _fim_do_dia(ontem)).all()
-    vendas_mes = db.query(Venda).filter(Venda.criado_em >= _inicio_do_dia(inicio_mes), Venda.criado_em <= _fim_do_dia(hoje)).all()
-
-    def resumo(vendas: list[Venda]) -> dict:
-        venda_ids = [v.id for v in vendas]
-        itens = 0
-        if venda_ids:
-            itens = db.query(func.coalesce(func.sum(ItemVenda.quantidade), 0)).filter(ItemVenda.venda_id.in_(venda_ids)).scalar() or 0
-        receita = sum((_money(v.total_liquido) for v in vendas), Decimal("0.00"))
-        pedidos = len(vendas)
-        ticket = _money(receita / pedidos) if pedidos else Decimal("0.00")
-        return {
-            "revenue": _json_money(receita),
-            "items": int(itens),
-            "orders": pedidos,
-            "ticket": _json_money(ticket),
-        }
-
-    atual = resumo(vendas_hoje)
-    anterior = resumo(vendas_ontem)
-    month_revenue = sum((_money(v.total_liquido) for v in vendas_mes), Decimal("0.00"))
-    return {
-        **atual,
-        "monthRevenue": _json_money(month_revenue),
-        "revPct": _pct(atual["revenue"], anterior["revenue"]),
-        "itemsPct": _pct(atual["items"], anterior["items"]),
-        "ordersPct": _pct(atual["orders"], anterior["orders"]),
-        "ticketPct": _pct(atual["ticket"], anterior["ticket"]),
-        "monthPct": 0,
-    }
+    return dashboard_metrics(db, _hoje_local())
 
 
 @router.get("/dashboard/top-products")
@@ -1056,32 +1030,7 @@ def produtos_mais_vendidos_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("dashboard", "charts", "smart")),
 ):
-    rows = (
-        db.query(
-            ItemVenda.produto_id,
-            ItemVenda.produto_nome,
-            func.coalesce(func.sum(ItemVenda.quantidade), 0).label("qty"),
-            func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0).label("revenue"),
-        )
-        .group_by(ItemVenda.produto_id, ItemVenda.produto_nome)
-        .order_by(func.coalesce(func.sum(ItemVenda.quantidade * ItemVenda.preco_unitario), 0).desc())
-        .limit(8)
-        .all()
-    )
-
-    resposta = []
-    for produto_id, nome, qty, revenue in rows:
-        produto = db.query(Produto).filter(Produto.id == produto_id).first() if produto_id else None
-        categoria = produto.categoria if produto else None
-        resposta.append({
-            "productId": str(produto_id) if produto_id else "",
-            "name": nome,
-            "qty": int(qty or 0),
-            "revenue": float(revenue or 0),
-            "categoryId": str(categoria.id) if categoria else "",
-            "categoryName": categoria.nome if categoria else "Sem categoria",
-        })
-    return resposta
+    return top_products(db)
 
 
 @router.get("/smart/insights")
@@ -1091,6 +1040,8 @@ def aapm_smart_insights_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("smart")),
 ):
+    return smart_insights(db, _hoje_local(), meta_diaria, lucro_unidade)
+
     try:
         meta_diaria = int(meta_diaria)
     except (TypeError, ValueError):
@@ -1222,17 +1173,12 @@ def aapm_smart_assistant_api(
     if not message:
         raise HTTPException(status_code=400, detail="Mensagem vazia.")
 
-    insights = aapm_smart_insights_api(
-        meta_diaria=payload.meta_diaria or 30,
-        lucro_unidade=payload.lucro_unidade or 3.5,
-        db=db,
-        admin=admin,
-    )
+    insights = smart_insights(db, _hoje_local(), payload.meta_diaria or 30, payload.lucro_unidade or 3.5)
     external_answer = external_ai_answer(message, insights)
     if external_answer:
         return {"mode": "external", "answer": external_answer, "insights": insights}
 
-    return {"mode": "local", "answer": _aapm_smart_fallback_answer(message, insights), "insights": insights}
+    return {"mode": "local", "answer": fallback_answer(message, insights), "insights": insights}
 
 
 @router.get("/system/health")
@@ -1240,20 +1186,7 @@ def sistema_health_api(
     db: Session = Depends(get_db),
     admin=Depends(require_permission("settings")),
 ):
-    counts = {
-        "products": db.query(Produto).filter(Produto.ativo == True).count(),
-        "categories": db.query(Categoria).filter(Categoria.ativo == True).count(),
-        "customers": db.query(Cliente).count(),
-        "sales": db.query(Venda).count(),
-    }
-    warnings = _system_warnings(db)
-    return {
-        "ok": not warnings,
-        "checkedAt": _agora_local().isoformat(timespec="seconds"),
-        "warnings": warnings,
-        "ai": _ai_config_status(),
-        "counts": counts,
-    }
+    return system_health(db, _agora_local())
 
 
 @router.get("/notifications")
@@ -1261,46 +1194,7 @@ def notificacoes_api(
     db: Session = Depends(get_db),
     usuario=Depends(get_usuario_logado),
 ):
-    hoje = _hoje_local()
-    baixo_estoque = db.query(Produto).filter(Produto.ativo == True, Produto.estoque_atual <= 5).count()
-    vendas_hoje = db.query(Venda).filter(Venda.criado_em >= _inicio_do_dia(hoje), Venda.criado_em <= _fim_do_dia(hoje)).count()
-    ultima_venda = db.query(Venda).order_by(Venda.criado_em.desc()).first()
-    limite_excecao = _agora_local() + timedelta(days=2)
-    excecoes_pendentes = (
-        db.query(Venda)
-        .filter(
-            Venda.excecao_pagamento == True,
-            Venda.excecao_status == "pendente",
-            Venda.excecao_prazo != None,
-            Venda.excecao_prazo <= limite_excecao,
-        )
-        .order_by(Venda.excecao_prazo.asc())
-        .limit(5)
-        .all()
-    )
-
-    itens = []
-    itens.extend(_system_warnings(db))
-    for venda in excecoes_pendentes:
-        prazo = venda.excecao_prazo
-        vencida = bool(prazo and prazo < _agora_local())
-        cliente = venda.cliente.nome if venda.cliente else _extrair_cliente(venda.observacao or "")
-        itens.append({
-            "id": f"payment-exception-{venda.id}-{venda.excecao_status}",
-            "type": "warn" if vencida else "info",
-            "icon": "fa-calendar-check",
-            "text": f"Excecao de pagamento do pedido #{venda.id:04d} {'venceu' if vencida else 'vence em breve'} para {cliente}. Fale com o cliente sobre o restante do pagamento.",
-            "time": prazo.strftime("%d/%m") if prazo else "Prazo",
-        })
-    if vendas_hoje:
-        itens.append({"id": "sales-today", "type": "success", "icon": "fa-circle-check", "text": f"{vendas_hoje} venda(s) registradas hoje.", "time": "Hoje"})
-    if baixo_estoque:
-        itens.append({"id": "low-stock", "type": "warn", "icon": "fa-triangle-exclamation", "text": f"{baixo_estoque} produto(s) precisam de reposicao.", "time": "Estoque"})
-    if ultima_venda:
-        itens.append({"id": "last-sale", "type": "info", "icon": "fa-receipt", "text": f"Ultima venda: #{ultima_venda.id:04d} no valor de R$ {ultima_venda.total_liquido:.2f}.", "time": ultima_venda.criado_em.strftime("%H:%M") if ultima_venda.criado_em else "Agora"})
-    if not itens:
-        itens.append({"id": "ready", "type": "success", "icon": "fa-circle-check", "text": "Sistema conectado e sem pendencias no momento.", "time": "Agora"})
-    return itens
+    return notifications(db, _agora_local())
 
 
 @router.get("/reports/{tipo}")

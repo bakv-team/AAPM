@@ -104,6 +104,7 @@
           {% endif %}
           {% if is_admin %}
           <button class="nav-item" data-route="funcionarios"><i class="fa-solid fa-user-shield"></i><span>Funcionários</span></button>
+          <button class="nav-item" data-route="armarios"><i class="fa-solid fa-box-archive"></i><span>Armários</span></button>
           {% endif %}
           {% if can_categories %}
           <button class="nav-item{% if initial_route == 'categorias' %} active{% endif %}" data-route="categorias" data-requires-permission="categories"><i class="fa-solid fa-tags"></i><span>Categorias</span></button>
@@ -528,6 +529,23 @@
           <div class="customer-grid" id="customersGrid"></div>
         </section>
 
+        {% if is_admin %}
+        <section class="page" id="page-armarios">
+          <div class="kpis locker-kpis">
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Armários ativos</span><span class="kpi-icon blue"><i class="fa-solid fa-box-archive"></i></span></div><h2 class="kpi-value" id="lockersTotal">0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Disponíveis</span><span class="kpi-icon green"><i class="fa-solid fa-lock-open"></i></span></div><h2 class="kpi-value" id="lockersAvailable">0</h2></div>
+            <div class="kpi glass"><div class="kpi-head"><span class="kpi-label">Alugados</span><span class="kpi-icon orange"><i class="fa-solid fa-key"></i></span></div><h2 class="kpi-value" id="lockersRented">0</h2></div>
+          </div>
+          <div class="toolbar glass"><div class="toolbar-left">
+            <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="lockerSearch" placeholder="Buscar número, local ou locatário..." /></div>
+            <select id="lockerStatusFilter" class="select"><option value="">Todos os status</option><option value="disponivel">Disponíveis</option><option value="alugado">Alugados</option><option value="inativo">Inativos</option></select>
+            <select id="lockerLocationFilter" class="select"><option value="">Todas as localizações</option></select>
+            <label class="locker-inactive-toggle"><input type="checkbox" id="lockerIncludeInactive"> Mostrar inativos</label>
+          </div><div class="toolbar-right"><button class="primary-btn" id="newLockerBtn"><i class="fa-solid fa-plus"></i> Novo armário</button></div></div>
+          <div class="card glass no-pad"><div class="table-wrap"><table class="data-table locker-table"><thead><tr><th>Armário</th><th>Localização</th><th>Locatário</th><th>Semestre</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="lockersBody"></tbody></table></div><div class="table-foot"><span class="muted" id="lockersCount">0 armários</span></div></div>
+        </section>
+        {% endif %}
+
         {% if usuario.role == 'admin' %}
         <!-- ============================= PAGE: FUNCIONARIOS ============================= -->
         <section class="page{% if initial_route == 'funcionarios' %} active{% endif %}" id="page-funcionarios">
@@ -586,14 +604,14 @@
                           {% if 'smart' in user_perms %}<span class="pill gray">Smart</span>{% endif %}
                           {% if 'dashboard' in user_perms %}<span class="pill gray">Dashboard</span>{% endif %}
                           {% if 'products' in user_perms %}<span class="pill gray">Produtos</span>{% endif %}
-                          {% if 'charts' in user_perms %}<span class="pill gray">Graficos</span>{% endif %}
+                          {% if 'charts' in user_perms %}<span class="pill gray">Gráficos</span>{% endif %}
                           {% if 'orders' in user_perms %}<span class="pill gray">Pedidos</span>{% endif %}
                           {% if 'customers' in user_perms %}<span class="pill gray">Associados</span>{% endif %}
                           {% if 'categories' in user_perms %}<span class="pill gray">Categorias</span>{% endif %}
                           {% if 'stock' in user_perms or 'stock_movements' in user_perms %}<span class="pill gray">Estoque</span>{% endif %}
                           {% if 'movements' in user_perms or 'stock_movements' in user_perms %}<span class="pill gray">Movimentos</span>{% endif %}
-                          {% if 'reports' in user_perms %}<span class="pill gray">Relatorios</span>{% endif %}
-                          {% if not ('smart' in user_perms or 'dashboard' in user_perms or 'products' in user_perms or 'charts' in user_perms or 'orders' in user_perms or 'customers' in user_perms or 'categories' in user_perms or 'stock' in user_perms or 'movements' in user_perms or 'stock_movements' in user_perms or 'reports' in user_perms) %}<span class="muted">Sem permissoes</span>{% endif %}
+                          {% if 'reports' in user_perms %}<span class="pill gray">Relatórios</span>{% endif %}
+                          {% if not ('smart' in user_perms or 'dashboard' in user_perms or 'products' in user_perms or 'charts' in user_perms or 'orders' in user_perms or 'customers' in user_perms or 'categories' in user_perms or 'stock' in user_perms or 'movements' in user_perms or 'stock_movements' in user_perms or 'reports' in user_perms) %}<span class="muted">Sem permissões</span>{% endif %}
                         </div>
                       {% endif %}
                     </td>
@@ -647,7 +665,7 @@
           </div></div>
         </section>
 
-        <!-- ============================= PAGE: MOVIMENTACOES ============================= -->
+        <!-- ============================= PAGE: MOVIMENTAÇÕES ============================= -->
         <section class="page{% if initial_route == 'movimentacoes' %} active{% endif %}" id="page-movimentacoes" data-requires-permission="movements">
           <div class="card glass no-pad">
             <div class="card-head padded">
@@ -666,7 +684,7 @@
         <section class="page{% if initial_route == 'relatorios' %} active{% endif %}" id="page-relatorios" data-requires-permission="reports">
           <div class="card glass reports-panel">
             <div class="card-head">
-              <div><h3>Relatorios</h3><p class="muted">Exporte leituras por periodo, operacao e area do PDV.</p></div>
+              <div><h3>Relatórios</h3><p class="muted">Exporte leituras por período, operação e área do PDV.</p></div>
             </div>
 
             <div class="report-tabs" role="tablist" aria-label="Tipos de relatorio">
@@ -679,7 +697,7 @@
             </div>
 
             <div class="report-tab-panel active" data-report-panel="sales" role="tabpanel">
-              <div class="report-copy"><strong>Vendas</strong><span>Pedidos, cliente, pagamento, data, desconto e total liquido.</span></div>
+              <div class="report-copy"><strong>Vendas</strong><span>Pedidos, cliente, pagamento, data, desconto e total líquido.</span></div>
               <div class="report-grid">
                 <button class="report-card" data-report="sales" data-period="today"><i class="fa-solid fa-calendar-day"></i><span>Hoje</span><small>Vendas registradas hoje</small></button>
                 <button class="report-card" data-report="sales" data-period="week"><i class="fa-solid fa-calendar-week"></i><span>Ultimos 7 dias</span><small>Uma semana de pedidos</small></button>
@@ -719,7 +737,7 @@
             </div>
 
             <div class="report-tab-panel" data-report-panel="customers" role="tabpanel" hidden>
-              <div class="report-copy"><strong>Associados</strong><span>Clientes ativos, matricula, pedidos e gasto no periodo.</span></div>
+              <div class="report-copy"><strong>Associados</strong><span>Clientes ativos, matrícula, pedidos e gasto no período.</span></div>
               <div class="report-grid">
                 <button class="report-card" data-report="customers" data-period="today"><i class="fa-solid fa-user-check"></i><span>Hoje</span><small>Compras de associados hoje</small></button>
                 <button class="report-card" data-report="customers" data-period="week"><i class="fa-solid fa-users-viewfinder"></i><span>Ultimos 7 dias</span><small>Movimento da semana</small></button>
@@ -729,11 +747,11 @@
             </div>
 
             <div class="report-tab-panel" data-report-panel="stock" role="tabpanel" hidden>
-              <div class="report-copy"><strong>Estoque</strong><span>Inventario atual, alertas de reposicao e produtos indisponiveis.</span></div>
+              <div class="report-copy"><strong>Estoque</strong><span>Inventário atual, alertas de reposição e produtos indisponíveis.</span></div>
               <div class="report-grid">
                 <button class="report-card" data-report="stock"><i class="fa-solid fa-boxes-stacked"></i><span>Estoque atual</span><small>Todos os produtos ativos</small></button>
                 <button class="report-card" data-report="stock-low"><i class="fa-solid fa-triangle-exclamation"></i><span>Estoque baixo</span><small>Itens com 5 ou menos unidades</small></button>
-                <button class="report-card" data-report="stock-out"><i class="fa-solid fa-circle-xmark"></i><span>Sem estoque</span><small>Produtos indisponiveis</small></button>
+                <button class="report-card" data-report="stock-out"><i class="fa-solid fa-circle-xmark"></i><span>Sem estoque</span><small>Produtos indisponíveis</small></button>
                 <button class="report-card" data-report="stock-value"><i class="fa-solid fa-coins"></i><span>Valor em estoque</span><small>Preco, quantidade e subtotal</small></button>
               </div>
             </div>
@@ -857,7 +875,7 @@
                 <span>Galeria</span>
               </button>
             </div>
-            <p class="image-field-hint" id="productImageHint">PNG, JPG ou WEBP, com até 5 MB. Voce tambem pode escolher uma imagem ja salva.</p>
+            <p class="image-field-hint" id="productImageHint">PNG, JPG ou WEBP, com até 5 MB. Você também pode escolher uma imagem já salva.</p>
           </div>
           <label class="span-2">Descrição<textarea id="productDesc" rows="3"></textarea></label>
           <div class="modal-foot span-2">
@@ -1119,6 +1137,9 @@
       </div>
     </div>
 
+    <div class="modal-backdrop hidden" id="lockerModal"><div class="modal glass small"><div class="modal-head"><h3 id="lockerModalTitle">Novo armário</h3><button class="icon-btn ghost" data-close-modal="lockerModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div><form id="lockerForm" class="form-grid"><input type="hidden" id="lockerId"><label>Número <input type="text" id="lockerNumber" maxlength="20" required placeholder="Ex.: A-01"></label><label>Localização <input type="text" id="lockerLocation" maxlength="100" placeholder="Ex.: Corredor A"></label><label class="span-2">Observação <textarea id="lockerNote" maxlength="255" rows="3" placeholder="Opcional"></textarea></label><div class="modal-foot span-2"><button type="button" class="ghost-btn" data-close-modal="lockerModal">Cancelar</button><button type="submit" class="primary-btn">Salvar armário</button></div></form></div></div>
+    <div class="modal-backdrop hidden" id="lockerRentalModal"><div class="modal glass small"><div class="modal-head"><h3>Confirmar aluguel</h3><button class="icon-btn ghost" data-close-modal="lockerRentalModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div><form id="lockerRentalForm" class="form-grid"><input type="hidden" id="lockerRentalId"><p class="span-2 muted" id="lockerRentalDescription"></p><label class="span-2">Associado <select id="lockerTenant" class="select" required><option value="">Carregando associados...</option></select><small class="muted">Apenas associados com desconto ativo podem alugar um armário.</small></label><label>Semestre <input type="text" id="lockerSemester" maxlength="10" required placeholder="Ex.: 2026.2"></label><label>Observação <input type="text" id="lockerRentalNote" maxlength="255" placeholder="Opcional"></label><div class="modal-foot span-2"><button type="button" class="ghost-btn" data-close-modal="lockerRentalModal">Cancelar</button><button type="submit" class="primary-btn"><i class="fa-solid fa-check"></i> Confirmar aluguel</button></div></form></div></div>
+
     <!-- ====================== CONFIRM ====================== -->
     <div class="modal-backdrop hidden" id="confirmModal">
       <div class="modal glass small confirm-dialog">
@@ -1141,9 +1162,24 @@
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>window.AAPM_INITIAL_PAGE = {{ initial_page | default(1) | int }};</script>
     <!-- App -->
     <script src="/apps/pvd/scripts/sounds.js?v=aapm-sounds-20260615-1"></script>
-    <script src="/apps/pvd/scripts/dashboard.js?v=aapm-hourly-line-20260615-1"></script>
+    <!-- Dashboard organizado por responsabilidade; a ordem preserva os contratos globais legados. -->
+    <script src="/apps/pvd/scripts/dashboard/background.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/api.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/ui.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/charts.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/products.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/orders.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/customers.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/lockers.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/categories.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/employees.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/stock.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/stock-movements.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/overview.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/app.js?v=1"></script>
   </body>
 </html>
 

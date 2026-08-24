@@ -74,7 +74,7 @@ def _armario_json(armario: Armario) -> dict:
     }
 
 
-def _registrar_historico(db: Session, armario: Armario, acao: str, usuario: dict) -> None:
+def _registrar_historico(db: Session, armario: Armario, usuario: dict) -> None:
     """Registra um retrato do armario no momento de cada alteracao."""
     db.add(ArmarioHistorico(
         armario_id=armario.id,
@@ -164,7 +164,7 @@ def criar_armario(
     )
     db.add(armario)
     db.flush()
-    _registrar_historico(db, armario, "criado", admin)
+    _registrar_historico(db, armario, admin)
     db.commit()
     db.refresh(armario)
     return _armario_json(armario)
@@ -214,7 +214,7 @@ def editar_armario(
     armario.numero = numero
     armario.localizacao = _texto_opcional(payload.localizacao, 100, "localizacao")
     armario.observacao = _texto_opcional(payload.observacao, 255, "observacao")
-    _registrar_historico(db, armario, "editado", admin)
+    _registrar_historico(db, armario, admin)
     db.commit()
     db.refresh(armario)
     return _armario_json(armario)
@@ -239,7 +239,7 @@ def alugar_armario(
     if observacao is not None:
         armario.observacao = observacao
     armario.alugado_em = datetime.now(timezone.utc).replace(tzinfo=None)
-    _registrar_historico(db, armario, "alugado", admin)
+    _registrar_historico(db, armario, admin)
     db.commit()
     db.refresh(armario)
     return _armario_json(armario)
@@ -259,7 +259,7 @@ def liberar_armario(
     armario.locatario_nome = None
     armario.semestre = None
     armario.alugado_em = None
-    _registrar_historico(db, armario, "liberado", admin)
+    _registrar_historico(db, armario, admin)
     db.commit()
     db.refresh(armario)
     return _armario_json(armario)
@@ -278,7 +278,7 @@ def toggle_ativo_armario(
 
     armario.ativo = not armario.ativo
     armario.status = StatusArmario.DISPONIVEL if armario.ativo else StatusArmario.INATIVO
-    _registrar_historico(db, armario, "reativado" if armario.ativo else "desativado", admin)
+    _registrar_historico(db, armario, admin)
     db.commit()
     db.refresh(armario)
     return _armario_json(armario)

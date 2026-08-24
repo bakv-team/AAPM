@@ -78,14 +78,12 @@ def _registrar_historico(db: Session, armario: Armario, acao: str, usuario: dict
     """Registra um retrato do armario no momento de cada alteracao."""
     db.add(ArmarioHistorico(
         armario_id=armario.id,
-        acao=acao,
         numero=armario.numero,
         status=_status_valor(armario),
         ativo=bool(armario.ativo),
         locatario_nome=armario.locatario_nome,
         semestre=armario.semestre,
         observacao=armario.observacao,
-        usuario_id=usuario.get("id"),
         usuario_nome=usuario.get("nome"),
     ))
 
@@ -94,14 +92,12 @@ def _historico_json(item: ArmarioHistorico) -> dict:
     return {
         "id": item.id,
         "armario_id": item.armario_id,
-        "acao": item.acao,
         "numero": item.numero,
         "status": item.status,
         "ativo": bool(item.ativo),
         "locatario_nome": item.locatario_nome,
         "semestre": item.semestre,
         "observacao": item.observacao,
-        "usuario_id": item.usuario_id,
         "usuario_nome": item.usuario_nome,
         "criado_em": item.criado_em.isoformat() if item.criado_em else None,
     }

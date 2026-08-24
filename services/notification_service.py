@@ -10,14 +10,14 @@ from database.models.cliente import Cliente
 from database.models.produto import Produto
 from database.models.venda import Venda
 from integrations.ai_client import RUNTIME_STATUS, config_status
-from integrations.smtp_client import smtp_settings
+from integrations.smtp_client import configuracao_smtp
 
 
 def system_warnings(db: Session) -> list[dict]:
     """Alertas de configuração e cadastro no contrato do frontend atual."""
     warnings = []
     ai_status = config_status()
-    smtp = smtp_settings()
+    smtp = configuracao_smtp()
 
     if not ai_status["ready"]:
         warnings.append({"id": "ai-config", "type": "warn", "icon": "fa-robot", "text": "AAPM Smart esta sem chave externa valida e pode cair no modo local.", "time": "Config"})
@@ -25,7 +25,7 @@ def system_warnings(db: Session) -> list[dict]:
         provider = RUNTIME_STATUS.get("provider") or ai_status["provider"]
         warnings.append({"id": "ai-runtime", "type": "warn", "icon": "fa-plug-circle-xmark", "text": f"Ultima chamada da IA externa ({provider}) falhou. Verifique rede, modelo ou billing.", "time": "IA"})
 
-    if not smtp.host or not smtp.sender or not smtp.support_recipient:
+    if not smtp.servidor or not smtp.remetente or not smtp.destinatario_suporte:
         warnings.append({"id": "smtp-config", "type": "warn", "icon": "fa-envelope-circle-check", "text": "SMTP incompleto: recuperacao de senha e suporte por email podem falhar.", "time": "Email"})
 
     products = db.query(Produto).filter(Produto.ativo == True).count()

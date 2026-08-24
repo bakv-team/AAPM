@@ -5,68 +5,68 @@ from email.message import EmailMessage
 
 
 @dataclass(frozen=True)
-class SmtpSettings:
-    host: str
-    port: int
-    user: str
-    password: str
-    sender: str
-    support_recipient: str
-    use_tls: bool
-    use_ssl: bool
-    timeout: int
+class ConfiguracaoSmtp:
+    servidor: str
+    porta: int
+    usuario: str
+    senha: str
+    remetente: str
+    destinatario_suporte: str
+    usar_tls: bool
+    usar_ssl: bool
+    tempo_limite: int
 
     @property
-    def ready(self) -> bool:
-        return bool(self.host and self.sender)
+    def pronta(self) -> bool:
+        return bool(self.servidor and self.remetente)
 
 
-def smtp_settings() -> SmtpSettings:
+def configuracao_smtp() -> ConfiguracaoSmtp:
     try:
-        port = int(os.getenv("SMTP_PORT", "587"))
+        porta = int(os.getenv("SMTP_PORT", "587"))
     except (TypeError, ValueError):
-        port = 587
+        porta = 587
     try:
-        timeout = int(os.getenv("SMTP_TIMEOUT", "60"))
+        tempo_limite = int(os.getenv("SMTP_TIMEOUT", "60"))
     except (TypeError, ValueError):
-        timeout = 60
-    user = os.getenv("SMTP_USER") or ""
-    sender = os.getenv("SMTP_FROM") or user
-    return SmtpSettings(
-        host=os.getenv("SMTP_HOST") or "",
-        port=port,
-        user=user,
-        password="".join((os.getenv("SMTP_PASSWORD") or "").split()),
-        sender=sender,
-        support_recipient=os.getenv("SUPPORT_EMAIL") or sender,
-        use_tls=os.getenv("SMTP_TLS", "true").strip().lower() != "false",
-        use_ssl=os.getenv("SMTP_SSL", "false").strip().lower() == "true" or port == 465,
-        timeout=max(1, timeout),
+        tempo_limite = 60
+    usuario = os.getenv("SMTP_USER") or ""
+    remetente = os.getenv("SMTP_FROM") or usuario
+    return ConfiguracaoSmtp(
+        servidor=os.getenv("SMTP_HOST") or "",
+        porta=porta,
+        usuario=usuario,
+        senha="".join((os.getenv("SMTP_PASSWORD") or "").split()),
+        remetente=remetente,
+        destinatario_suporte=os.getenv("SUPPORT_EMAIL") or remetente,
+        usar_tls=os.getenv("SMTP_TLS", "true").strip().lower() != "false",
+        usar_ssl=os.getenv("SMTP_SSL", "false").strip().lower() == "true" or porta == 465,
+        tempo_limite=max(1, tempo_limite),
     )
 
 
-def send_message(
-    message: EmailMessage,
-    settings: SmtpSettings | None = None,
-    require_credentials: bool = False,
+def enviar_mensagem(
+    mensagem: EmailMessage,
+    configuracao: ConfiguracaoSmtp | None = None,
+    exigir_credenciais: bool = False,
 ) -> None:
-    settings = settings or smtp_settings()
-    if not settings.ready:
+    configuracao = configuracao or configuracao_smtp()
+    if not configuracao.pronta:
         raise RuntimeError("SMTP incompleto: confira SMTP_HOST e SMTP_FROM/SMTP_USER no .env.")
-    if require_credentials and (not settings.user or not settings.password):
+    if exigir_credenciais and (not configuracao.usuario or not configuracao.senha):
         raise RuntimeError("SMTP incompleto: confira SMTP_USER e SMTP_PASSWORD no .env.")
 
-    smtp_class = smtplib.SMTP_SSL if settings.use_ssl else smtplib.SMTP
-    with smtp_class(
-        settings.host,
-        settings.port,
-        timeout=settings.timeout,
+    classe_smtp = smtplib.SMTP_SSL if configuracao.usar_ssl else smtplib.SMTP
+    with classe_smtp(
+        configuracao.servidor,
+        configuracao.porta,
+        timeout=configuracao.tempo_limite,
         local_hostname="localhost",
     ) as smtp:
-        if settings.use_tls and not settings.use_ssl:
+        if configuracao.usar_tls and not configuracao.usar_ssl:
             smtp.ehlo()
             smtp.starttls()
             smtp.ehlo()
-        if settings.user and settings.password:
-            smtp.login(settings.user, settings.password)
-        smtp.send_message(message)
+        if configuracao.usuario and configuracao.senha:
+            smtp.login(configuracao.usuario, configuracao.senha)
+        smtp.send_message(mensagem)

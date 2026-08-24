@@ -20,7 +20,7 @@ from api.middleware import require_api_csrf
 from integrations.ai_client import RUNTIME_STATUS as _AI_RUNTIME_STATUS
 from integrations.ai_client import call_external_ai as external_ai_answer
 from integrations.ai_client import config_status as _ai_config_status
-from integrations.smtp_client import send_message, smtp_settings
+from integrations.smtp_client import configuracao_smtp, enviar_mensagem
 from database.auth import get_usuario_logado, hash_senha, require_permission, verificar_senha
 from database.controllers.produto_controller import _remover_imagem, _salvar_imagem
 from database.database import get_db
@@ -447,7 +447,7 @@ def _cliente_json(cliente: Cliente) -> dict:
 def _system_warnings(db: Session) -> list[dict]:
     warnings = []
     ai_status = _ai_config_status()
-    smtp = smtp_settings()
+    smtp = configuracao_smtp()
 
     if not ai_status["ready"]:
         warnings.append({
@@ -467,7 +467,7 @@ def _system_warnings(db: Session) -> list[dict]:
             "time": "IA",
         })
 
-    if not smtp.host or not smtp.sender or not smtp.support_recipient:
+    if not smtp.servidor or not smtp.remetente or not smtp.destinatario_suporte:
         warnings.append({
             "id": "smtp-config",
             "type": "warn",
@@ -512,15 +512,15 @@ def _system_warnings(db: Session) -> list[dict]:
 
 
 def _enviar_email_suporte(usuario: dict, assunto: str, mensagem: str):
-    settings = smtp_settings()
-    if not settings.ready or not settings.support_recipient:
+    configuracao = configuracao_smtp()
+    if not configuracao.pronta or not configuracao.destinatario_suporte:
         print(f"[SUPORTE] {usuario.get('sub')} - {assunto}: {mensagem}")
         return
 
     email = EmailMessage()
     email["Subject"] = f"Suporte AAPM - {assunto.strip() or 'Solicitacao'}"
-    email["From"] = settings.sender
-    email["To"] = settings.support_recipient
+    email["From"] = configuracao.remetente
+    email["To"] = configuracao.destinatario_suporte
     email.set_content(
         "Nova solicitacao de suporte registrada no sistema AAPM.\n\n"
         f"Usuario: {usuario.get('nome') or '-'}\n"
@@ -530,7 +530,7 @@ def _enviar_email_suporte(usuario: dict, assunto: str, mensagem: str):
         f"Mensagem:\n{mensagem.strip()}\n"
     )
 
-    send_message(email, settings=settings)
+    enviar_mensagem(email, configuracao=configuracao)
 
 
 def _inicio_do_dia(dia: date) -> datetime:

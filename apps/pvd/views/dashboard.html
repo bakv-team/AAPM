@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-hover-guard-20260615-1" />
+    <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=aapm-stock-item-summary-20260824-1" />
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
   </head>
   {% set is_admin = usuario.role == 'admin' %}
@@ -540,7 +540,11 @@
             <div class="search-wrap inline"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="lockerSearch" placeholder="Buscar número, local ou locatário..." /></div>
             <select id="lockerStatusFilter" class="select"><option value="">Todos os status</option><option value="disponivel">Disponíveis</option><option value="alugado">Alugados</option><option value="inativo">Inativos</option></select>
             <select id="lockerLocationFilter" class="select"><option value="">Todas as localizações</option></select>
-            <label class="locker-inactive-toggle"><input type="checkbox" id="lockerIncludeInactive"> Mostrar inativos</label>
+            <label class="locker-inactive-toggle">
+              <input type="checkbox" id="lockerIncludeInactive">
+              <span class="locker-inactive-switch" aria-hidden="true"></span>
+              <span>Mostrar inativos</span>
+            </label>
           </div><div class="toolbar-right"><button class="primary-btn" id="newLockerBtn"><i class="fa-solid fa-plus"></i> Novo armário</button></div></div>
           <div class="card glass no-pad"><div class="table-wrap"><table class="data-table locker-table"><thead><tr><th>Armário</th><th>Localização</th><th>Locatário</th><th>Semestre</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="lockersBody"></tbody></table></div><div class="table-foot"><span class="muted" id="lockersCount">0 armários</span></div></div>
         </section>
@@ -816,6 +820,13 @@
           <span>Total do pedido</span>
           <strong id="orderItemsTotal">R$ 0,00</strong>
         </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="stockItemsModal">
+      <div class="modal glass order-items-modal" role="dialog" aria-modal="true" aria-labelledby="stockItemsModalTitle">
+        <div class="modal-head"><div><h3 id="stockItemsModalTitle">Itens do produto</h3><p class="muted" id="stockItemsModalSubtitle">Variações e quantidades disponíveis</p></div><button class="icon-btn ghost" data-close-modal="stockItemsModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="order-items-content"><ul class="order-items-list" id="stockItemsList"></ul></div>
       </div>
     </div>
 
@@ -1176,7 +1187,7 @@
     <script src="/apps/pvd/scripts/dashboard/pages/lockers.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/categories.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/employees.js?v=1"></script>
-    <script src="/apps/pvd/scripts/dashboard/pages/stock.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/stock.js?v=stock-items-modal-20260824-1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/stock-movements.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/overview.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/app.js?v=1"></script>

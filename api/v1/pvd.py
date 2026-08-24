@@ -896,6 +896,28 @@ def consultar_associado_api(
     return data
 
 
+@router.get("/associates/search")
+def buscar_associados_api(
+    q: str = Query("", min_length=2, max_length=100),
+    db: Session = Depends(get_db),
+    usuario=Depends(get_usuario_logado),
+):
+    termo = q.strip()
+    like = f"%{termo}%"
+    associados = (
+        db.query(Cliente)
+        .filter(
+            Cliente.ativo == True,
+            Cliente.is_associado == True,
+            or_(Cliente.nome.ilike(like), Cliente.matricula.ilike(like), Cliente.telefone.ilike(like)),
+        )
+        .order_by(Cliente.nome)
+        .limit(6)
+        .all()
+    )
+    return [_cliente_json(associado) for associado in associados]
+
+
 @router.post("/customers", status_code=status.HTTP_201_CREATED)
 def criar_cliente_api(
     payload: ClientePayload,

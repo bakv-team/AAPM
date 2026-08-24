@@ -114,6 +114,7 @@ const paymentExceptionDue = document.getElementById("paymentExceptionDue");
 const paymentExceptionNote = document.getElementById("paymentExceptionNote");
 const customerNameInput = document.getElementById("customerNameInput");
 const associateStatus = document.getElementById("associateStatus");
+const associateSuggestions = document.getElementById("associateSuggestions");
 const categoryTitle = document.getElementById("categoryName");
 const productCount = document.querySelector(".product-count");
 const resultCount = document.getElementById("resultCount");
@@ -139,7 +140,9 @@ const checkoutScreen = document.getElementById("checkoutScreen");
 const checkoutBackBtn = document.getElementById("checkoutBackBtn");
 const checkoutCancelBtn = document.getElementById("checkoutCancelBtn");
 const checkoutConfirmBtn = document.getElementById("checkoutConfirmBtn");
-const checkoutPrintBtn = document.getElementById("checkoutPrintBtn");
+const issueNoteModal = document.getElementById("issueNoteModal");
+const issueNoteCancel = document.getElementById("issueNoteCancel");
+const issueNoteConfirm = document.getElementById("issueNoteConfirm");
 const checkoutItems = document.getElementById("checkoutItems");
 const checkoutItemsCount = document.getElementById("checkoutItemsCount");
 const checkoutCustomer = document.getElementById("checkoutCustomer");
@@ -156,9 +159,6 @@ const confirmPurchaseYes = document.getElementById("confirmPurchaseYes");
 const clearCartConfirmModal = document.getElementById("clearCartConfirmModal");
 const clearCartConfirmNo = document.getElementById("clearCartConfirmNo");
 const clearCartConfirmYes = document.getElementById("clearCartConfirmYes");
-const checkoutSuccess = document.getElementById("checkoutSuccess");
-const successOrderNumber = document.getElementById("successOrderNumber");
-const successOrderSummary = document.getElementById("successOrderSummary");
 
 let produtos = [];
 let categorias = [];
@@ -168,8 +168,11 @@ let termoBusca = "";
 let ehAssociado = false;
 let associadoValidado = null;
 let associateLookupTimer = null;
+let associateSearchTimer = null;
+let associateSearchRequest = 0;
 let topProductIds = new Set();
 let pagamentoAtual = "pix";
+let ultimaVendaFinalizada = null;
 let page = 1;
 const perPage = 8;
 const PDV_NOTIF_READ_STORAGE_KEY = "aapm_read_notifications";
@@ -1080,8 +1083,7 @@ function fecharConfirmacaoCompra() {
 }
 
 function emitirNotaPreview() {
-  renderCheckoutReview();
-  const noteHTML = renderPrintableNote();
+  const noteHTML = renderPrintableNote(ultimaVendaFinalizada);
   const printWindow = window.open("", "_blank", "width=420,height=760");
 
   if (!printWindow) {
@@ -1227,7 +1229,72 @@ function emitirNotaPreview() {
   }, 250);
 }
 
-function renderPrintableNote() {
+function limparSugestoesAssociados() {
+  if (!associateSuggestions) return;
+  associateSuggestions.replaceChildren();
+  associateSuggestions.hidden = true;
+}
+
+function renderSugestoesAssociados(associados) {
+  if (!associateSuggestions) return;
+  associateSuggestions.replaceChildren();
+
+  associados.forEach(associado => {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "associate-suggestion";
+
+    const name = document.createElement("strong");
+    name.textContent = associado.name || associado.nome;
+    const details = document.createElement("span");
+    details.textContent = associado.matricula ? `Matrícula: ${associado.matricula}` : "Associado AAPM";
+    option.append(name, details);
+    option.addEventListener("click", () => {
+      if (!customerNameInput) return;
+      customerNameInput.value = associado.name || associado.nome || "";
+      limparSugestoesAssociados();
+      validarAssociado();
+      customerNameInput.focus();
+    });
+    associateSuggestions.append(option);
+  });
+
+  associateSuggestions.hidden = !associados.length;
+}
+
+async function buscarSugestoesAssociados() {
+  const term = getCustomerName();
+  const requestId = ++associateSearchRequest;
+  if (term.length < 2) {
+    limparSugestoesAssociados();
+    return;
+  }
+
+  try {
+    const associados = await apiGet(`/api/v1/pdv/associates/search?q=${encodeURIComponent(term)}`);
+    if (requestId !== associateSearchRequest) return;
+    renderSugestoesAssociados(Array.isArray(associados) ? associados : []);
+  } catch (error) {
+    if (requestId === associateSearchRequest) limparSugestoesAssociados();
+  }
+}
+
+function abrirEmissaoNota() {
+  if (!ultimaVendaFinalizada) return;
+  issueNoteModal?.classList.remove("hidden", "modal-closing");
+  issueNoteConfirm?.focus();
+}
+
+function fecharEmissaoNota() {
+  if (!issueNoteModal || issueNoteModal.classList.contains("hidden")) return;
+  issueNoteModal.classList.add("modal-closing");
+  window.setTimeout(() => {
+    issueNoteModal.classList.add("hidden");
+    issueNoteModal.classList.remove("modal-closing");
+  }, 180);
+}
+
+function renderPrintableNote(vendaFinalizada = null) {
   if (!checkoutScreen) return "";
 
   let printNote = document.getElementById("printNote");
@@ -1238,10 +1305,12 @@ function renderPrintableNote() {
     checkoutScreen.appendChild(printNote);
   }
 
-  const items = carrinho.filter(Boolean);
-  const totals = totaisCarrinho();
-  const customerName = getCustomerName();
-  const now = new Date();
+  const items = vendaFinalizada?.items || carrinho.filter(Boolean);
+  const totals = vendaFinalizada?.totals || totaisCarrinho();
+  const customerName = vendaFinalizada?.customerName || getCustomerName();
+  const now = vendaFinalizada?.completedAt || new Date();
+  const payment = vendaFinalizada?.payment || pagamentoAtual;
+  const isAssociate = vendaFinalizada?.isAssociate ?? ehAssociado;
   const orderCode = `PDV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
   const grossTotal = totals.totalBruto || 1;
 
@@ -1284,8 +1353,8 @@ function renderPrintableNote() {
       <hr class="receipt-divider">
 
       <section class="receipt-meta">
-        <div class="receipt-row"><span>Pagamento</span><strong>${escapeHTML(paymentLabel(pagamentoAtual)).toUpperCase()}</strong></div>
-        <div class="receipt-row"><span>Associado</span><strong>${ehAssociado ? "SIM - 10%" : "NAO"}</strong></div>
+        <div class="receipt-row"><span>Pagamento</span><strong>${escapeHTML(paymentLabel(payment)).toUpperCase()}</strong></div>
+        <div class="receipt-row"><span>Associado</span><strong>${isAssociate ? "SIM - 10%" : "NAO"}</strong></div>
       </section>
 
       <hr class="receipt-divider">
@@ -1373,7 +1442,6 @@ function mostrarCompraFinalizada(venda, customerName = "Cliente balcão") {
   const comprador = venda?.customerName || customerName || "Cliente balcão";
   confirmPurchaseModal?.classList.add("hidden");
   confirmPurchaseModal?.classList.remove("modal-closing");
-  checkoutSuccess?.classList.add("hidden");
   document.body.classList.add("checkout-returning");
   checkoutScreen?.classList.add("checkout-complete-closing");
 
@@ -1381,6 +1449,7 @@ function mostrarCompraFinalizada(venda, customerName = "Cliente balcão") {
     checkoutScreen?.classList.add("hidden");
     checkoutScreen?.classList.remove("checkout-complete-closing");
     document.body.classList.remove("checkout-open", "checkout-returning");
+    abrirEmissaoNota();
     window.AAPMSound?.play("checkout");
     window.AAPMSound?.suppressNextToast();
     toast(`Nova venda registrada para ${comprador}.`, "success");
@@ -1411,7 +1480,17 @@ async function confirmarPedido() {
   try {
     const salePayload = buildSalePayload();
     const customerName = salePayload.customerName;
+    const vendaParaNota = {
+      items: carrinho.map(item => ({ ...item })),
+      totals: totaisCarrinho(),
+      customerName,
+      payment: pagamentoAtual,
+      isAssociate: ehAssociado,
+      completedAt: new Date()
+    };
     const venda = await apiPost("/api/v1/pdv/sales", salePayload);
+
+    ultimaVendaFinalizada = vendaParaNota;
 
     carrinho = [];
     ehAssociado = false;
@@ -1654,9 +1733,14 @@ function bindEventos() {
       renderProdutos();
     }
     associateLookupTimer = window.setTimeout(validarAssociado, 450);
+    window.clearTimeout(associateSearchTimer);
+    associateSearchTimer = window.setTimeout(buscarSugestoesAssociados, 220);
   });
 
-  customerNameInput?.addEventListener("blur", validarAssociado);
+  customerNameInput?.addEventListener("blur", () => {
+    window.setTimeout(limparSugestoesAssociados, 150);
+    validarAssociado();
+  });
 
   btnToggleAssociado?.addEventListener("click", () => {
     if (!ehAssociado) {
@@ -1694,7 +1778,16 @@ function bindEventos() {
   btnEsvaziarCarrinho?.addEventListener("click", esvaziarCarrinho);
   checkoutBackBtn?.addEventListener("click", fecharCheckout);
   checkoutCancelBtn?.addEventListener("click", fecharCheckout);
-  checkoutPrintBtn?.addEventListener("click", emitirNotaPreview);
+  issueNoteCancel?.addEventListener("click", () => {
+    window.location.assign("/pdv");
+  });
+  issueNoteConfirm?.addEventListener("click", () => {
+    fecharEmissaoNota();
+    emitirNotaPreview();
+  });
+  issueNoteModal?.addEventListener("click", event => {
+    if (event.target === issueNoteModal) fecharEmissaoNota();
+  });
   checkoutConfirmBtn?.addEventListener("click", abrirConfirmacaoCompra);
   productPurchaseClose?.addEventListener("click", fecharDetalhesProduto);
   productPurchaseConfirm?.addEventListener("click", () => {
@@ -1733,6 +1826,10 @@ function bindEventos() {
     }
     if (!clearCartConfirmModal?.classList.contains("hidden")) {
       fecharConfirmacaoEsvaziarCarrinho();
+      return;
+    }
+    if (!issueNoteModal?.classList.contains("hidden")) {
+      fecharEmissaoNota();
       return;
     }
     if (!checkoutScreen?.classList.contains("hidden")) {

@@ -23,6 +23,21 @@ window.StockPage = (function () {
     UI.openModal("stockModal");
   }
 
+  function openStockItemsModal(product) {
+    const variations = product?.variations || [];
+    const title = document.getElementById("stockItemsModalTitle");
+    const subtitle = document.getElementById("stockItemsModalSubtitle");
+    const list = document.getElementById("stockItemsList");
+    if (!product || !title || !subtitle || !list) return;
+    title.textContent = `Itens de ${product.name}`;
+    subtitle.textContent = `${variations.length} ${variations.length === 1 ? "variação cadastrada" : "variações cadastradas"}`;
+    list.innerHTML = variations.map((variation, index) => {
+      const label = [variation.size, variation.color].filter(Boolean).join(" / ") || `Item ${index + 1}`;
+      return `<li class="order-item-row stock-item-row"><span class="order-item-qty">${String(index + 1).padStart(2, "0")}</span><div class="order-item-info"><strong>${UI.escapeHTML(label)}</strong><span>Estoque disponível</span></div><strong class="order-item-subtotal">${Number(variation.stock) || 0} un.</strong></li>`;
+    }).join("");
+    UI.openModal("stockItemsModal");
+  }
+
   async function saveStock(event) {
     event.preventDefault();
 
@@ -59,9 +74,13 @@ window.StockPage = (function () {
     body.innerHTML = prods.map(p => {
       const cat = window.DB.getCategory(p.categoryId);
       const s = UI.stockStatus(p);
+      const variationCount = p.hasVariations ? (p.variations || []).length : 0;
+      const itemSummary = variationCount
+        ? `<button type="button" class="stock-item-count" data-stock-items="${p.id}"><span>${variationCount} ${variationCount === 1 ? "item" : "itens"}</span><i class="fa-solid fa-list-check" aria-hidden="true"></i></button>`
+        : "";
       return `
         <tr>
-          <td><strong>${p.name}</strong>${p.hasVariations ? `<div class="stock-variation-list">${p.variations.map(v => `<span>${UI.escapeHTML([v.size, v.color].filter(Boolean).join(" / "))}: <b>${v.stock} un.</b></span>`).join("")}</div>` : ""}</td>
+          <td><div class="stock-product-name"><strong>${UI.escapeHTML(p.name)}</strong>${itemSummary}</div></td>
           <td><span class="pill gray">${cat?.name || "—"}</span></td>
           <td><strong>${p.stock}</strong></td>
           <td><span class="pill ${s.pill}">${s.label}</span></td>
@@ -90,6 +109,9 @@ window.StockPage = (function () {
         openStockForm(p);
       });
     });
+    document.querySelectorAll("#stockBody [data-stock-items]").forEach(button => {
+      button.addEventListener("click", () => openStockItemsModal(window.DB.getProduct(button.dataset.stockItems)));
+    });
     UI.paginateTable(body, "stock");
 
   }
@@ -101,6 +123,10 @@ window.StockPage = (function () {
     });
     document.getElementById("stockModal")?.addEventListener("click", event => {
       if (event.target.id === "stockModal") UI.closeModal("stockModal");
+    });
+    document.querySelectorAll("[data-close-modal='stockItemsModal']").forEach(button => button.addEventListener("click", () => UI.closeModal("stockItemsModal")));
+    document.getElementById("stockItemsModal")?.addEventListener("click", event => {
+      if (event.target.id === "stockItemsModal") UI.closeModal("stockItemsModal");
     });
     render();
   }

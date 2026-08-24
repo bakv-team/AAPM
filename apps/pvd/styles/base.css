@@ -6066,6 +6066,39 @@ body.checkout-returning .app-shell {
     animation: checkout-modal-out 180ms ease-in both;
 }
 
+.associate-suggestions {
+    display: grid;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: var(--glass-strong);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+
+.associate-suggestion {
+    width: 100%;
+    display: grid;
+    gap: 2px;
+    padding: 9px 10px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.associate-suggestion:hover,
+.associate-suggestion:focus-visible {
+    border-color: rgba(241, 124, 32, 0.28);
+    background: rgba(241, 124, 32, 0.08);
+    outline: none;
+}
+
+.associate-suggestion strong { font-size: 13px; }
+.associate-suggestion span { color: var(--text-mute); font-size: 11px; }
+
 [data-theme="dark"] .confirm-modal {
     background: rgba(3, 7, 20, 0.66);
 }

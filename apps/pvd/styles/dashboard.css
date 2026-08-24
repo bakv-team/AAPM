@@ -7259,21 +7259,40 @@ html:not([data-theme="dark"]) .variation-row-actions .act-btn {
 }
 html:not([data-theme="dark"]) .variation-row-actions .variation-remove { color: #d83e5d; }
 html:not([data-theme="dark"]) .variations-modal-foot { background: #fff; }
-.variation-summary,
-.stock-variation-list {
+.variation-summary {
   display: grid;
   gap: 4px;
   min-width: 145px;
 }
-.variation-summary span,
-.stock-variation-list span {
+.variation-summary span {
   display: flex;
   justify-content: space-between;
   gap: 10px;
   font-size: 12px;
   white-space: nowrap;
 }
-.stock-variation-list { margin-top: 6px; color: var(--text-mute); }
+.stock-product-name { display: grid; gap: 8px; }
+.stock-product-name > strong { color: var(--text); font-size: 14px; line-height: 1.25; }
+.stock-item-count {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(56, 88, 214, 0.18);
+  border-radius: 12px;
+  background: rgba(56, 88, 214, 0.07);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+}
+.stock-item-count i { color: var(--orange); font-size: 12px; }
+html:not([data-theme="dark"]) .stock-item-count { border-color: #d8e1ff; background: #f5f7ff; color: #314f9d; }
+[data-theme="dark"] .stock-item-count { border-color: rgba(172, 185, 236, 0.26); background: #515c7f; color: #eef2ff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+[data-theme="dark"] .stock-item-count i { color: #ff9a45; }
+.stock-item-count { cursor: pointer; }
+.stock-item-count:hover { transform: translateY(-1px); filter: brightness(1.06); }
 @media (max-width: 760px) {
   .variation-column-head { display: none; }
   .product-variation-row { grid-template-columns: 1fr 1fr; align-items: end; padding: 12px; }
@@ -7890,8 +7909,50 @@ img, svg, canvas { max-width: 100%; }
 }
 
 /* Armários */
-.locker-inactive-toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--text-mute); font-size: 13px; white-space: nowrap; }
-.locker-inactive-toggle input { accent-color: var(--orange); }
+.locker-inactive-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 6px 11px 6px 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass);
+  color: var(--text-mute);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, color 180ms ease;
+}
+.locker-inactive-toggle:hover { border-color: rgba(241, 124, 32, 0.32); background: var(--glass-strong); color: var(--text); }
+.locker-inactive-toggle input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.locker-inactive-switch {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+.locker-inactive-switch::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
+  content: "";
+  transition: transform 180ms cubic-bezier(.2, .8, .2, 1);
+}
+.locker-inactive-toggle input:checked + .locker-inactive-switch { background: var(--orange); box-shadow: 0 0 0 3px rgba(241, 124, 32, 0.12); }
+.locker-inactive-toggle input:checked + .locker-inactive-switch::after { transform: translateX(14px); }
+.locker-inactive-toggle:has(input:checked) { border-color: rgba(241, 124, 32, 0.38); color: var(--text); }
+.locker-inactive-toggle:has(input:focus-visible) { outline: 3px solid rgba(56, 88, 214, 0.24); outline-offset: 2px; }
 .locker-table .locker-number { display: flex; align-items: center; gap: 10px; }
 .locker-table .locker-number > i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--blue); background: color-mix(in srgb, var(--blue) 14%, transparent); }
 .locker-table .locker-number strong { display: block; }

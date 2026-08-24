@@ -42,13 +42,11 @@ class ArmarioHistorico(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     armario_id = Column(Integer, ForeignKey("armarios.id", ondelete="CASCADE"), nullable=False, index=True)
-    acao = Column(String(30), nullable=False)
     numero = Column(String(20), nullable=False)
     status = Column(String(20), nullable=False)
     ativo = Column(Boolean, nullable=False)
     locatario_nome = Column(String(150), nullable=True)
     semestre = Column(String(10), nullable=True)
     observacao = Column(String(255), nullable=True)
-    usuario_id = Column(Integer, nullable=True)
     usuario_nome = Column(String(100), nullable=True)
     criado_em = Column(DateTime, server_default=func.now(), nullable=False)

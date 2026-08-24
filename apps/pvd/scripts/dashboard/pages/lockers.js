@@ -11,6 +11,13 @@ window.LockersPage = (function () {
   const $ = id => document.getElementById(id);
   const escape = value => UI.escapeHTML(String(value || ""));
 
+  function formatDate(value) {
+    if (!value) return "Data não informada";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Data não informada";
+    return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+  }
+
   async function load() {
     const result = await window.API.getLockers({
       status: $("lockerStatusFilter")?.value,
@@ -75,7 +82,7 @@ window.LockersPage = (function () {
         <td>${rented ? escape(locker.locatario_nome) : "—"}</td>
         <td>${rented ? escape(locker.semestre) : "—"}</td>
         <td>${statusPill(locker)}</td>
-        <td class="right"><div class="actions-cell">${primary}<button class="act-btn edit" data-locker-action="edit" data-id="${locker.id}" title="Editar"><i class="fa-solid fa-pen"></i></button><button class="act-btn ${active ? "deactivate" : "view"}" data-locker-action="toggle" data-id="${locker.id}" title="${active ? "Desativar" : "Reativar"}"><i class="fa-solid ${active ? "fa-ban" : "fa-check"}"></i></button></div></td>
+        <td class="right"><div class="actions-cell">${primary}<button class="act-btn history" data-locker-action="history" data-id="${locker.id}" title="Ver histórico" aria-label="Ver histórico do armário ${escape(locker.numero)}"><i class="fa-solid fa-clock-rotate-left"></i></button><button class="act-btn edit" data-locker-action="edit" data-id="${locker.id}" title="Editar"><i class="fa-solid fa-pen"></i></button><button class="act-btn ${active ? "deactivate" : "view"}" data-locker-action="toggle" data-id="${locker.id}" title="${active ? "Desativar" : "Reativar"}"><i class="fa-solid ${active ? "fa-ban" : "fa-check"}"></i></button></div></td>
       </tr>`;
     }).join("");
     body.querySelectorAll("[data-locker-action]").forEach(button => button.addEventListener("click", () => handleAction(button.dataset.lockerAction, button.dataset.id)));
@@ -110,11 +117,40 @@ window.LockersPage = (function () {
     }
   }
 
+  async function openHistory(locker) {
+    $("lockerHistoryTitle").textContent = `Histórico do armário ${locker.numero}`;
+    const content = $("lockerHistoryContent");
+    content.innerHTML = '<p class="muted locker-history-feedback"><i class="fa-solid fa-spinner fa-spin"></i> Carregando histórico...</p>';
+    UI.openModal("lockerHistoryModal");
+    try {
+      const result = await window.API.getLockerHistory(locker.id);
+      const items = result.historico || [];
+      if (!items.length) {
+        content.innerHTML = '<p class="muted locker-history-feedback">Nenhum registro encontrado para este armário.</p>';
+        return;
+      }
+      content.innerHTML = `<div class="locker-history-list">${items.map(item => `
+        <article class="locker-history-item">
+          <div class="locker-history-head"><strong>${formatDate(item.criado_em)}</strong>${statusPill(item)}</div>
+          <dl class="locker-history-details">
+            <div><dt>Locatário</dt><dd>${escape(item.locatario_nome || "Não alugado")}</dd></div>
+            <div><dt>Semestre</dt><dd>${escape(item.semestre || "—")}</dd></div>
+            <div><dt>Responsável</dt><dd>${escape(item.usuario_nome || "Não informado")}</dd></div>
+            <div class="locker-history-note"><dt>Observação</dt><dd>${escape(item.observacao || "Sem observação")}</dd></div>
+          </dl>
+        </article>`).join("")}</div>`;
+    } catch (error) {
+      content.innerHTML = '<p class="muted locker-history-feedback">Não foi possível carregar o histórico.</p>';
+      UI.toast(error.message || "Não foi possível carregar o histórico.", "error");
+    }
+  }
+
   async function handleAction(action, id) {
     const locker = lockers.find(item => String(item.id) === String(id));
     if (!locker) return;
     if (action === "edit") return openLockerForm(locker);
     if (action === "rent") return openRentalForm(locker);
+    if (action === "history") return openHistory(locker);
     const release = action === "release";
     const ok = await UI.confirmDialog({
       title: release ? "Liberar armário" : (locker.ativo ? "Desativar armário" : "Reativar armário"),

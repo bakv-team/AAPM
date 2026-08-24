@@ -1151,6 +1151,17 @@
     <div class="modal-backdrop hidden" id="lockerModal"><div class="modal glass small"><div class="modal-head"><h3 id="lockerModalTitle">Novo armário</h3><button class="icon-btn ghost" data-close-modal="lockerModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div><form id="lockerForm" class="form-grid"><input type="hidden" id="lockerId"><label>Número <input type="text" id="lockerNumber" maxlength="20" required placeholder="Ex.: A-01"></label><label>Localização <input type="text" id="lockerLocation" maxlength="100" placeholder="Ex.: Corredor A"></label><label class="span-2">Observação <textarea id="lockerNote" maxlength="255" rows="3" placeholder="Opcional"></textarea></label><div class="modal-foot span-2"><button type="button" class="ghost-btn" data-close-modal="lockerModal">Cancelar</button><button type="submit" class="primary-btn">Salvar armário</button></div></form></div></div>
     <div class="modal-backdrop hidden" id="lockerRentalModal"><div class="modal glass small"><div class="modal-head"><h3>Confirmar aluguel</h3><button class="icon-btn ghost" data-close-modal="lockerRentalModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div><form id="lockerRentalForm" class="form-grid"><input type="hidden" id="lockerRentalId"><p class="span-2 muted" id="lockerRentalDescription"></p><label class="span-2">Associado <select id="lockerTenant" class="select" required><option value="">Carregando associados...</option></select><small class="muted">Apenas associados com desconto ativo podem alugar um armário.</small></label><label>Semestre <input type="text" id="lockerSemester" maxlength="10" required placeholder="Ex.: 2026.2"></label><label>Observação <input type="text" id="lockerRentalNote" maxlength="255" placeholder="Opcional"></label><div class="modal-foot span-2"><button type="button" class="ghost-btn" data-close-modal="lockerRentalModal">Cancelar</button><button type="submit" class="primary-btn"><i class="fa-solid fa-check"></i> Confirmar aluguel</button></div></form></div></div>
 
+    <div class="modal-backdrop hidden" id="lockerHistoryModal">
+      <div class="modal glass small locker-history-modal">
+        <div class="modal-head">
+          <h3 id="lockerHistoryTitle">Histórico do armário</h3>
+          <button class="icon-btn ghost" data-close-modal="lockerHistoryModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="lockerHistoryContent"></div>
+        <div class="modal-foot"><button type="button" class="ghost-btn" data-close-modal="lockerHistoryModal">Fechar</button></div>
+      </div>
+    </div>
+
     <!-- ====================== CONFIRM ====================== -->
     <div class="modal-backdrop hidden" id="confirmModal">
       <div class="modal glass small confirm-dialog">
@@ -1184,7 +1195,7 @@
     <script src="/apps/pvd/scripts/dashboard/pages/products.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/orders.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/customers.js?v=1"></script>
-    <script src="/apps/pvd/scripts/dashboard/pages/lockers.js?v=1"></script>
+    <script src="/apps/pvd/scripts/dashboard/pages/lockers.js?v=2"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/categories.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/employees.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/stock.js?v=stock-items-modal-20260824-1"></script>

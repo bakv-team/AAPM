@@ -222,6 +222,7 @@ window.API = (function () {
   }
   async function createLocker(payload) { return apiPost("/api/v1/armarios", payload); }
   async function updateLocker(id, payload) { return apiPut(`/api/v1/armarios/${id}`, payload); }
+  async function getLockerHistory(id) { return apiGet(`/api/v1/armarios/${id}/historico`); }
   async function rentLocker(id, payload) { return apiPost(`/api/v1/armarios/${id}/alugar`, payload); }
   async function releaseLocker(id) { return apiPost(`/api/v1/armarios/${id}/liberar`, {}); }
   async function toggleLockerActive(id) { return apiPost(`/api/v1/armarios/${id}/toggle-ativo`, {}); }
@@ -257,7 +258,7 @@ window.API = (function () {
     getCustomers, createCustomer, deleteCustomer,
     getOrders, createOrder, markPaymentExceptionPaid,
     getDashboardMetrics, getDailySales, getHourlySales, getTopProducts, getSmartInsights, askSmartAssistant,
-    getLockers, createLocker, updateLocker, rentLocker, releaseLocker, toggleLockerActive,
+    getLockers, createLocker, updateLocker, getLockerHistory, rentLocker, releaseLocker, toggleLockerActive,
     getNotifications, getSystemHealth, getProfile, changePassword, sendSupport, downloadReport
   };
 })();

@@ -1691,6 +1691,15 @@ html:not([data-theme="dark"]) #productsTable .product-variation-count { border-c
   gap: 6px;
 }
 
+.table-pagination-foot {
+  justify-content: flex-end;
+  min-height: 60px;
+}
+
+.table-foot > .table-pagination {
+  margin-left: auto;
+}
+
 .pager button {
   width: 32px;
   height: 32px;

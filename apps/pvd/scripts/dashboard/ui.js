@@ -42,6 +42,30 @@ window.UI = (function () {
   }
 
   const paginationState = new Map();
+  function paginationFoot(anchor, key) {
+    const tableWrap = anchor?.classList?.contains("table-wrap") ? anchor : anchor?.closest(".table-wrap");
+    if (!tableWrap) return null;
+
+    const card = tableWrap.parentElement;
+    let foot = tableWrap.nextElementSibling;
+    if (!foot?.classList?.contains("table-foot")) {
+      foot = document.createElement("div");
+      foot.className = "table-foot table-pagination-foot";
+      tableWrap.insertAdjacentElement("afterend", foot);
+    }
+    foot.dataset.paginationKey = key;
+    card?.classList?.add("has-table-pagination");
+    return foot;
+  }
+
+  function removeEmptyPaginationFoot(anchor, key) {
+    const tableWrap = anchor?.classList?.contains("table-wrap") ? anchor : anchor?.closest(".table-wrap");
+    const foot = tableWrap?.nextElementSibling;
+    if (foot?.classList?.contains("table-pagination-foot") && foot.dataset.paginationKey === key && !foot.childElementCount) {
+      foot.remove();
+    }
+  }
+
   function paginateTable(body, key, perPage = 10) {
     if (!body) return;
     const rows = Array.from(body.querySelectorAll(":scope > tr")).filter(row => !row.querySelector("td[colspan]") && row.dataset.paginationEligible !== "false");
@@ -52,7 +76,11 @@ window.UI = (function () {
 
     const pagerId = `pager-${key}`;
     document.getElementById(pagerId)?.remove();
-    if (rows.length <= perPage) return;
+    if (!rows.length) {
+      removeEmptyPaginationFoot(body, key);
+      return;
+    }
+    const foot = paginationFoot(body, key);
     const pager = document.createElement("div");
     pager.id = pagerId;
     pager.className = "pager table-pagination";
@@ -62,20 +90,24 @@ window.UI = (function () {
       paginationState.set(key, Number(button.dataset.page));
       paginateTable(body, key, perPage);
     }));
-    body.closest(".table-wrap")?.insertAdjacentElement("afterend", pager);
+    foot?.append(pager);
   }
 
   function renderServerPager(anchor, key, page, total, perPage, onPage) {
     const pagerId = `server-pager-${key}`;
     document.getElementById(pagerId)?.remove();
     const pages = Math.max(1, Math.ceil((Number(total) || 0) / perPage));
-    if (pages <= 1 || !anchor) return;
+    if (!Number(total) || !anchor) {
+      removeEmptyPaginationFoot(anchor, key);
+      return;
+    }
+    const foot = paginationFoot(anchor, key);
     const pager = document.createElement("div");
     pager.id = pagerId;
     pager.className = "pager table-pagination";
     pager.innerHTML = `<button type="button" data-page="${page - 1}" ${page === 1 ? "disabled" : ""} aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>${Array.from({ length: pages }, (_, index) => `<button type="button" data-page="${index + 1}" class="${index + 1 === page ? "active" : ""}">${index + 1}</button>`).join("")}<button type="button" data-page="${page + 1}" ${page === pages ? "disabled" : ""} aria-label="Próxima página"><i class="fa-solid fa-chevron-right"></i></button>`;
     pager.querySelectorAll("button[data-page]").forEach(button => button.addEventListener("click", () => onPage(Number(button.dataset.page))));
-    anchor.insertAdjacentElement("afterend", pager);
+    foot?.append(pager);
   }
 
   // Toast notification

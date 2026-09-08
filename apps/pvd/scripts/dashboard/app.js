@@ -855,12 +855,7 @@
       adminChip?.setAttribute("aria-expanded", "false");
     });
 
-    // Cmd+K for search
     document.addEventListener("keydown", e => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        document.getElementById("globalSearch").focus();
-      }
       if (e.key === "Escape") {
         document.querySelectorAll(".modal-backdrop:not(.hidden)").forEach(m => UI.closeModal(m.id));
       }

@@ -1,4 +1,4 @@
-/* Dashboard: página de movimentações de estoque. */
+﻿/* Dashboard: página de movimentações de estoque. */
 
 window.StockMovementsPage = (function () {
   let page = 1;

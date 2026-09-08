@@ -254,7 +254,9 @@ function cartItemName(item) {
 }
 
 function variationLabel(variation) {
-  return [variation?.size || variation?.tamanho, variation?.color || variation?.cor].filter(Boolean).join(" / ");
+  return [variation?.size || variation?.tamanho, variation?.color || variation?.cor]
+    .filter(value => value && value !== "-")
+    .join(" / ");
 }
 
 function cartItemKey(item) {
@@ -354,6 +356,19 @@ function produtoImagem(produto) {
     .find(variacao => variacao?.imageUrl || variacao?.imagemUrl);
   const imagemDaPrimeiraVariacao = primeiraVariacaoComImagem?.imageUrl || primeiraVariacaoComImagem?.imagemUrl;
   return produto?.imageUrl || produto?.imagemUrl || imagemDaPrimeiraVariacao || "/apps/pvd/assets/icones/logosemtexto.png";
+}
+
+function imagemDoItemCarrinho(item) {
+  if (item?.variationId) {
+    const produto = produtos.find(produto => String(produto.id) === String(item.id));
+    const variacao = (produto?.variations || produto?.variacoes || []).find(variacao =>
+      String(variacao.id) === String(item.variationId)
+    );
+    const imagemDaVariacao = variacao?.imageUrl || variacao?.imagemUrl || item?.variationImageUrl;
+    if (imagemDaVariacao) return imagemDaVariacao;
+  }
+
+  return produtoImagem(item);
 }
 
 function atualizarImagemDoModalProduto() {
@@ -553,18 +568,18 @@ function valoresUnicosDisponiveis(produto, campo) {
 
 function variacaoSelecionada() {
   if (!produtoEmDetalhes?.hasVariations) return null;
-  const exigeTamanho = valoresUnicosDisponiveis(produtoEmDetalhes, "size").length > 0;
+  const exigeTamanho = valoresUnicosDisponiveis(produtoEmDetalhes, "size").some(size => size !== "-");
   const exigeCor = valoresUnicosDisponiveis(produtoEmDetalhes, "color").length > 0;
   return (produtoEmDetalhes.variations || []).find(variation =>
     Number(variation.stock) > 0 &&
-    (!exigeTamanho || variation.size === tamanhoSelecionado) &&
+    (!exigeTamanho || variation.size === "-" || variation.size === tamanhoSelecionado) &&
     (!exigeCor || variation.color === corSelecionada)
   ) || null;
 }
 
 function renderOpcoesProduto() {
   if (!produtoEmDetalhes || !productPurchaseModal) return;
-  const tamanhos = valoresUnicosDisponiveis(produtoEmDetalhes, "size");
+  const tamanhos = valoresUnicosDisponiveis(produtoEmDetalhes, "size").filter(size => size !== "-");
   const cores = valoresUnicosDisponiveis(produtoEmDetalhes, "color");
   const sizeGroup = document.getElementById("productPurchaseSizeGroup");
   const colorGroup = document.getElementById("productPurchaseColorGroup");
@@ -574,7 +589,7 @@ function renderOpcoesProduto() {
   colorGroup.hidden = cores.length === 0;
   sizeOptions.innerHTML = tamanhos.map(size => `<button type="button" class="product-option ${size === tamanhoSelecionado ? "active" : ""}" data-purchase-size="${escapeHTML(size)}">${escapeHTML(size)}</button>`).join("");
   colorOptions.innerHTML = cores.map(color => {
-    const disponivel = (produtoEmDetalhes.variations || []).some(variation => Number(variation.stock) > 0 && variation.color === color && (!tamanhoSelecionado || !variation.size || variation.size === tamanhoSelecionado));
+    const disponivel = (produtoEmDetalhes.variations || []).some(variation => Number(variation.stock) > 0 && variation.color === color && (!tamanhoSelecionado || variation.size === "-" || !variation.size || variation.size === tamanhoSelecionado));
     return `<button type="button" class="product-option ${color === corSelecionada ? "active" : ""}" data-purchase-color="${escapeHTML(color)}" ${disponivel ? "" : "disabled"}>${escapeHTML(color)}</button>`;
   }).join("");
 
@@ -612,7 +627,8 @@ function renderOpcoesProduto() {
 function abrirDetalhesProduto(idProduto) {
   produtoEmDetalhes = produtos.find(product => String(product.id) === String(idProduto));
   if (!produtoEmDetalhes || !productPurchaseModal) return;
-  tamanhoSelecionado = "";
+  const tamanhos = valoresUnicosDisponiveis(produtoEmDetalhes, "size");
+  tamanhoSelecionado = tamanhos.includes("-") && !tamanhos.some(size => size !== "-") ? "-" : "";
   corSelecionada = "";
   atualizarImagemDoModalProduto();
   document.getElementById("productPurchaseCategory").textContent = categoriaNome(produtoEmDetalhes.categoryId);
@@ -822,7 +838,7 @@ function renderCarrinho() {
       const thumb = document.createElement("div");
       thumb.className = "cart-line-thumb";
       const image = document.createElement("img");
-      image.src = produtoImagem(item);
+      image.src = imagemDoItemCarrinho(item);
       image.alt = "";
       thumb.append(image);
 
@@ -1025,7 +1041,7 @@ function renderCheckoutReview() {
     const imageWrap = document.createElement("div");
     imageWrap.className = "checkout-item-image";
     const image = document.createElement("img");
-    image.src = produtoImagem(item);
+    image.src = imagemDoItemCarrinho(item);
     image.alt = "";
     imageWrap.append(image);
 

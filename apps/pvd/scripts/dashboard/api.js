@@ -87,7 +87,12 @@ window.API = (function () {
     data.set("preco", payload.price);
     data.set("estoque_atual", payload.stock);
     data.set("categoria_id", payload.categoryId || 0);
-    data.set("variacoes", JSON.stringify(payload.variations || []));
+    const variations = (payload.variations || []).map((variation, index) => {
+      const { image, ...variationData } = variation;
+      if (image) data.set(`variacao_imagem_${index}`, image);
+      return variationData;
+    });
+    data.set("variacoes", JSON.stringify(variations));
     if (payload.image) data.set("imagem", payload.image);
     if (!payload.image && payload.existingImage) data.set("imagem_existente", payload.existingImage);
     return data;

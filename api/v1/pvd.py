@@ -9,7 +9,7 @@ from email.message import EmailMessage
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
@@ -166,6 +166,7 @@ def _produto_json(produto: Produto) -> dict:
             "preco": _json_money(variacao.preco),
             "stock": variacao.estoque_atual,
             "estoque_atual": variacao.estoque_atual,
+            "imageUrl": f"/static/{variacao.imagem_path}" if variacao.imagem_path else "",
         }
         for variacao in produto.variacoes
     ]
@@ -220,11 +221,28 @@ def _parse_variacoes(valor: str) -> list[dict]:
         if chave_combinacao in combinacoes:
             raise HTTPException(status_code=400, detail="A mesma combinacao de tamanho e cor foi informada mais de uma vez.")
         combinacoes.add(chave_combinacao)
-        resultado.append({"tamanho": tamanho, "cor": cor, "preco": preco, "estoque": estoque})
+        resultado.append({
+            "tamanho": tamanho,
+            "cor": cor,
+            "preco": preco,
+            "estoque": estoque,
+            "imagem_existente": str(item.get("existingImage") or ""),
+        })
     return resultado
 
 
-def _salvar_variacoes(
+async def _preparar_imagens_das_variacoes(variacoes: list[dict], request: Request) -> None:
+    formulario = await request.form()
+    for indice, variacao in enumerate(variacoes):
+        arquivo = formulario.get(f"variacao_imagem_{indice}")
+        upload = arquivo if hasattr(arquivo, "filename") and hasattr(arquivo, "read") else None
+        variacao["imagem_path"] = (
+            await _salvar_imagem(upload)
+            or _imagem_existente_path(variacao.get("imagem_existente"))
+        )
+
+
+async def _salvar_variacoes(
     db: Session,
     produto: Produto,
     itens: list[dict],
@@ -276,6 +294,7 @@ def _salvar_variacoes(
             codigo_produto=f"VAR-{uuid.uuid4().hex[:12].upper()}",
             preco=item["preco"],
             estoque_atual=item["estoque"],
+            imagem_path=item.get("imagem_path"),
             valores_atributos=valores,
         ))
 
@@ -1289,6 +1308,7 @@ def suporte_api(
 
 @router.post("/products", status_code=status.HTTP_201_CREATED)
 async def criar_produto_api(
+    request: Request,
     nome: str = Form(...),
     descricao: str = Form(""),
     preco: Decimal = Form(...),
@@ -1305,6 +1325,7 @@ async def criar_produto_api(
         raise HTTPException(status_code=400, detail="Informe o nome do produto.")
 
     variacoes_data = _parse_variacoes(variacoes)
+    await _preparar_imagens_das_variacoes(variacoes_data, request)
     existente = db.query(Produto).filter(Produto.nome.ilike(nome)).first()
     if existente and not variacoes_data:
         raise HTTPException(
@@ -1327,7 +1348,7 @@ async def criar_produto_api(
     imagem_path = await _salvar_imagem(imagem) or _imagem_existente_path(imagem_existente)
 
     if existente:
-        _salvar_variacoes(db, existente, variacoes_data, substituir=False)
+        await _salvar_variacoes(db, existente, variacoes_data, substituir=False)
         existente.ativo = True
         if (descricao or "").strip():
             existente.descricao = descricao.strip()
@@ -1355,7 +1376,7 @@ async def criar_produto_api(
 
     db.add(produto)
     db.flush()
-    _salvar_variacoes(db, produto, variacoes_data)
+    await _salvar_variacoes(db, produto, variacoes_data)
     try:
         db.commit()
     except SQLAlchemyError:
@@ -1369,6 +1390,7 @@ async def criar_produto_api(
 @router.put("/products/{produto_id}")
 async def editar_produto_api(
     produto_id: int,
+    request: Request,
     nome: str = Form(...),
     descricao: str = Form(""),
     preco: Decimal = Form(...),
@@ -1397,6 +1419,7 @@ async def editar_produto_api(
         raise HTTPException(status_code=409, detail="Ja existe outro produto com este nome.")
 
     variacoes_data = _parse_variacoes(variacoes)
+    await _preparar_imagens_das_variacoes(variacoes_data, request)
     if estoque_atual < 0:
         raise HTTPException(status_code=400, detail="O estoque nao pode ser negativo.")
 
@@ -1424,7 +1447,7 @@ async def editar_produto_api(
     produto.preco = preco
     produto.estoque_atual = estoque_atual
     produto.categoria_id = categoria_id
-    _salvar_variacoes(db, produto, variacoes_data)
+    await _salvar_variacoes(db, produto, variacoes_data)
     try:
         db.commit()
     except SQLAlchemyError:

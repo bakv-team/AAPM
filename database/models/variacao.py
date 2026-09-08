@@ -37,6 +37,7 @@ class ProdutoVariacao(Base):
     codigo_produto = Column(String(50), unique=True, nullable=False)
     preco = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     estoque_atual = Column(Integer, nullable=False, default=0)
+    imagem_path = Column(String(255), nullable=True)
     produto = relationship("Produto", back_populates="variacoes")
 
     valores_atributos = relationship(

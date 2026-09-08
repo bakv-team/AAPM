@@ -350,7 +350,21 @@ function categoriaNome(id) {
 }
 
 function produtoImagem(produto) {
-  return produto.imageUrl || "/apps/pvd/assets/icones/logosemtexto.png";
+  const primeiraVariacaoComImagem = (produto?.variations || produto?.variacoes || [])
+    .find(variacao => variacao?.imageUrl || variacao?.imagemUrl);
+  const imagemDaPrimeiraVariacao = primeiraVariacaoComImagem?.imageUrl || primeiraVariacaoComImagem?.imagemUrl;
+  return produto?.imageUrl || produto?.imagemUrl || imagemDaPrimeiraVariacao || "/apps/pvd/assets/icones/logosemtexto.png";
+}
+
+function atualizarImagemDoModalProduto() {
+  const imagem = document.getElementById("productPurchaseImage");
+  if (!imagem || !produtoEmDetalhes) return;
+
+  const variacao = variacaoSelecionada() || (produtoEmDetalhes.variations || []).find(item =>
+    Number(item.stock) > 0 && (!corSelecionada || item.color === corSelecionada)
+  );
+  imagem.src = variacao?.imageUrl || produtoImagem(produtoEmDetalhes);
+  imagem.alt = variacao ? `${produtoEmDetalhes.name} - ${variationLabel(variacao)}` : produtoEmDetalhes.name;
 }
 
 function precoAssociado(produto) {
@@ -577,6 +591,8 @@ function renderOpcoesProduto() {
   productPurchaseConfirm.disabled = produtoEmDetalhes.hasVariations && !variation;
   productPurchaseConfirm.querySelector("span").textContent = variation || !produtoEmDetalhes.hasVariations ? "Adicionar ao carrinho" : "Escolha uma opção";
 
+  atualizarImagemDoModalProduto();
+
   sizeOptions.querySelectorAll("[data-purchase-size]").forEach(button => {
     button.addEventListener("click", () => {
       tamanhoSelecionado = button.dataset.purchaseSize;
@@ -598,8 +614,7 @@ function abrirDetalhesProduto(idProduto) {
   if (!produtoEmDetalhes || !productPurchaseModal) return;
   tamanhoSelecionado = "";
   corSelecionada = "";
-  document.getElementById("productPurchaseImage").src = produtoImagem(produtoEmDetalhes);
-  document.getElementById("productPurchaseImage").alt = produtoEmDetalhes.name;
+  atualizarImagemDoModalProduto();
   document.getElementById("productPurchaseCategory").textContent = categoriaNome(produtoEmDetalhes.categoryId);
   document.getElementById("productPurchaseTitle").textContent = produtoEmDetalhes.name;
   document.getElementById("productPurchaseDescription").textContent = produtoEmDetalhes.description || produtoEmDetalhes.descricao || "Produto disponível no ponto de venda.";

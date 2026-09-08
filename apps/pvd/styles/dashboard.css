@@ -4481,6 +4481,24 @@ html:not([data-theme="dark"]) #productsTable .product-variation-count { border-c
   max-width: 780px;
 }
 
+/* Galeria exclusiva para a imagem de uma combinação de variação. */
+.variation-image-library-backdrop { z-index: 120; }
+.variation-image-library-modal {
+  width: min(720px, 100%);
+  max-height: min(720px, calc(100dvh - 32px));
+  overflow: hidden;
+  background: #ffffff;
+  border-color: #cbd5e5;
+  box-shadow: 0 28px 70px rgba(10, 23, 56, .28);
+}
+[data-theme="dark"] .variation-image-library-modal {
+  background: #111e47;
+  border-color: rgba(255, 255, 255, .14);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .56);
+}
+.variation-image-library-modal .modal-head,
+.variation-image-library-modal .image-library-foot { background: inherit; }
+
 .image-library-search {
   position: relative;
   margin: 0 24px 16px;
@@ -7150,7 +7168,7 @@ body {
   font-size: 12px;
 }
 .variation-column-head,
-.product-variation-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .78fr) 68px; gap: 10px; align-items: center; }
+.product-variation-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .78fr) minmax(140px, 1.2fr) 68px; gap: 10px; align-items: center; }
 .variation-column-head { padding: 0 10px 9px; color: var(--text-mute); font-size: 10px; font-weight: 750; letter-spacing: .045em; text-transform: uppercase; }
 .variation-column-head span:last-child { text-align: center; }
 .product-variations-list { display: grid; gap: 8px; }
@@ -7195,6 +7213,14 @@ body {
   transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
 }
 .product-variation-row input::placeholder { color: var(--text-mute); opacity: .78; }
+.variation-image-field { position: relative; display: flex; align-items: center; min-height: 40px; padding: 0 10px; overflow: hidden; border: 1px dashed var(--border-2); border-radius: 10px; color: var(--text-mute); font-size: 11px; cursor: pointer; }
+.variation-image-field:hover { border-color: var(--primary); color: var(--primary); }
+.variation-image-field input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.variation-image-field span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.variation-image-control { display: flex; min-width: 0; gap: 6px; }
+.variation-image-control .variation-image-field { flex: 1; min-width: 0; }
+.variation-image-library { display: grid; flex: 0 0 40px; width: 40px; height: 40px; place-items: center; border: 1px solid var(--border-2); border-radius: 10px; color: var(--text-mute); background: color-mix(in srgb, var(--card) 94%, var(--bg)); cursor: pointer; transition: color .2s ease, border-color .2s ease, background .2s ease; }
+.variation-image-library:hover { border-color: var(--primary); color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--card)); }
 .product-variation-row input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255, 107, 53, .13); }
 [data-theme="dark"] .product-variation-row input { border-color: rgba(255, 255, 255, .12); background: var(--navy-3); color: #f3f6ff; }
 .variation-number-field { position: relative; min-width: 0; }
@@ -7268,6 +7294,37 @@ html:not([data-theme="dark"]) .variation-row-actions .act-btn {
 }
 html:not([data-theme="dark"]) .variation-row-actions .variation-remove { color: #d83e5d; }
 html:not([data-theme="dark"]) .variations-modal-foot { background: #fff; }
+
+/* O configurador de variações é um diálogo, não um card interativo.
+   Neutraliza o hover global de `.glass`, que deixava o modal translúcido. */
+.product-variations-modal,
+.product-variations-modal:hover {
+  transform: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: none !important;
+}
+
+html:not([data-theme="dark"]) .product-variations-modal,
+html:not([data-theme="dark"]) .product-variations-modal:hover {
+  background: #ffffff !important;
+  border-color: #cbd5e5 !important;
+  box-shadow: 0 28px 70px rgba(10, 23, 56, .22) !important;
+}
+
+[data-theme="dark"] .product-variations-modal,
+[data-theme="dark"] .product-variations-modal:hover {
+  background: #111e47 !important;
+  border-color: rgba(255, 255, 255, .14) !important;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .52) !important;
+}
+
+[data-theme="dark"] .product-variations-modal .modal-head,
+[data-theme="dark"] .product-variations-modal .variations-editor,
+[data-theme="dark"] .product-variations-modal .variations-modal-foot {
+  background: #111e47;
+}
 .variation-summary {
   display: grid;
   gap: 4px;
@@ -7306,6 +7363,8 @@ html:not([data-theme="dark"]) .stock-item-count { border-color: #d8e1ff; backgro
   .variation-column-head { display: none; }
   .product-variation-row { grid-template-columns: 1fr 1fr; align-items: end; padding: 12px; }
   .product-variation-row label::before { content: attr(data-mobile-label); display: block; margin-bottom: 4px; color: var(--text-mute); font-size: 9px; font-weight: 700; }
+  .variation-image-control { flex-wrap: wrap; }
+  .variation-image-control::before { content: attr(data-mobile-label); flex-basis: 100%; margin-bottom: 4px; color: var(--text-mute); font-size: 9px; font-weight: 700; }
   .variation-row-actions { grid-column: 1 / -1; justify-content: flex-end; }
   .product-variations-modal .modal-head,
   .product-variations-modal .variations-editor,
@@ -7482,6 +7541,7 @@ img, svg, canvas { max-width: 100%; }
   .product-variations-modal .variations-modal-foot { padding-inline: 16px; }
   .product-variation-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .product-variation-row label::before { content: attr(data-mobile-label); display: block; margin-bottom: 5px; color: var(--text-mute); font-size: 10px; font-weight: 700; }
+  .variation-image-control::before { content: attr(data-mobile-label); flex-basis: 100%; margin-bottom: 5px; color: var(--text-mute); font-size: 10px; font-weight: 700; }
   .variation-row-actions { grid-column: 1 / -1; justify-content: flex-end; }
   .report-tabs { grid-template-columns: minmax(0, 1fr); }
   .notif-tray, .admin-tray { left: 8px !important; right: 8px !important; width: auto !important; max-height: calc(100dvh - 90px); overflow-y: auto; }

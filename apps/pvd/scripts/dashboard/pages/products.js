@@ -5,6 +5,8 @@ window.ProductsPage = (function () {
   const perPage = 10;
   let filters = { q: "", category: "", stock: "", status: "active" };
   let imageLibraryItems = [];
+  let variationImageLibraryItems = [];
+  let variationImageTarget = null;
   let productsPageItems = [];
   let totalProducts = 0;
 
@@ -66,8 +68,10 @@ window.ProductsPage = (function () {
           const label = [variation.size, variation.color].filter(Boolean).join(" · ") || "Opção";
           return `<span class="product-variation-chip">${UI.escapeHTML(label)}</span>`;
         }).join("") + (variations.length > 2 ? `<span class="product-variation-chip more">+${variations.length - 2}</span>` : "");
-        const thumb = p.imageUrl
-          ? `<div class="prod-thumb image"><img src="${p.imageUrl}" alt=""></div>`
+        const variationImage = variations.find(variation => variation.imageUrl || variation.imagemUrl);
+        const thumbnailUrl = p.imageUrl || p.imagemUrl || variationImage?.imageUrl || variationImage?.imagemUrl;
+        const thumb = thumbnailUrl
+          ? `<div class="prod-thumb image"><img src="${thumbnailUrl}" alt=""></div>`
           : `<div class="prod-thumb" style="background:linear-gradient(135deg, ${color}, ${color}aa)"><i class="fa-solid ${cat?.icon || "fa-box"}"></i></div>`;
         const actions = active
           ? `
@@ -313,6 +317,66 @@ window.ProductsPage = (function () {
     }
   }
 
+  function chooseVariationImage(image) {
+    if (!variationImageTarget) return;
+    const fileInput = variationImageTarget.querySelector("[data-variation-image]");
+    const imageName = variationImageTarget.querySelector("[data-variation-image-name]");
+    if (fileInput) fileInput.value = "";
+    variationImageTarget.dataset.variationExistingImage = image.path || image.url || "";
+    if (imageName) imageName.textContent = image.name || "Imagem da galeria";
+    variationImageTarget = null;
+    UI.closeModal("variationImageLibraryModal");
+  }
+
+  function renderVariationImageLibrary(images, term = "") {
+    const grid = document.getElementById("variationImageLibraryGrid");
+    if (!grid) return;
+    const query = term.trim().toLowerCase();
+    const visibleImages = query
+      ? images.filter(image => `${image.name || ""} ${image.path || ""}`.toLowerCase().includes(query))
+      : images;
+    grid.innerHTML = "";
+    if (!visibleImages.length) {
+      const empty = document.createElement("div");
+      empty.className = "image-library-empty";
+      empty.textContent = images.length ? "Nenhuma imagem encontrada com esse nome." : "Nenhuma imagem encontrada em database/static/uploads.";
+      grid.appendChild(empty);
+      return;
+    }
+    visibleImages.forEach(image => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "image-library-item";
+      const preview = document.createElement("img");
+      preview.src = image.url;
+      preview.alt = image.name || "Imagem da variação";
+      preview.loading = "lazy";
+      const name = document.createElement("span");
+      name.textContent = image.name || image.path;
+      button.append(preview, name);
+      button.addEventListener("click", () => chooseVariationImage(image));
+      grid.appendChild(button);
+    });
+  }
+
+  async function openVariationImageLibrary(variationRow) {
+    if (!variationRow) return;
+    variationImageTarget = variationRow;
+    const grid = document.getElementById("variationImageLibraryGrid");
+    const search = document.getElementById("variationImageLibrarySearch");
+    if (search) search.value = "";
+    if (grid) grid.innerHTML = `<div class="image-library-empty">Carregando imagens...</div>`;
+    UI.openModal("variationImageLibraryModal");
+    try {
+      variationImageLibraryItems = await window.API.getProductImages();
+      renderVariationImageLibrary(variationImageLibraryItems);
+    } catch (err) {
+      console.error("Falha ao carregar galeria de variações:", err);
+      if (grid) grid.innerHTML = `<div class="image-library-empty">Não foi possível carregar as imagens.</div>`;
+      UI.toast("Não foi possível abrir a galeria de imagens.", "error");
+    }
+  }
+
   function addProductVariationRow(variation = {}) {
     const list = document.getElementById("productVariations");
     const row = document.createElement("div");
@@ -322,6 +386,7 @@ window.ProductsPage = (function () {
       <label data-mobile-label="Cor"><span class="sr-only">Cor (opcional)</span><input type="text" data-variation-color list="productColorSuggestions" maxlength="50" placeholder="Ex.: Azul"></label>
       <label data-mobile-label="Preço"><span class="sr-only">Preço</span><div class="variation-number-field"><span class="variation-number-prefix">R$</span><input type="number" data-variation-price min="0" step="0.01" placeholder="0,00" required><span class="variation-number-controls"><button type="button" data-variation-step="up" aria-label="Aumentar preço"><i class="fa-solid fa-chevron-up"></i></button><button type="button" data-variation-step="down" aria-label="Diminuir preço"><i class="fa-solid fa-chevron-down"></i></button></span></div></label>
       <label data-mobile-label="Estoque"><span class="sr-only">Estoque</span><div class="variation-number-field"><input type="number" data-variation-stock min="0" step="1" placeholder="0" required><span class="variation-number-controls"><button type="button" data-variation-step="up" aria-label="Aumentar estoque"><i class="fa-solid fa-chevron-up"></i></button><button type="button" data-variation-step="down" aria-label="Diminuir estoque"><i class="fa-solid fa-chevron-down"></i></button></span></div></label>
+      <div class="variation-image-control" data-mobile-label="Imagem"><label class="variation-image-field"><span class="sr-only">Imagem desta variação</span><input type="file" data-variation-image accept=".png,.jpg,.jpeg,.webp"><span data-variation-image-name>Usar imagem do produto</span></label><button type="button" class="variation-image-library" data-variation-image-library title="Escolher imagem da galeria" aria-label="Escolher imagem da galeria"><i class="fa-solid fa-folder-open"></i></button></div>
       <div class="variation-row-actions">
         <button type="button" class="act-btn variation-duplicate" data-duplicate-variation title="Duplicar opção" aria-label="Duplicar opção"><i class="fa-regular fa-copy"></i></button>
         <button type="button" class="act-btn delete variation-remove" data-remove-variation title="Remover opção" aria-label="Remover opção"><i class="fa-solid fa-trash"></i></button>
@@ -331,6 +396,13 @@ window.ProductsPage = (function () {
     row.querySelector("[data-variation-color]").value = variation.color || variation.cor || "";
     row.querySelector("[data-variation-price]").value = variation.price ?? variation.preco ?? document.getElementById("productPrice").value ?? "";
     row.querySelector("[data-variation-stock]").value = variation.stock ?? variation.estoque_atual ?? 0;
+    row.dataset.variationExistingImage = variation.imageUrl || variation.imagemUrl || "";
+    const imageName = row.querySelector("[data-variation-image-name]");
+    if (row.dataset.variationExistingImage) imageName.textContent = "Imagem atual mantida";
+    row.querySelector("[data-variation-image]").addEventListener("change", event => {
+      const file = event.target.files[0];
+      imageName.textContent = file ? file.name : (row.dataset.variationExistingImage ? "Imagem atual mantida" : "Usar imagem do produto");
+    });
     list.appendChild(row);
     row.querySelectorAll("[data-variation-size], [data-variation-color]").forEach(input => {
       input.addEventListener("input", () => updateVariationRowLabels());
@@ -388,7 +460,9 @@ window.ProductsPage = (function () {
       size: row.querySelector("[data-variation-size]").value.trim(),
       color: row.querySelector("[data-variation-color]").value.trim(),
       price: Number(row.querySelector("[data-variation-price]").value),
-      stock: Number(row.querySelector("[data-variation-stock]").value)
+      stock: Number(row.querySelector("[data-variation-stock]").value),
+      image: row.querySelector("[data-variation-image]").files[0] || null,
+      existingImage: row.dataset.variationExistingImage || ""
     }));
   }
 
@@ -560,6 +634,11 @@ window.ProductsPage = (function () {
     });
     document.getElementById("manageProductVariations").addEventListener("click", () => UI.openModal("productVariationsModal"));
     document.getElementById("productVariations").addEventListener("click", event => {
+      const galleryButton = event.target.closest("[data-variation-image-library]");
+      if (galleryButton) {
+        openVariationImageLibrary(galleryButton.closest(".product-variation-row"));
+        return;
+      }
       const stepButton = event.target.closest("[data-variation-step]");
       if (stepButton) {
         const input = stepButton.closest(".variation-number-field")?.querySelector("input[type=number]");
@@ -593,6 +672,9 @@ window.ProductsPage = (function () {
     document.getElementById("imageLibrarySearch").addEventListener("input", e => {
       renderImageLibrary(imageLibraryItems, e.target.value);
     });
+    document.getElementById("variationImageLibrarySearch").addEventListener("input", e => {
+      renderVariationImageLibrary(variationImageLibraryItems, e.target.value);
+    });
 
     document.getElementById("exportProducts").addEventListener("click", async () => {
       const rows = [["Nome", "Variações", "Categoria", "Preço", "Estoque", "Situação"]];
@@ -615,6 +697,9 @@ window.ProductsPage = (function () {
     });
     document.getElementById("imageLibraryModal").addEventListener("click", e => {
       if (e.target.id === "imageLibraryModal") UI.closeModal("imageLibraryModal");
+    });
+    document.getElementById("variationImageLibraryModal").addEventListener("click", e => {
+      if (e.target.id === "variationImageLibraryModal") UI.closeModal("variationImageLibraryModal");
     });
 
     window.addEventListener("popstate", () => {

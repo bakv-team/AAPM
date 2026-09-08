@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from database.database import get_db
 from database.models.usuario import Usuario
-from integrations.smtp_client import send_message, smtp_settings
+from integrations.smtp_client import enviar_mensagem, configuracao_smtp
 from api.middleware import (
     CSRF_COOKIE_NAME,
     access_token_max_age,
@@ -40,7 +40,7 @@ templates = Jinja2Templates(directory="database/templates")
 
 def _enviar_email_recuperacao(destino: str, nome: str, link: str):
     load_dotenv(override=True)
-    settings = smtp_settings()
+    settings = configuracao_smtp()
 
     message = EmailMessage()
     message["Subject"] = "Redefinição de senha - AAPM"
@@ -124,7 +124,7 @@ def _enviar_email_recuperacao(destino: str, nome: str, link: str):
         subtype="html",
     )
 
-    send_message(message, settings=settings, require_credentials=True)
+    enviar_mensagem(message, configuracao=settings, exigir_credenciais=True)
 
 
 #auth 01

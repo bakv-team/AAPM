@@ -912,7 +912,7 @@
             <div><strong>Combinações <b id="productVariationCount" class="variation-count">0</b></strong><p id="productVariationHint">Tamanho ou cor são opcionais, mas informe ao menos um deles.</p></div>
             <button type="button" class="ghost-btn variation-add-btn" id="addProductVariation"><i class="fa-solid fa-plus"></i> Adicionar opção</button>
           </div>
-          <div class="variation-column-head" aria-hidden="true"><span>Tamanho</span><span>Cor</span><span>Preço</span><span>Estoque</span><span>Ações</span></div>
+          <div class="variation-column-head" aria-hidden="true"><span>Tamanho</span><span>Cor</span><span>Preço</span><span>Estoque</span><span>Imagem</span><span>Ações</span></div>
           <div id="productVariations" class="product-variations-list"></div>
         </div>
         <div class="modal-foot variations-modal-foot">
@@ -945,6 +945,27 @@
         <div class="image-library-grid" id="imageLibraryGrid"></div>
         <div class="modal-foot image-library-foot">
           <button type="button" class="ghost-btn" data-close-modal="imageLibraryModal">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: GALERIA DA VARIAÇÃO ================= -->
+    <div class="modal-backdrop hidden variation-image-library-backdrop" id="variationImageLibraryModal">
+      <div class="modal variation-image-library-modal">
+        <div class="modal-head">
+          <div>
+            <h3>Imagem da variação</h3>
+            <p class="muted">Escolha uma imagem já salva para esta combinação.</p>
+          </div>
+          <button class="icon-btn ghost" data-close-modal="variationImageLibraryModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="image-library-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" id="variationImageLibrarySearch" placeholder="Pesquisar imagem..." autocomplete="off" />
+        </div>
+        <div class="image-library-grid" id="variationImageLibraryGrid"></div>
+        <div class="modal-foot image-library-foot">
+          <button type="button" class="ghost-btn" data-close-modal="variationImageLibraryModal">Cancelar</button>
         </div>
       </div>
     </div>

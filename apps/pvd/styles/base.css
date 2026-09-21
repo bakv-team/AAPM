@@ -17,21 +17,21 @@
 }
 
 :root {
-    --bg: #e8e4f5;
-    --bg-soft: #efebf8;
+    --bg: #ffffff;
+    --bg-soft: #f3f4f6;
     --card: #ffffff;
-    --text: #1d1d3a;
-    --text-soft: #6b6b85;
-    --orange: #f17c20;
-    --orange-2: #f7a930;
-    --orange-hover: #d96a14;
-    --blue: #3858d6;
-    --blue-hover: #2a47bb;
-    --yellow-star: #f7a930;
+    --text: #111827;
+    --text-soft: #6b7280;
+    --orange: #4b5563;
+    --orange-2: #6b7280;
+    --orange-hover: #374151;
+    --blue: #4b5563;
+    --blue-hover: #374151;
+    --yellow-star: #6b7280;
     --green: #22c55e;
-    --border: #e3dff1;
-    --shadow: 0 10px 30px rgba(56, 50, 120, 0.10);
-    --shadow-soft: 0 6px 18px rgba(56, 50, 120, 0.07);
+    --border: #e5e7eb;
+    --shadow: 0 10px 30px rgba(31, 41, 55, 0.10);
+    --shadow-soft: 0 6px 18px rgba(31, 41, 55, 0.07);
     --radius: 18px;
 }
 
@@ -1264,19 +1264,19 @@ header.topbar {
 
 /* ================= AAPM DASHBOARD HARMONY ================= */
 :root {
-    --navy: #0A1738;
-    --navy-2: #111E47;
-    --bg: #F4F6FB;
-    --bg-soft: #EAEFF9;
+    --navy: #1f2937;
+    --navy-2: #374151;
+    --bg: #FFFFFF;
+    --bg-soft: #F3F4F6;
     --card: rgba(255, 255, 255, 0.82);
     --card-soft: rgba(255, 255, 255, 0.66);
-    --text: #0E1A3A;
-    --text-soft: #6A7A9A;
-    --orange: #f17c20;
-    --orange-2: #f7a930;
-    --orange-hover: #d96a14;
-    --blue: #2D7BFF;
-    --blue-hover: #1F5FCC;
+    --text: #111827;
+    --text-soft: #6B7280;
+    --orange: #4b5563;
+    --orange-2: #6b7280;
+    --orange-hover: #374151;
+    --blue: #4b5563;
+    --blue-hover: #374151;
     --green: #16C784;
     --red: #FF4D6D;
     --border: rgba(10, 23, 56, 0.08);
@@ -9885,4 +9885,96 @@ img, svg, canvas { max-width: 100%; }
         width: 100% !important;
         max-width: 360px !important;
     }
+}
+
+/* Neutral palette and plain application surface. Kept last to take priority
+   over legacy component-specific theme declarations. */
+.background-image,
+[data-theme="dark"] .background-image {
+    display: block !important;
+    filter: grayscale(1);
+    opacity: .24 !important;
+}
+
+[data-theme="dark"] .background-image {
+    filter: grayscale(1) brightness(.42);
+    opacity: .30 !important;
+}
+
+#particles {
+    display: none !important;
+}
+
+[data-theme="dark"] {
+    --bg: #080808;
+    --bg-soft: #171717;
+    --card: #171717;
+    --card-soft: #262626;
+    --text: #f5f5f5;
+    --text-2: #d4d4d4;
+    --text-soft: #a3a3a3;
+    --text-mute: #a3a3a3;
+    --orange: #a3a3a3;
+    --orange-2: #737373;
+    --orange-hover: #d4d4d4;
+    --blue: #737373;
+    --blue-hover: #a3a3a3;
+}
+
+.orange,
+.blue {
+    color: #f9fafb !important;
+    background: linear-gradient(135deg, #4b5563, #6b7280) !important;
+}
+
+[data-theme="dark"] .orange,
+[data-theme="dark"] .blue {
+    background: linear-gradient(135deg, #737373, #525252) !important;
+}
+
+/* PDV actions: legacy rules used fixed orange/blue gradients. */
+.products-grid .product-card .card-button,
+.card-button,
+.checkout-primary,
+.btn-close-order,
+.cart-associate,
+.page-number.active,
+.nav-item.active,
+.dashboard-nav a.active {
+    color: #ffffff !important;
+    border-color: #374151 !important;
+    background: linear-gradient(135deg, #374151, #4b5563) !important;
+    box-shadow: 0 10px 22px rgba(31, 41, 55, .24) !important;
+}
+
+/* Former blue PDV surfaces use neutral grays in either theme. */
+.payment-option,
+.products-grid .product-card {
+    border-color: #4b5563 !important;
+}
+
+[data-theme="dark"] .products-grid .product-card,
+[data-theme="dark"] .products-grid .product-card .card-content {
+    border-color: #525252 !important;
+    background: #262626 !important;
+}
+
+[data-theme="dark"] .products-grid .product-card .card-button,
+[data-theme="dark"] .card-button,
+[data-theme="dark"] .checkout-primary,
+[data-theme="dark"] .btn-close-order,
+[data-theme="dark"] .cart-associate,
+[data-theme="dark"] .page-number.active,
+[data-theme="dark"] .nav-item.active,
+[data-theme="dark"] .dashboard-nav a.active {
+    color: #171717 !important;
+    border-color: #a3a3a3 !important;
+    background: linear-gradient(135deg, #d4d4d4, #a3a3a3) !important;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, .34) !important;
+}
+
+[data-theme="dark"] .payment-option {
+    color: #f5f5f5 !important;
+    border-color: #737373 !important;
+    background: #404040 !important;
 }

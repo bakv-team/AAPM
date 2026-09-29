@@ -8090,8 +8090,9 @@ img, svg, canvas { max-width: 100%; }
 #page-dashboard .table-wrap:has(.recent-orders-table) {
   position: relative;
   max-height: 320px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* Override the mobile data-card rule so orders stay inside this scroll area. */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   isolation: isolate;
 }
 
@@ -8113,4 +8114,24 @@ img, svg, canvas { max-width: 100%; }
   #page-dashboard .recent-orders-table td { padding: 12px 7px; font-size: 12px; }
   #page-dashboard .recent-orders-table thead th { font-size: 9px; letter-spacing: .04em; }
   #page-dashboard .recent-orders-table td .pill { padding: 4px 6px; font-size: 10px; }
+}
+
+/* Keep chart legends readable without horizontal scrolling on phones. */
+@media (max-width: 560px) {
+  #page-dashboard .legend,
+  #page-grafico .legend {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #page-dashboard .legend li,
+  #page-grafico .legend li {
+    min-width: 0;
+  }
+
+  #page-dashboard .legend .swatch,
+  #page-grafico .legend .swatch,
+  #page-dashboard .legend strong,
+  #page-grafico .legend strong {
+    flex-shrink: 0;
+  }
 }

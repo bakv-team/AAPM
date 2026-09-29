@@ -109,6 +109,7 @@ class VendaPayload(BaseModel):
     excecao_pagamento: bool = False
     excecao_prazo: str | None = None
     excecao_observacao: str | None = None
+    excecao_valor: Decimal | None = None
 
 
 class ExcecaoPagamentoPayload(BaseModel):
@@ -847,6 +848,7 @@ def criar_venda_api(
                 payment_exception=excecao_ativa,
                 payment_due_at=excecao_prazo,
                 payment_exception_note=payload.excecao_observacao or "",
+                payment_exception_amount=payload.excecao_valor,
             ),
             user_id=usuario.get("id"),
             created_at=_agora_local(),

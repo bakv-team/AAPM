@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -35,6 +35,7 @@ class RegisterSaleInput:
     payment_exception: bool
     payment_due_at: datetime | None
     payment_exception_note: str
+    payment_exception_amount: Decimal | None = None
 
 
 def _aggregate_quantities(items: list[SaleItemInput]) -> dict[tuple[int, int | None], int]:
@@ -141,6 +142,17 @@ def register_sale(
         )
         gross_total = money(gross_total)
         net_total = money(gross_total * (Decimal("1.00") - discount_percent / Decimal("100.00")))
+
+        if command.payment_exception_amount is not None:
+            if not command.payment_exception:
+                raise ValidationError("Ative a excecao de pagamento para alterar o valor da compra.")
+            try:
+                amount = Decimal(str(command.payment_exception_amount))
+                if not amount.is_finite() or amount < 0 or amount > net_total or amount != money(amount):
+                    raise ValidationError("Valor da excecao deve estar entre zero e o total da compra, com ate duas casas decimais.")
+                net_total = money(amount)
+            except InvalidOperation as exc:
+                raise ValidationError("Valor da excecao de pagamento invalido.") from exc
 
         observations = [f"Pagamento: {payment}.", f"Cliente: {customer_name}."]
         if command.payment_exception:

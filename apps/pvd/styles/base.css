@@ -7000,6 +7000,16 @@ body.checkout-returning .app-shell {
     gap: 10px;
 }
 
+.payment-exception-fields[hidden] {
+    display: none;
+}
+
+.payment-exception-fields small {
+    color: var(--text-mute);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
 .payment-exception-fields label {
     display: grid;
     gap: 6px;

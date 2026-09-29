@@ -110,6 +110,7 @@ const btnFecharPedido = document.getElementById("btnFecharPedido");
 const paymentOptions = document.getElementById("paymentOptions");
 const paymentExceptionToggle = document.getElementById("paymentExceptionToggle");
 const paymentExceptionFields = document.getElementById("paymentExceptionFields");
+const paymentExceptionAmount = document.getElementById("paymentExceptionAmount");
 const paymentExceptionDue = document.getElementById("paymentExceptionDue");
 const paymentExceptionNote = document.getElementById("paymentExceptionNote");
 const customerNameInput = document.getElementById("customerNameInput");
@@ -755,14 +756,20 @@ function confirmarEsvaziarCarrinho() {
 
 function totaisCarrinho() {
   const totalBruto = carrinho.reduce((sum, item) => sum + cartItemPrice(item) * cartItemQuantity(item), 0);
-  const desconto = ehAssociado ? totalBruto * DISCOUNT : 0;
-  return { totalBruto, desconto, totalLiquido: totalBruto - desconto };
+  const descontoAssociado = ehAssociado ? Math.round(totalBruto * DISCOUNT * 100) / 100 : 0;
+  const totalOriginal = Math.round((totalBruto - descontoAssociado) * 100) / 100;
+  const exception = getPaymentException();
+  const amount = exception.amount;
+  const validAmount = amount !== null && Number.isFinite(amount) && amount >= 0 && amount <= totalOriginal;
+  const totalLiquido = validAmount ? Math.round(amount * 100) / 100 : totalOriginal;
+  return { totalBruto, totalOriginal, desconto: totalBruto - totalLiquido, totalLiquido };
 }
 
 function getPaymentException() {
   const enabled = Boolean(paymentExceptionToggle?.checked);
   return {
     enabled,
+    amount: enabled && paymentExceptionAmount?.value !== "" ? Number(paymentExceptionAmount?.value) : null,
     due: enabled ? (paymentExceptionDue?.value || "") : "",
     note: enabled ? (paymentExceptionNote?.value || "").trim() : ""
   };
@@ -771,6 +778,13 @@ function getPaymentException() {
 function validatePaymentException({ focus = false } = {}) {
   const exception = getPaymentException();
   if (!exception.enabled) return true;
+  if (paymentExceptionAmount?.validity.badInput || (exception.amount !== null &&
+      (!Number.isFinite(exception.amount) || exception.amount < 0 ||
+       exception.amount > totaisCarrinho().totalOriginal || paymentExceptionAmount?.validity.stepMismatch))) {
+    toast("Informe um valor v?lido entre R$ 0,00 e o total da compra, com at? duas casas decimais.", "warn");
+    if (focus) paymentExceptionAmount?.focus();
+    return false;
+  }
   if (!exception.due) {
     toast("Informe o prazo da exceção de pagamento.", "warn");
     if (focus) paymentExceptionDue?.focus();
@@ -789,6 +803,7 @@ function buildSalePayload() {
     customerName,
     observacao: customerName ? `Cliente: ${customerName}` : null,
     excecao_pagamento: exception.enabled,
+    excecao_valor: exception.amount,
     excecao_prazo: exception.due,
     excecao_observacao: exception.note,
     itens: carrinho.map(item => ({
@@ -1500,6 +1515,8 @@ async function confirmarPedido() {
     return;
   }
 
+  if (!validatePaymentException({ focus: true })) return;
+
   btnFecharPedido.disabled = true;
   btnFecharPedido.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Processando</span>`;
   if (checkoutConfirmBtn) checkoutConfirmBtn.disabled = true;
@@ -1528,6 +1545,7 @@ async function confirmarPedido() {
     associadoValidado = null;
     if (customerNameInput) customerNameInput.value = "";
     if (paymentExceptionToggle) paymentExceptionToggle.checked = false;
+    if (paymentExceptionAmount) paymentExceptionAmount.value = "";
     if (paymentExceptionDue) paymentExceptionDue.value = "";
     if (paymentExceptionNote) paymentExceptionNote.value = "";
     if (paymentExceptionFields) paymentExceptionFields.hidden = true;
@@ -1791,11 +1809,16 @@ function bindEventos() {
   paymentExceptionToggle?.addEventListener("change", () => {
     const enabled = paymentExceptionToggle.checked;
     if (paymentExceptionFields) paymentExceptionFields.hidden = !enabled;
+    renderCarrinho();
     if (enabled && paymentExceptionDue && !paymentExceptionDue.value) {
       const due = new Date();
       due.setMonth(due.getMonth() + 1);
       paymentExceptionDue.value = due.toISOString().slice(0, 10);
     }
+    if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
+  });
+  paymentExceptionAmount?.addEventListener("input", () => {
+    renderCarrinho();
     if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
   });
   paymentExceptionDue?.addEventListener("change", () => {

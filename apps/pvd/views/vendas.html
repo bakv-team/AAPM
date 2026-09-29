@@ -12,7 +12,7 @@
             }
         } catch (error) {}
     </script>
-    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-associate-filter-20260824-1">
+    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-exception-amount-20260929-1">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -181,6 +181,10 @@
                             <strong>Exceção de pagamento</strong>
                         </label>
                         <div class="payment-exception-fields" id="paymentExceptionFields" hidden>
+                            <label>Valor final da compra (R$)
+                                <input type="number" id="paymentExceptionAmount" min="0" step="0.01" inputmode="decimal" placeholder="Opcional: manter valor atual" aria-describedby="paymentExceptionAmountHint" />
+                            </label>
+                            <small id="paymentExceptionAmountHint">Informe o valor combinado ou deixe em branco para manter o total.</small>
                             <label>Prazo para pagar
                                 <input type="date" id="paymentExceptionDue" />
                             </label>
@@ -196,7 +200,7 @@
                             <strong id="cartSubtotal">R$ 0,00</strong>
                         </div>
                         <div class="summary-row discount">
-                            <span>Desconto associado</span>
+                            <span>Descontos</span>
                             <strong id="cartDiscount">-R$ 0,00</strong>
                         </div>
                         <div class="summary-row total">
@@ -346,7 +350,7 @@
     <div class="background-image"></div>
 
     <script src="/apps/pvd/scripts/sounds.js?v=aapm-sounds-20260615-1"></script>
-    <script src="/apps/pvd/scripts/base.js?v=pdv-note-direct-20260824-1"></script>
+    <script src="/apps/pvd/scripts/base.js?v=pdv-exception-amount-20260929-1"></script>
 </body>
 
 </html>

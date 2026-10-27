@@ -36,6 +36,7 @@ class RegisterSaleInput:
     payment_due_at: datetime | None
     payment_exception_note: str
     payment_exception_amount: Decimal | None = None
+    payment_received_amount: Decimal | None = None
 
 
 def _aggregate_quantities(items: list[SaleItemInput]) -> dict[tuple[int, int | None], int]:
@@ -161,6 +162,13 @@ def register_sale(
         if clean_note and not clean_note.casefold().startswith("cliente:"):
             observations.append(clean_note)
 
+        initial_paid_amount = Decimal("0.00")
+        if command.payment_exception and payment == "dinheiro" and command.payment_received_amount is not None:
+            received = Decimal(str(command.payment_received_amount))
+            if not received.is_finite() or received < 0 or received != money(received):
+                raise ValidationError("Valor recebido invalido.")
+            initial_paid_amount = min(received, net_total)
+
         sale = Venda(
             cliente_id=customer.id if customer else None,
             usuario_id=user_id,
@@ -177,6 +185,7 @@ def register_sale(
             excecao_status="pendente" if command.payment_exception else "sem_excecao",
             excecao_prazo=command.payment_due_at,
             excecao_observacao=command.payment_exception_note.strip()[:255] or None,
+            excecao_valor_pago=initial_paid_amount,
             criado_em=created_at,
         )
         db.add(sale)

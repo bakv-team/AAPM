@@ -48,6 +48,7 @@ class Venda(Base):
     excecao_prazo = Column(DateTime, nullable=True)
     excecao_observacao = Column(String(255), nullable=True)
     excecao_pago_em = Column(DateTime, nullable=True)
+    excecao_valor_pago = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
 
     criado_em = Column(DateTime, server_default=func.now())
 

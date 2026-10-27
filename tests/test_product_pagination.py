@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 from api.v1.pvd import listar_produtos_api
 from database.database import Base
-from database.models import categoria, cliente, movimentacao, produto, usuario, variacao, venda  # noqa: F401
+from database.models import categoria, cliente, movimentacao, produto, usuario, variacao, venda 
 from database.models.produto import Produto
 
 

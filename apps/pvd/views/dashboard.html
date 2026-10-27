@@ -169,7 +169,6 @@
             <div><strong>{{ usuario.nome or usuario.sub }}</strong><p class="muted">{{ usuario.sub }}</p></div>
           </div>
           <ul>
-            <li id="profileBtn"><i class="fa-solid fa-user"></i> Meu perfil</li>
             <li id="settingsBtn"><i class="fa-solid fa-sliders"></i> Configurações</li>
             <li id="securityBtn"><i class="fa-solid fa-key"></i> Segurança</li>
             <li id="supportBtn"><i class="fa-solid fa-life-ring"></i> Suporte</li>
@@ -511,7 +510,7 @@
               <div><h3>Exceções de pagamento</h3><p class="muted">Pedidos com prazo combinado para quitar o pagamento.</p></div>
             </div>
             <div class="table-wrap">
-              <table class="data-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Prazo</th><th>Observação</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="paymentExceptionsBody"></tbody></table>
+              <table class="data-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pago</th><th>Pendente</th><th>Prazo</th><th>Observação</th><th>Status</th><th class="right">Ações</th></tr></thead><tbody id="paymentExceptionsBody"></tbody></table>
             </div>
           </div>
         </section>
@@ -773,17 +772,6 @@
         <section class="page" id="page-configuracoes" data-requires-permission="settings">
           <div class="grid-2">
             <div class="card glass">
-              <div class="card-head"><div><h3>Perfil da loja</h3><p class="muted">Informações do estabelecimento</p></div></div>
-              <div class="form-grid">
-                <label>Nome<input type="text" value="Aurora PDV" /></label>
-                <label>CNPJ<input type="text" value="00.000.000/0001-00" /></label>
-                <label>Email<input type="email" value="contato@aurorapdv.com" /></label>
-                <label>Telefone<input type="text" value="(11) 99999-0000" /></label>
-                <label class="span-2">Endereço<input type="text" value="Av. Paulista, 1000 — São Paulo/SP" /></label>
-              </div>
-              <button class="primary-btn">Salvar alterações</button>
-            </div>
-            <div class="card glass">
               <div class="card-head"><div><h3>Preferências</h3><p class="muted">Customize seu painel</p></div></div>
               <ul class="prefs">
                 <li><span>Notificações de estoque baixo</span><label class="switch"><input type="checkbox" checked /><span></span></label></li>
@@ -799,6 +787,34 @@
     </div>
 
     <!-- ====================== MODAL: ITENS DO PEDIDO ====================== -->
+
+    <div class="modal-backdrop hidden" id="paymentMethodModal">
+      <div class="modal glass small payment-method-modal" role="dialog" aria-modal="true" aria-labelledby="paymentMethodModalTitle">
+        <div class="modal-head"><div><h3 id="paymentMethodModalTitle">Forma de pagamento</h3><p class="muted" id="paymentMethodOrderLabel">Selecione como o cliente pagou.</p></div><button type="button" class="icon-btn ghost" id="paymentMethodClose" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="payment-method-options">
+          <button type="button" data-modal-payment="pix"><i class="fa-brands fa-pix"></i><span>Pix</span></button>
+          <button type="button" data-modal-payment="debito"><i class="fa-solid fa-credit-card"></i><span>D&eacute;bito</span></button>
+          <button type="button" data-modal-payment="credito"><i class="fa-regular fa-credit-card"></i><span>Cr&eacute;dito</span></button>
+          <button type="button" data-modal-payment="dinheiro"><i class="fa-solid fa-money-bill-wave"></i><span>Dinheiro</span></button>
+        </div>
+        <div class="modal-foot"><button type="button" class="ghost-btn" id="paymentMethodCancel">Cancelar</button></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="cashPaymentModal">
+      <div class="modal glass small" role="dialog" aria-modal="true" aria-labelledby="cashPaymentModalTitle">
+        <div class="modal-head"><h3 id="cashPaymentModalTitle">Pagamento em dinheiro</h3><button type="button" class="icon-btn ghost" id="cashPaymentClose" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="cash-payment-content">
+          <p class="muted" id="cashPaymentPendingLabel">Saldo pendente: R$ 0,00</p>
+          <label for="cashPaymentReceived">Valor recebido (R$)
+            <input type="number" id="cashPaymentReceived" min="0" step="0.01" inputmode="decimal" placeholder="Valor entregue pelo cliente">
+          </label>
+          <p class="cash-payment-result" id="cashPaymentResult" aria-live="polite">Informe o valor recebido.</p>
+        </div>
+        <div class="modal-foot"><button type="button" class="ghost-btn" id="cashPaymentCancel">Cancelar</button><button type="button" class="primary-btn" id="cashPaymentConfirm" disabled>Continuar</button></div>
+      </div>
+    </div>
+
     <div class="modal-backdrop hidden" id="orderItemsModal">
       <div class="modal glass order-items-modal" role="dialog" aria-modal="true" aria-labelledby="orderItemsModalTitle">
         <div class="modal-head">
@@ -1081,31 +1097,6 @@
             <button type="submit" class="primary-btn">Salvar acesso</button>
           </div>
         </form>
-      </div>
-    </div>
-
-    <!-- ====================== MODAL: PERFIL ====================== -->
-    <div class="modal-backdrop hidden" id="profileModal">
-      <div class="modal glass small">
-        <div class="modal-head">
-          <h3>Meu perfil</h3>
-          <button class="icon-btn ghost" data-close-modal="profileModal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="profile-summary">
-          <div class="profile-avatar-lg" id="profileInitials">--</div>
-          <div>
-            <strong id="profileName">-</strong>
-            <span id="profileEmail">-</span>
-          </div>
-        </div>
-        <div class="profile-info-grid">
-          <div><span>Perfil</span><strong id="profileRole">-</strong></div>
-          <div><span>Status</span><strong id="profileStatus">-</strong></div>
-        </div>
-        <div class="modal-foot profile-actions">
-          <button type="button" class="ghost-btn" id="profileSecurityShortcut"><i class="fa-solid fa-lock"></i> Alterar senha</button>
-          <button type="button" class="primary-btn" id="profileSupportShortcut"><i class="fa-solid fa-life-ring"></i> Suporte</button>
-        </div>
       </div>
     </div>
 

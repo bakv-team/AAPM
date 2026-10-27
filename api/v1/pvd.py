@@ -112,10 +112,13 @@ class VendaPayload(BaseModel):
     excecao_observacao: str | None = None
     excecao_valor: Decimal | None = None
     desconto_ids: list[int] = Field(default_factory=list)
+    dinheiro_recebido: Decimal | None = None
 
 
 class ExcecaoPagamentoPayload(BaseModel):
     pago: bool = True
+    pagamento: str | None = None
+    valor_recebido: Decimal | None = None
 
 
 class ClientePayload(BaseModel):
@@ -384,9 +387,9 @@ def _parse_data_local(valor: str | None) -> datetime | None:
 
 def _venda_json(venda: Venda) -> dict:
     observacao = venda.observacao or ""
-    pagamento = _extrair_pagamento(observacao)
-    if pagamento == "nao informado" and getattr(venda, "metodo_pagamento", None):
-        pagamento = venda.metodo_pagamento
+    pagamento = getattr(venda, "metodo_pagamento", None) or "nao informado"
+    if pagamento == "nao informado":
+        pagamento = _extrair_pagamento(observacao)
     cliente_nome = venda.cliente.nome if venda.cliente else _extrair_cliente(observacao)
     total_bruto = _money(venda.total_bruto or getattr(venda, "valor_total", 0))
     total_liquido = _money(venda.total_liquido or getattr(venda, "valor_final", 0))
@@ -413,6 +416,8 @@ def _venda_json(venda: Venda) -> dict:
             "dueAt": prazo.isoformat() if prazo else None,
             "paidAt": pago_em.isoformat() if pago_em else None,
             "note": getattr(venda, "excecao_observacao", None) or "",
+            "paid": _json_money(getattr(venda, "excecao_valor_pago", 0) or 0),
+            "pending": _json_money(max(Decimal("0.00"), total_liquido - _money(getattr(venda, "excecao_valor_pago", 0) or 0))),
         },
         "observacao": venda.observacao or "",
         "createdAt": criado_em.isoformat() if criado_em else None,
@@ -852,6 +857,7 @@ def criar_venda_api(
                 payment_exception_note=payload.excecao_observacao or "",
                 payment_exception_amount=payload.excecao_valor,
                 discount_ids=tuple(payload.desconto_ids),
+                payment_received_amount=payload.dinheiro_recebido,
             ),
             user_id=usuario.get("id"),
             created_at=_agora_local(),
@@ -1035,6 +1041,17 @@ def atualizar_excecao_pagamento_api(
         raise HTTPException(status_code=400, detail="Este pedido nao possui excecao de pagamento.")
 
     if payload.pago:
+        if payload.pagamento:
+            metodos_pagamento = {"pix", "debito", "credito", "dinheiro"}
+            if payload.pagamento not in metodos_pagamento:
+                raise HTTPException(status_code=400, detail="Forma de pagamento invalida.")
+            venda.metodo_pagamento = payload.pagamento
+        if payload.pagamento == "dinheiro":
+            pending = max(Decimal("0.00"), _money(venda.total_liquido) - _money(getattr(venda, "excecao_valor_pago", 0) or 0))
+            received = payload.valor_recebido
+            if received is None or not received.is_finite() or received < pending or received != _money(received):
+                raise HTTPException(status_code=400, detail="O valor recebido deve cobrir o saldo pendente.")
+        venda.excecao_valor_pago = _money(venda.total_liquido)
         venda.excecao_status = "pago"
         venda.excecao_pago_em = _agora_local()
     else:

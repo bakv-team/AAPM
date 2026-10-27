@@ -489,20 +489,21 @@ function renderProdutos() {
       const categoria = escapeHTML(categoriaNome(produto.categoryId));
       const imagem = escapeHTML(produtoImagem(produto));
       const precoOriginal = cartItemPrice(produto);
-      const precoFinal = ehAssociado ? precoAssociado(produto) : precoOriginal;
+      const precoFinal = purchasePrice(precoOriginal);
+      const hasDiscount = precoFinal < precoOriginal;
       const bestSeller = isTopProduct(produto);
       const cardClasses = [
         "card",
         "product-card",
-        ehAssociado ? "has-associate-price" : "",
+        hasDiscount ? "has-associate-price" : "",
         bestSeller ? "is-best-seller" : ""
       ].filter(Boolean).join(" ");
-      const priceHTML = ehAssociado
+      const priceHTML = hasDiscount
         ? `
-            <div class="price price-discounted" aria-label="Preco com desconto de associado">
+            <div class="price price-discounted" aria-label="Preco com desconto aplicado">
               <span class="old-price">${money(precoOriginal)}</span>
               <strong>${money(precoFinal)}</strong>
-              <em>Associado -10%</em>
+              <em>${window.PurchaseDiscounts?.ids().length ? "Desconto aplicado" : "Associado -10%"}</em>
             </div>
           `
         : `<p class="price"><strong>${money(precoOriginal)}</strong></p>`;
@@ -602,7 +603,7 @@ function renderOpcoesProduto() {
   const displayStock = produtoEmDetalhes.hasVariations
     ? (variation?.stock ?? availableVariations.reduce((total, item) => total + (Number(item.stock) || 0), 0))
     : Number(produtoEmDetalhes.stock) || 0;
-  document.getElementById("productPurchasePrice").textContent = `${variation ? "" : produtoEmDetalhes.hasVariations ? "A partir de " : ""}${money(ehAssociado ? displayPrice * (1 - DISCOUNT) : displayPrice)}`;
+  document.getElementById("productPurchasePrice").textContent = `${variation ? "" : produtoEmDetalhes.hasVariations ? "A partir de " : ""}${money(purchasePrice(displayPrice))}`;
   document.getElementById("productPurchaseStock").textContent = variation ? `${displayStock} unidades nesta opção` : `${displayStock} unidades disponíveis`;
   productPurchaseConfirm.disabled = produtoEmDetalhes.hasVariations && !variation;
   productPurchaseConfirm.querySelector("span").textContent = variation || !produtoEmDetalhes.hasVariations ? "Adicionar ao carrinho" : "Escolha uma opção";
@@ -747,6 +748,7 @@ function fecharConfirmacaoEsvaziarCarrinho() {
 
 function confirmarEsvaziarCarrinho() {
   carrinho = [];
+  window.PurchaseDiscounts?.reset();
   salvarCarrinho();
   renderCarrinho();
   fecharConfirmacaoEsvaziarCarrinho();
@@ -754,10 +756,18 @@ function confirmarEsvaziarCarrinho() {
   toast("Carrinho esvaziado.", "success");
 }
 
+window.discountContext = () => ({gross:carrinho.reduce((s,i)=>s+cartItemPrice(i)*cartItemQuantity(i),0),quantity:carrinho.reduce((s,i)=>s+cartItemQuantity(i),0),payment:pagamentoAtual});
+window.refreshPurchaseDiscounts = () => { renderCarrinho(); renderProdutos(); if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview(); };
+function purchasePrice(price) {
+  const base = ehAssociado ? price * (1-DISCOUNT) : price;
+  const gross = window.discountContext().gross;
+  const net = Math.round(gross * 100)/100 - (ehAssociado ? Math.round(gross * DISCOUNT * 100)/100 : 0);
+  return net > 0 ? base * (window.PurchaseDiscounts?.amount(net) ?? net)/net : base;
+}
 function totaisCarrinho() {
   const totalBruto = carrinho.reduce((sum, item) => sum + cartItemPrice(item) * cartItemQuantity(item), 0);
   const descontoAssociado = ehAssociado ? Math.round(totalBruto * DISCOUNT * 100) / 100 : 0;
-  const totalOriginal = Math.round((totalBruto - descontoAssociado) * 100) / 100;
+  const totalOriginal = window.PurchaseDiscounts?.amount(Math.round((totalBruto - descontoAssociado) * 100) / 100) ?? Math.round((totalBruto - descontoAssociado) * 100) / 100;
   const exception = getPaymentException();
   const amount = exception.amount;
   const validAmount = amount !== null && Number.isFinite(amount) && amount >= 0 && amount <= totalOriginal;
@@ -799,6 +809,7 @@ function buildSalePayload() {
   return {
     pagamento: pagamentoAtual,
     associado: ehAssociado,
+    desconto_ids: window.PurchaseDiscounts?.ids() || [],
     cliente_nome: customerName,
     customerName,
     observacao: customerName ? `Cliente: ${customerName}` : null,
@@ -862,7 +873,7 @@ function renderCarrinho() {
       const title = document.createElement("strong");
       title.textContent = name;
       const unitPrice = document.createElement("span");
-      unitPrice.textContent = `${money(price)} un.`;
+      unitPrice.textContent = `${money(purchasePrice(price))} un.`;
 
       const qty = document.createElement("div");
       qty.className = "cart-line-qty";
@@ -887,7 +898,7 @@ function renderCarrinho() {
       const side = document.createElement("div");
       side.className = "cart-line-side";
       const total = document.createElement("strong");
-      total.textContent = money(price * quantity);
+      total.textContent = money(purchasePrice(price) * quantity);
       const remove = document.createElement("button");
       remove.type = "button";
       remove.dataset.remove = cartItemKey(item);
@@ -915,6 +926,8 @@ function renderCarrinho() {
     cartDiscountElement.textContent = `-${money(totals.desconto)}`;
   }
   if (cartTotalElement) cartTotalElement.textContent = money(totals.totalLiquido);
+  window.PurchaseDiscounts?.render();
+  renderProdutos();
 
   if (btnToggleAssociado) {
     const icon = btnToggleAssociado.querySelector("i");
@@ -1065,12 +1078,12 @@ function renderCheckoutReview() {
     const name = document.createElement("strong");
     name.textContent = cartItemName(item);
     const meta = document.createElement("span");
-    meta.textContent = `${quantity} x ${money(price)}`;
+    meta.textContent = `${quantity} x ${money(purchasePrice(price))}`;
     info.append(name, meta);
 
     const total = document.createElement("strong");
     total.className = "checkout-item-total";
-    total.textContent = money(price * quantity);
+    total.textContent = money(purchasePrice(price) * quantity);
 
     row.append(imageWrap, info, total);
     fragment.append(row);
@@ -1541,6 +1554,7 @@ async function confirmarPedido() {
     ultimaVendaFinalizada = vendaParaNota;
 
     carrinho = [];
+    window.PurchaseDiscounts?.reset();
     ehAssociado = false;
     associadoValidado = null;
     if (customerNameInput) customerNameInput.value = "";
@@ -1802,6 +1816,7 @@ function bindEventos() {
       paymentOptions.querySelectorAll("[data-payment]").forEach(item => item.classList.remove("active"));
       button.classList.add("active");
       pagamentoAtual = button.dataset.payment;
+      renderCarrinho();
       if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
     });
   });

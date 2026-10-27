@@ -11,7 +11,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from database.models.desconto import Desconto
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -110,6 +111,7 @@ class VendaPayload(BaseModel):
     excecao_prazo: str | None = None
     excecao_observacao: str | None = None
     excecao_valor: Decimal | None = None
+    desconto_ids: list[int] = Field(default_factory=list)
 
 
 class ExcecaoPagamentoPayload(BaseModel):
@@ -849,6 +851,7 @@ def criar_venda_api(
                 payment_due_at=excecao_prazo,
                 payment_exception_note=payload.excecao_observacao or "",
                 payment_exception_amount=payload.excecao_valor,
+                discount_ids=tuple(payload.desconto_ids),
             ),
             user_id=usuario.get("id"),
             created_at=_agora_local(),
@@ -1519,4 +1522,45 @@ def remover_produto_api(
     db.delete(produto)
     db.commit()
 
+    return {"ok": True}
+
+
+class DescontoPayload(BaseModel):
+    nome: str = Field(min_length=1, max_length=80)
+    tipo: str
+    valor: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    minimo: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=2)
+    quantidade: int = Field(default=1, ge=1)
+    pagamento: str = ""
+
+
+def _discount_json(d):
+    return {"id": d.id, "nome": d.nome, "tipo": d.tipo, "valor": float(d.valor), "minimo": float(d.minimo), "quantidade": d.quantidade, "pagamento": d.pagamento}
+
+
+@router.get("/discounts")
+def listar_descontos(db: Session = Depends(get_db), usuario=Depends(get_usuario_logado)):
+    return [_discount_json(d) for d in db.query(Desconto).filter(Desconto.ativo == True).order_by(Desconto.id).all()]
+
+
+@router.post("/discounts", status_code=201)
+def criar_desconto(payload: DescontoPayload, db: Session = Depends(get_db), usuario=Depends(require_permission("products"))):
+    if payload.tipo not in {"percentual", "fixo"} or (payload.tipo == "percentual" and payload.valor > 100):
+        raise HTTPException(400, "Informe percentual de até 100% ou valor fixo.")
+    if not payload.nome.strip() or payload.pagamento not in {"", "pix", "debito", "credito", "dinheiro"}:
+        raise HTTPException(400, "Nome ou pagamento inválido.")
+    d = Desconto(nome=payload.nome.strip(), tipo=payload.tipo, valor=payload.valor, minimo=payload.minimo, quantidade=payload.quantidade, pagamento=payload.pagamento, ativo=True)
+    db.add(d)
+    db.commit()
+    db.refresh(d)
+    return _discount_json(d)
+
+
+@router.delete("/discounts/{discount_id}")
+def remover_desconto(discount_id: int, db: Session = Depends(get_db), usuario=Depends(require_permission("products"))):
+    d = db.get(Desconto, discount_id)
+    if not d:
+        raise HTTPException(404, "Desconto não encontrado.")
+    d.ativo = False
+    db.commit()
     return {"ok": True}

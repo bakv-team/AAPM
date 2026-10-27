@@ -20,7 +20,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link rel="stylesheet" href="/apps/pvd/styles/dashboard.css?v=dashboard-charts-responsive-20260929-1" />
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
-  </head>
+  <link rel="stylesheet" href="/apps/pvd/styles/discounts.css?v=1">
+</head>
   {% set is_admin = usuario.role == 'admin' %}
   {% set perms = permissoes_usuario or [] %}
   {% set can_smart = is_admin or 'smart' in perms %}
@@ -1218,7 +1219,8 @@
     <script src="/apps/pvd/scripts/dashboard/pages/stock-movements.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/pages/overview.js?v=1"></script>
     <script src="/apps/pvd/scripts/dashboard/app.js?v=1"></script>
-  </body>
+  <script src="/apps/pvd/scripts/discounts.js?v=1"></script>
+</body>
 </html>
 
 

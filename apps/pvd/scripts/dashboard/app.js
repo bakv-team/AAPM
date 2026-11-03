@@ -555,21 +555,6 @@
     document.getElementById("navOrdersBadge").style.display = pending ? "" : "none";
   }
 
-  async function openProfileModal() {
-    try {
-      const profile = await window.API.getProfile();
-      document.getElementById("profileName").textContent = profile.nome || "Usuario";
-      document.getElementById("profileEmail").textContent = profile.email || "-";
-      document.getElementById("profileRole").textContent = profile.role === "admin" ? "Administrador" : "Funcionário";
-      document.getElementById("profileStatus").textContent = profile.ativo ? "Ativo" : "Inativo";
-      document.getElementById("profileInitials").textContent = UI.initialsFromName(profile.nome || profile.email || "U") || "U";
-      UI.openModal("profileModal");
-    } catch (err) {
-      console.error("Falha ao carregar perfil:", err);
-      UI.toast("Não foi possível carregar o perfil.", "error");
-    }
-  }
-
   function openSecurityModal() {
     document.getElementById("securityForm")?.reset();
     UI.openModal("securityModal");
@@ -807,18 +792,9 @@
     document.getElementById("logoutBtn")?.addEventListener("click", () => {
       window.location.href = "/auth/logout";
     });
-    document.getElementById("profileBtn")?.addEventListener("click", openProfileModal);
     document.getElementById("settingsBtn")?.addEventListener("click", () => navigate("configuracoes"));
     document.getElementById("securityBtn")?.addEventListener("click", openSecurityModal);
     document.getElementById("supportBtn")?.addEventListener("click", openSupportModal);
-    document.getElementById("profileSecurityShortcut")?.addEventListener("click", () => {
-      UI.closeModal("profileModal");
-      openSecurityModal();
-    });
-    document.getElementById("profileSupportShortcut")?.addEventListener("click", () => {
-      UI.closeModal("profileModal");
-      openSupportModal();
-    });
     document.getElementById("markNotifRead")?.addEventListener("click", event => {
       event.preventDefault();
       markCurrentNotificationsRead();

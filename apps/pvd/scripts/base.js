@@ -108,6 +108,9 @@ const searchInput = document.getElementById("searchInput");
 const btnToggleAssociado = document.getElementById("btnToggleAssociado");
 const btnFecharPedido = document.getElementById("btnFecharPedido");
 const paymentOptions = document.getElementById("paymentOptions");
+const cashChangeFields = document.getElementById("cashChangeFields");
+const cashReceivedAmount = document.getElementById("cashReceivedAmount");
+const cashChangeAmount = document.getElementById("cashChangeAmount");
 const paymentExceptionToggle = document.getElementById("paymentExceptionToggle");
 const paymentExceptionFields = document.getElementById("paymentExceptionFields");
 const paymentExceptionAmount = document.getElementById("paymentExceptionAmount");
@@ -489,20 +492,21 @@ function renderProdutos() {
       const categoria = escapeHTML(categoriaNome(produto.categoryId));
       const imagem = escapeHTML(produtoImagem(produto));
       const precoOriginal = cartItemPrice(produto);
-      const precoFinal = ehAssociado ? precoAssociado(produto) : precoOriginal;
+      const precoFinal = purchasePrice(precoOriginal);
+      const hasDiscount = precoFinal < precoOriginal;
       const bestSeller = isTopProduct(produto);
       const cardClasses = [
         "card",
         "product-card",
-        ehAssociado ? "has-associate-price" : "",
+        hasDiscount ? "has-associate-price" : "",
         bestSeller ? "is-best-seller" : ""
       ].filter(Boolean).join(" ");
-      const priceHTML = ehAssociado
+      const priceHTML = hasDiscount
         ? `
-            <div class="price price-discounted" aria-label="Preco com desconto de associado">
+            <div class="price price-discounted" aria-label="Preco com desconto aplicado">
               <span class="old-price">${money(precoOriginal)}</span>
               <strong>${money(precoFinal)}</strong>
-              <em>Associado -10%</em>
+              <em>${window.PurchaseDiscounts?.ids().length ? "Desconto aplicado" : "Associado -10%"}</em>
             </div>
           `
         : `<p class="price"><strong>${money(precoOriginal)}</strong></p>`;
@@ -602,7 +606,7 @@ function renderOpcoesProduto() {
   const displayStock = produtoEmDetalhes.hasVariations
     ? (variation?.stock ?? availableVariations.reduce((total, item) => total + (Number(item.stock) || 0), 0))
     : Number(produtoEmDetalhes.stock) || 0;
-  document.getElementById("productPurchasePrice").textContent = `${variation ? "" : produtoEmDetalhes.hasVariations ? "A partir de " : ""}${money(ehAssociado ? displayPrice * (1 - DISCOUNT) : displayPrice)}`;
+  document.getElementById("productPurchasePrice").textContent = `${variation ? "" : produtoEmDetalhes.hasVariations ? "A partir de " : ""}${money(purchasePrice(displayPrice))}`;
   document.getElementById("productPurchaseStock").textContent = variation ? `${displayStock} unidades nesta opção` : `${displayStock} unidades disponíveis`;
   productPurchaseConfirm.disabled = produtoEmDetalhes.hasVariations && !variation;
   productPurchaseConfirm.querySelector("span").textContent = variation || !produtoEmDetalhes.hasVariations ? "Adicionar ao carrinho" : "Escolha uma opção";
@@ -747,6 +751,7 @@ function fecharConfirmacaoEsvaziarCarrinho() {
 
 function confirmarEsvaziarCarrinho() {
   carrinho = [];
+  window.PurchaseDiscounts?.reset();
   salvarCarrinho();
   renderCarrinho();
   fecharConfirmacaoEsvaziarCarrinho();
@@ -754,14 +759,24 @@ function confirmarEsvaziarCarrinho() {
   toast("Carrinho esvaziado.", "success");
 }
 
+window.discountContext = () => ({gross:carrinho.reduce((s,i)=>s+cartItemPrice(i)*cartItemQuantity(i),0),quantity:carrinho.reduce((s,i)=>s+cartItemQuantity(i),0),payment:pagamentoAtual});
+window.refreshPurchaseDiscounts = () => { renderCarrinho(); renderProdutos(); if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview(); };
+function purchasePrice(price) {
+  const base = ehAssociado ? price * (1-DISCOUNT) : price;
+  const gross = window.discountContext().gross;
+  const net = Math.round(gross * 100)/100 - (ehAssociado ? Math.round(gross * DISCOUNT * 100)/100 : 0);
+  return net > 0 ? base * (window.PurchaseDiscounts?.amount(net) ?? net)/net : base;
+}
 function totaisCarrinho() {
   const totalBruto = carrinho.reduce((sum, item) => sum + cartItemPrice(item) * cartItemQuantity(item), 0);
   const descontoAssociado = ehAssociado ? Math.round(totalBruto * DISCOUNT * 100) / 100 : 0;
-  const totalOriginal = Math.round((totalBruto - descontoAssociado) * 100) / 100;
+  const totalOriginal = window.PurchaseDiscounts?.amount(Math.round((totalBruto - descontoAssociado) * 100) / 100) ?? Math.round((totalBruto - descontoAssociado) * 100) / 100;
   const exception = getPaymentException();
   const amount = exception.amount;
-  const validAmount = amount !== null && Number.isFinite(amount) && amount >= 0 && amount <= totalOriginal;
-  const totalLiquido = validAmount ? Math.round(amount * 100) / 100 : totalOriginal;
+  const cashShortfallMode = exception.enabled && pagamentoAtual === "dinheiro" && amount !== null;
+  const effectiveAmount = cashShortfallMode ? Number(cashReceivedAmount?.value || 0) + amount : amount;
+  const validAmount = effectiveAmount !== null && Number.isFinite(effectiveAmount) && effectiveAmount >= 0 && effectiveAmount <= totalOriginal;
+  const totalLiquido = validAmount ? Math.round(effectiveAmount * 100) / 100 : totalOriginal;
   return { totalBruto, totalOriginal, desconto: totalBruto - totalLiquido, totalLiquido };
 }
 
@@ -778,9 +793,12 @@ function getPaymentException() {
 function validatePaymentException({ focus = false } = {}) {
   const exception = getPaymentException();
   if (!exception.enabled) return true;
+  const exceptionAmountLimit = pagamentoAtual === "dinheiro"
+    ? Math.max(0, totaisCarrinho().totalOriginal - Number(cashReceivedAmount?.value || 0))
+    : totaisCarrinho().totalOriginal;
   if (paymentExceptionAmount?.validity.badInput || (exception.amount !== null &&
       (!Number.isFinite(exception.amount) || exception.amount < 0 ||
-       exception.amount > totaisCarrinho().totalOriginal || paymentExceptionAmount?.validity.stepMismatch))) {
+       exception.amount > exceptionAmountLimit || paymentExceptionAmount?.validity.stepMismatch))) {
     toast("Informe um valor v?lido entre R$ 0,00 e o total da compra, com at? duas casas decimais.", "warn");
     if (focus) paymentExceptionAmount?.focus();
     return false;
@@ -799,11 +817,17 @@ function buildSalePayload() {
   return {
     pagamento: pagamentoAtual,
     associado: ehAssociado,
+    desconto_ids: window.PurchaseDiscounts?.ids() || [],
     cliente_nome: customerName,
     customerName,
     observacao: customerName ? `Cliente: ${customerName}` : null,
     excecao_pagamento: exception.enabled,
-    excecao_valor: exception.amount,
+    excecao_valor: exception.enabled && pagamentoAtual === "dinheiro" && exception.amount !== null
+      ? Math.min(totaisCarrinho().totalOriginal, Math.round((Number(cashReceivedAmount?.value || 0) + exception.amount) * 100) / 100)
+      : exception.amount,
+    dinheiro_recebido: exception.enabled && pagamentoAtual === "dinheiro"
+      ? Number(cashReceivedAmount?.value || 0)
+      : null,
     excecao_prazo: exception.due,
     excecao_observacao: exception.note,
     itens: carrinho.map(item => ({
@@ -812,6 +836,25 @@ function buildSalePayload() {
       quantidade: cartItemQuantity(item)
     }))
   };
+}
+
+function updateCashExceptionCopy() {
+  if (!paymentExceptionAmount) return;
+  const label = paymentExceptionAmount.closest("label");
+  const hint = document.getElementById("paymentExceptionAmountHint");
+  const cashException = pagamentoAtual === "dinheiro";
+  if (label) label.firstChild.textContent = cashException ? "Valor que falta (R$)" : "Valor final da compra (R$)";
+  if (hint) hint.textContent = cashException
+    ? "Informe o saldo que falta ap\u00f3s o dinheiro recebido; a venda mant\u00e9m o total original."
+    : "Informe o valor combinado ou deixe em branco para manter o total.";
+}
+
+function updateCashChange(total = totaisCarrinho().totalLiquido) {
+  if (!cashChangeAmount) return;
+  const received = Number(cashReceivedAmount?.value || 0);
+  const change = received - total;
+  cashChangeAmount.textContent = change >= 0 ? `Troco: ${money(change)}` : `Falta: ${money(Math.abs(change))}`;
+  cashChangeAmount.classList.toggle("is-change-due", change < 0);
 }
 
 function renderCarrinho() {
@@ -862,7 +905,7 @@ function renderCarrinho() {
       const title = document.createElement("strong");
       title.textContent = name;
       const unitPrice = document.createElement("span");
-      unitPrice.textContent = `${money(price)} un.`;
+      unitPrice.textContent = `${money(purchasePrice(price))} un.`;
 
       const qty = document.createElement("div");
       qty.className = "cart-line-qty";
@@ -887,7 +930,7 @@ function renderCarrinho() {
       const side = document.createElement("div");
       side.className = "cart-line-side";
       const total = document.createElement("strong");
-      total.textContent = money(price * quantity);
+      total.textContent = money(purchasePrice(price) * quantity);
       const remove = document.createElement("button");
       remove.type = "button";
       remove.dataset.remove = cartItemKey(item);
@@ -915,6 +958,9 @@ function renderCarrinho() {
     cartDiscountElement.textContent = `-${money(totals.desconto)}`;
   }
   if (cartTotalElement) cartTotalElement.textContent = money(totals.totalLiquido);
+  window.PurchaseDiscounts?.render();
+  renderProdutos();
+  updateCashChange(totals.totalLiquido);
 
   if (btnToggleAssociado) {
     const icon = btnToggleAssociado.querySelector("i");
@@ -1044,6 +1090,7 @@ function renderCheckoutReview() {
   if (checkoutSubtotal) checkoutSubtotal.textContent = money(totals.totalBruto);
   if (checkoutDiscount) checkoutDiscount.textContent = `-${money(totals.desconto)}`;
   if (checkoutTotal) checkoutTotal.textContent = money(totals.totalLiquido);
+  updateCashChange(totals.totalLiquido);
 
   checkoutItems.replaceChildren();
   const fragment = document.createDocumentFragment();
@@ -1065,12 +1112,12 @@ function renderCheckoutReview() {
     const name = document.createElement("strong");
     name.textContent = cartItemName(item);
     const meta = document.createElement("span");
-    meta.textContent = `${quantity} x ${money(price)}`;
+    meta.textContent = `${quantity} x ${money(purchasePrice(price))}`;
     info.append(name, meta);
 
     const total = document.createElement("strong");
     total.className = "checkout-item-total";
-    total.textContent = money(price * quantity);
+    total.textContent = money(purchasePrice(price) * quantity);
 
     row.append(imageWrap, info, total);
     fragment.append(row);
@@ -1541,6 +1588,12 @@ async function confirmarPedido() {
     ultimaVendaFinalizada = vendaParaNota;
 
     carrinho = [];
+    window.PurchaseDiscounts?.reset();
+    if (cashReceivedAmount) cashReceivedAmount.value = "";
+    if (cashChangeFields) cashChangeFields.hidden = true;
+    updateCashChange(0);
+    pagamentoAtual = "pix";
+    paymentOptions?.querySelectorAll("[data-payment]").forEach(item => item.classList.toggle("active", item.dataset.payment === "pix"));
     ehAssociado = false;
     associadoValidado = null;
     if (customerNameInput) customerNameInput.value = "";
@@ -1802,13 +1855,41 @@ function bindEventos() {
       paymentOptions.querySelectorAll("[data-payment]").forEach(item => item.classList.remove("active"));
       button.classList.add("active");
       pagamentoAtual = button.dataset.payment;
+      if (cashChangeFields) cashChangeFields.hidden = pagamentoAtual !== "dinheiro";
+      if (paymentExceptionToggle?.checked && paymentExceptionAmount) {
+        if (pagamentoAtual === "dinheiro") {
+          const shortfall = Math.max(0, totaisCarrinho().totalOriginal - Number(cashReceivedAmount?.value || 0));
+          paymentExceptionAmount.value = shortfall.toFixed(2);
+        } else {
+          paymentExceptionAmount.value = "";
+        }
+      }
+      updateCashExceptionCopy();
+      updateCashChange();
+      renderCarrinho();
       if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
     });
+  });
+
+  cashReceivedAmount?.addEventListener("input", () => {
+    if (paymentExceptionToggle?.checked && pagamentoAtual === "dinheiro" && paymentExceptionAmount) {
+      const shortfall = Math.max(0, totaisCarrinho().totalOriginal - Number(cashReceivedAmount.value || 0));
+      paymentExceptionAmount.value = shortfall.toFixed(2);
+    }
+    updateCashChange();
+    updateCashExceptionCopy();
+    renderCarrinho();
+    if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
   });
 
   paymentExceptionToggle?.addEventListener("change", () => {
     const enabled = paymentExceptionToggle.checked;
     if (paymentExceptionFields) paymentExceptionFields.hidden = !enabled;
+    if (enabled && pagamentoAtual === "dinheiro" && paymentExceptionAmount && !paymentExceptionAmount.value) {
+      const shortfall = Math.max(0, totaisCarrinho().totalOriginal - Number(cashReceivedAmount?.value || 0));
+      paymentExceptionAmount.value = shortfall.toFixed(2);
+    }
+    updateCashExceptionCopy();
     renderCarrinho();
     if (enabled && paymentExceptionDue && !paymentExceptionDue.value) {
       const due = new Date();

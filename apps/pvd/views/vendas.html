@@ -18,6 +18,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/apps/pvd/styles/discounts.css?v=1">
 </head>
 
 <body data-user-role="{{ usuario.role }}" data-operator-name="{{ usuario.nome or usuario.sub }}">
@@ -172,6 +173,12 @@
                             <button type="button" class="payment-option" data-payment="credito"><i class="fa-regular fa-credit-card"></i> Credito</button>
                             <button type="button" class="payment-option" data-payment="dinheiro"><i class="fa-solid fa-money-bill-wave"></i> Dinheiro</button>
                         </div>
+                    </div>
+
+                    <div class="cash-change-fields" id="cashChangeFields" hidden>
+                        <label for="cashReceivedAmount">Valor recebido (R$)</label>
+                        <input type="number" id="cashReceivedAmount" min="0" step="0.01" inputmode="decimal" placeholder="Digite o valor entregue pelo cliente" />
+                        <p id="cashChangeAmount" aria-live="polite">Troco: R$ 0,00</p>
                     </div>
 
                     <div class="payment-exception-box" id="paymentExceptionBox">
@@ -350,7 +357,8 @@
     <div class="background-image"></div>
 
     <script src="/apps/pvd/scripts/sounds.js?v=aapm-sounds-20260615-1"></script>
-    <script src="/apps/pvd/scripts/base.js?v=pdv-exception-amount-20260929-1"></script>
+    <script src="/apps/pvd/scripts/base.js?v=pdv-discounts-cash-20261027-2"></script>
+<script src="/apps/pvd/scripts/discounts.js?v=1"></script>
 </body>
 
 </html>

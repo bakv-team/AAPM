@@ -65,3 +65,50 @@ class SaleExceptionTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             self.sell(Decimal("95"))
         self.assertEqual(self.sell(Decimal("80")).total_liquido, Decimal("80.00"))
+
+
+class ConditionalDiscountTests(SaleExceptionTests):
+    def discount(self, **changes):
+        from database.models.desconto import Desconto
+        values = dict(nome="Oferta", tipo="percentual", valor=Decimal("20"), minimo=Decimal("100"), quantidade=1, pagamento="pix", ativo=True)
+        values.update(changes)
+        rule = Desconto(**values)
+        self.db.add(rule)
+        self.db.commit()
+        return rule.id
+
+    def discounted_sale(self, ids):
+        return register_sale(self.db, RegisterSaleInput(
+            items=[SaleItemInput(self.product.id, None, 1)], payment="pix",
+            customer_name="Maria", note="", payment_exception=False,
+            payment_due_at=None, payment_exception_note="", discount_ids=tuple(ids),
+        ), user_id=1, created_at=datetime(2026, 10, 27))
+
+    def test_percentage_and_fixed_stack_after_membership(self):
+        self.db.add(Cliente(nome="Maria", ativo=True, is_associado=True))
+        self.db.commit()
+        ids = [self.discount(), self.discount(tipo="fixo", valor=Decimal("5"))]
+        sale = self.discounted_sale(ids)
+        self.assertEqual(sale.total_liquido, Decimal("67.00"))
+        self.assertEqual(sale.desconto, Decimal("33.00"))
+        self.assertIn("Oferta", sale.observacao)
+        self.assertEqual(self.product.estoque_atual, 9)
+
+    def test_conditions_rejected_without_stock_changes(self):
+        for changes in [dict(minimo=Decimal("101")), dict(quantidade=2), dict(pagamento="credito"), dict(ativo=False)]:
+            with self.subTest(changes=changes):
+                rule_id = self.discount(**changes)
+                with self.assertRaises(ValidationError):
+                    self.discounted_sale([rule_id])
+                self.assertEqual(self.product.estoque_atual, 10)
+                self.assertEqual(self.db.query(Venda).count(), 0)
+
+    def test_unknown_discount_rejected(self):
+        with self.assertRaises(ValidationError):
+            self.discounted_sale([99999])
+
+    def test_fixed_discount_capped_and_duplicate_applied_once(self):
+        rule_id = self.discount(tipo="fixo", valor=Decimal("60"))
+        self.assertEqual(self.discounted_sale([rule_id, rule_id]).total_liquido, Decimal("40.00"))
+        big_id = self.discount(tipo="fixo", valor=Decimal("200"))
+        self.assertEqual(self.discounted_sale([big_id]).total_liquido, Decimal("0.00"))

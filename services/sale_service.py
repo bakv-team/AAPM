@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from database.models.desconto import Desconto
+from services.discount_service import apply_discounts
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -36,6 +38,8 @@ class RegisterSaleInput:
     payment_due_at: datetime | None
     payment_exception_note: str
     payment_exception_amount: Decimal | None = None
+    discount_ids: tuple[int, ...] = ()
+    payment_received_amount: Decimal | None = None
 
 
 def _aggregate_quantities(items: list[SaleItemInput]) -> dict[tuple[int, int | None], int]:
@@ -143,6 +147,14 @@ def register_sale(
         gross_total = money(gross_total)
         net_total = money(gross_total * (Decimal("1.00") - discount_percent / Decimal("100.00")))
 
+        discounts = []
+        if command.discount_ids:
+            ids = sorted(set(command.discount_ids))
+            discounts = db.query(Desconto).filter(Desconto.id.in_(ids)).order_by(Desconto.id).with_for_update().all()
+            if len(discounts) != len(ids):
+                raise ValidationError("Desconto não encontrado. Atualize a p?gina.")
+            net_total = apply_discounts(discounts, gross_total, net_total, sum(quantities.values()), payment)
+
         if command.payment_exception_amount is not None:
             if not command.payment_exception:
                 raise ValidationError("Ative a excecao de pagamento para alterar o valor da compra.")
@@ -155,11 +167,20 @@ def register_sale(
                 raise ValidationError("Valor da excecao de pagamento invalido.") from exc
 
         observations = [f"Pagamento: {payment}.", f"Cliente: {customer_name}."]
+        if discounts:
+            observations.append("Descontos: " + "; ".join(f"{d.nome} ({d.valor}{chr(37) if d.tipo == 'percentual' else ' BRL'})" for d in discounts) + ".")
         if command.payment_exception:
             observations.append("Excecao de pagamento ativa.")
         clean_note = command.note.strip()
         if clean_note and not clean_note.casefold().startswith("cliente:"):
             observations.append(clean_note)
+
+        initial_paid_amount = Decimal("0.00")
+        if command.payment_exception and payment == "dinheiro" and command.payment_received_amount is not None:
+            received = Decimal(str(command.payment_received_amount))
+            if not received.is_finite() or received < 0 or received != money(received):
+                raise ValidationError("Valor recebido invalido.")
+            initial_paid_amount = min(received, net_total)
 
         sale = Venda(
             cliente_id=customer.id if customer else None,
@@ -177,6 +198,7 @@ def register_sale(
             excecao_status="pendente" if command.payment_exception else "sem_excecao",
             excecao_prazo=command.payment_due_at,
             excecao_observacao=command.payment_exception_note.strip()[:255] or None,
+            excecao_valor_pago=initial_paid_amount,
             criado_em=created_at,
         )
         db.add(sale)

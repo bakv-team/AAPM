@@ -818,6 +818,8 @@ function buildSalePayload() {
     pagamento: pagamentoAtual,
     associado: ehAssociado,
     desconto_ids: window.PurchaseDiscounts?.ids() || [],
+    desconto_manual_tipo: window.PurchaseDiscounts?.manual().tipo || "percentual",
+    desconto_manual_valor: window.PurchaseDiscounts?.manual().valor || 0,
     cliente_nome: customerName,
     customerName,
     observacao: customerName ? `Cliente: ${customerName}` : null,

@@ -22,7 +22,10 @@ window.PurchaseDiscounts = (() => {
     const status = document.getElementById('purchaseDiscountStatus'); if(status) status.textContent = active().length ? `${active().length} desconto(s) aplicado(s)` : 'Selecionar descontos';
   }
   async function open() {
-    const dialog = document.getElementById('discountDialog'); dialog.showModal(); notify('Carregando descontos...');
+    const dialog = document.getElementById('discountDialog');
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+    notify('Carregando descontos...');
     try { rules = await request(); notify(''); refresh(); } catch(e) {notify(e.message);}
   }
   function init() {
@@ -36,8 +39,27 @@ window.PurchaseDiscounts = (() => {
     document.getElementById('discountRules').addEventListener('change',e=> { if(e.target.dataset.selectDiscount) {const id=Number(e.target.dataset.selectDiscount); e.target.checked ? selected.add(id) : selected.delete(id); refresh();} });
     document.getElementById('discountRules').addEventListener('click',async e=> {const b=e.target.closest('[data-remove-discount]'); if(!b) return; b.disabled=true; try {await request('DELETE',null,'/'+b.dataset.removeDiscount); rules=await request(); render();} catch(error){notify(error.message); b.disabled=false;} });
     const form=document.getElementById('discountForm');
-    form?.elements.tipo.addEventListener('change',()=>{ form.elements.valor.max=form.elements.tipo.value==='percentual' ? '100' : '9999999999.99'; });
-    form?.addEventListener('submit',async e=>{e.preventDefault(); const submit=form.querySelector('[type=submit]'); submit.disabled=true; try {await request('POST',Object.fromEntries(new FormData(form))); rules=await request(); form.reset(); form.elements.valor.max='100'; render(); notify('Desconto cadastrado.');}catch(error){notify(error.message);}finally{submit.disabled=false;} });
+    form?.elements.tipo.addEventListener('change',()=>{
+      const percentual = form.elements.tipo.value === 'percentual';
+      form.elements.valor.max = percentual ? '100' : '9999999999.99';
+      form.elements.valor.placeholder = percentual ? 'Ex.: 10' : 'Ex.: 5,00';
+    });
+    form?.addEventListener('submit',async e=>{
+      e.preventDefault();
+      if (!form.reportValidity()) return;
+      const submit=form.querySelector('[type=submit]'); submit.disabled=true;
+      try {
+        const data = Object.fromEntries(new FormData(form));
+        data.valor = Number(data.valor);
+        data.minimo = Number(data.minimo);
+        data.quantidade = Number(data.quantidade);
+        await request('POST',data);
+        rules=await request();
+        form.reset(); form.elements.valor.max='100'; form.elements.valor.placeholder='';
+        render(); notify('Desconto cadastrado.');
+      } catch(error) { notify(error.message); }
+      finally { submit.disabled=false; }
+    });
     if(!admin) request().then(data=>{rules=data; refresh();}).catch(()=>{button.title='Não foi possível carregar os descontos. Clique para tentar novamente.';});
   }
   document.addEventListener('DOMContentLoaded',init);

@@ -189,10 +189,10 @@
                             <strong>Exceção de pagamento</strong>
                         </label>
                         <div class="payment-exception-fields" id="paymentExceptionFields" hidden>
-                            <label>Valor final da compra (R$)
-                                <input type="number" id="paymentExceptionAmount" min="0" step="0.01" inputmode="decimal" placeholder="Opcional: manter valor atual" aria-describedby="paymentExceptionAmountHint" />
+                            <label>Valor pago nesta etapa (R$)
+                                <input type="number" id="paymentExceptionAmount" min="0" step="0.01" inputmode="decimal" placeholder="Informe o valor pago agora" aria-describedby="paymentExceptionAmountHint" />
                             </label>
-                            <small id="paymentExceptionAmountHint">Informe o valor combinado ou deixe em branco para manter o total.</small>
+                            <small id="paymentExceptionAmountHint">Informe quanto o cliente pagará agora. O saldo restante continuará pendente.</small>
                             <label>Prazo para pagar
                                 <input type="date" id="paymentExceptionDue" />
                             </label>
@@ -210,6 +210,14 @@
                         <div class="summary-row discount">
                             <span>Descontos</span>
                             <strong id="cartDiscount">-R$ 0,00</strong>
+                        </div>
+                        <div class="summary-row" id="cartPaidNowRow" hidden>
+                            <span>Pago nesta etapa</span>
+                            <strong id="cartPaidNow">R$ 0,00</strong>
+                        </div>
+                        <div class="summary-row" id="cartBalanceRow" hidden>
+                            <span>Saldo restante</span>
+                            <strong id="cartBalance">R$ 0,00</strong>
                         </div>
                         <div class="summary-row total">
                             <span>Total</span>
@@ -263,6 +271,8 @@
                         <div><span>Subtotal</span><strong id="checkoutSubtotal">R$ 0,00</strong></div>
                         <div><span>Desconto</span><strong id="checkoutDiscount">-R$ 0,00</strong></div>
                         <div class="checkout-total"><span>Total</span><strong id="checkoutTotal">R$ 0,00</strong></div>
+                        <div id="checkoutPaidNowRow" hidden><span>Pago nesta etapa</span><strong id="checkoutPaidNow">R$ 0,00</strong></div>
+                        <div id="checkoutBalanceRow" hidden><span>Saldo restante</span><strong id="checkoutBalance">R$ 0,00</strong></div>
                     </div>
                     <div class="checkout-actions">
                         <button type="button" class="checkout-secondary" id="checkoutCancelBtn">

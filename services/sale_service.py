@@ -168,15 +168,15 @@ def register_sale(
         if manual_amount > net_total:
             raise ValidationError("O desconto não pode ultrapassar o total restante da compra.")
         net_total = money(net_total - manual_amount)
-
+        payment_amount = None
         if command.payment_exception_amount is not None:
             if not command.payment_exception:
-                raise ValidationError("Ative a excecao de pagamento para alterar o valor da compra.")
+                raise ValidationError("Ative a excecao de pagamento para informar um pagamento parcial.")
             try:
                 amount = Decimal(str(command.payment_exception_amount))
                 if not amount.is_finite() or amount < 0 or amount > net_total or amount != money(amount):
-                    raise ValidationError("Valor da excecao deve estar entre zero e o total da compra, com ate duas casas decimais.")
-                net_total = money(amount)
+                    raise ValidationError("Valor pago deve estar entre zero e o total da compra, com ate duas casas decimais.")
+                payment_amount = money(amount)
             except InvalidOperation as exc:
                 raise ValidationError("Valor da excecao de pagamento invalido.") from exc
 
@@ -191,12 +191,15 @@ def register_sale(
         if clean_note and not clean_note.casefold().startswith("cliente:"):
             observations.append(clean_note)
 
-        initial_paid_amount = Decimal("0.00")
+        initial_paid_amount = payment_amount or Decimal("0.00")
         if command.payment_exception and payment == "dinheiro" and command.payment_received_amount is not None:
             received = Decimal(str(command.payment_received_amount))
             if not received.is_finite() or received < 0 or received != money(received):
                 raise ValidationError("Valor recebido invalido.")
-            initial_paid_amount = min(received, net_total)
+            if payment_amount is None:
+                initial_paid_amount = min(received, net_total)
+            elif received < payment_amount:
+                raise ValidationError("O valor recebido deve cobrir o pagamento desta etapa.")
 
         sale = Venda(
             cliente_id=customer.id if customer else None,
@@ -211,9 +214,10 @@ def register_sale(
             total_liquido=net_total,
             observacao=" ".join(observations).strip(),
             excecao_pagamento=command.payment_exception,
-            excecao_status="pendente" if command.payment_exception else "sem_excecao",
+            excecao_status=("pago" if initial_paid_amount >= net_total else "pendente") if command.payment_exception else "sem_excecao",
             excecao_prazo=command.payment_due_at,
             excecao_observacao=command.payment_exception_note.strip()[:255] or None,
+            excecao_pago_em=created_at if command.payment_exception and initial_paid_amount >= net_total else None,
             excecao_valor_pago=initial_paid_amount,
             criado_em=created_at,
         )

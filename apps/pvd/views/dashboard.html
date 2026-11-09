@@ -804,13 +804,13 @@
 
     <div class="modal-backdrop hidden" id="cashPaymentModal">
       <div class="modal glass small" role="dialog" aria-modal="true" aria-labelledby="cashPaymentModalTitle">
-        <div class="modal-head"><h3 id="cashPaymentModalTitle">Pagamento em dinheiro</h3><button type="button" class="icon-btn ghost" id="cashPaymentClose" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="modal-head"><h3 id="cashPaymentModalTitle">Registrar pagamento</h3><button type="button" class="icon-btn ghost" id="cashPaymentClose" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
         <div class="cash-payment-content">
           <p class="muted" id="cashPaymentPendingLabel">Saldo pendente: R$ 0,00</p>
-          <label for="cashPaymentReceived">Valor recebido (R$)
-            <input type="number" id="cashPaymentReceived" min="0" step="0.01" inputmode="decimal" placeholder="Valor entregue pelo cliente">
+          <label for="cashPaymentAmount">Valor que o cliente vai pagar agora (R$)
+            <input type="number" id="cashPaymentAmount" min="0.01" step="0.01" inputmode="decimal" placeholder="Informe o valor do pagamento">
           </label>
-          <p class="cash-payment-result" id="cashPaymentResult" aria-live="polite">Informe o valor recebido.</p>
+          <p class="cash-payment-result" id="cashPaymentResult" aria-live="polite">Informe o valor pago nesta etapa.</p>
         </div>
         <div class="modal-foot"><button type="button" class="ghost-btn" id="cashPaymentCancel">Cancelar</button><button type="button" class="primary-btn" id="cashPaymentConfirm" disabled>Continuar</button></div>
       </div>

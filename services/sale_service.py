@@ -39,8 +39,6 @@ class RegisterSaleInput:
     payment_exception_note: str
     payment_exception_amount: Decimal | None = None
     discount_ids: tuple[int, ...] = ()
-    manual_discount_type: str = "percentual"
-    manual_discount_value: Decimal = Decimal("0")
     payment_received_amount: Decimal | None = None
 
 
@@ -157,17 +155,6 @@ def register_sale(
                 raise ValidationError("Desconto não encontrado. Atualize a p?gina.")
             net_total = apply_discounts(discounts, gross_total, net_total, sum(quantities.values()), payment)
 
-        if command.manual_discount_type not in {"percentual", "fixo"}:
-            raise ValidationError("Tipo de desconto da compra inválido.")
-        manual_value = Decimal(str(command.manual_discount_value))
-        if not manual_value.is_finite() or manual_value < 0 or manual_value != money(manual_value):
-            raise ValidationError("Informe um valor de desconto válido, com até duas casas decimais.")
-        if command.manual_discount_type == "percentual" and manual_value > 100:
-            raise ValidationError("O desconto percentual não pode ultrapassar 100%.")
-        manual_amount = money(net_total * manual_value / Decimal("100")) if command.manual_discount_type == "percentual" else manual_value
-        if manual_amount > net_total:
-            raise ValidationError("O desconto não pode ultrapassar o total restante da compra.")
-        net_total = money(net_total - manual_amount)
         payment_amount = None
         if command.payment_exception_amount is not None:
             if not command.payment_exception:
@@ -183,8 +170,6 @@ def register_sale(
         observations = [f"Pagamento: {payment}.", f"Cliente: {customer_name}."]
         if discounts:
             observations.append("Descontos: " + "; ".join(f"{d.nome} ({d.valor}{chr(37) if d.tipo == 'percentual' else ' BRL'})" for d in discounts) + ".")
-        if manual_amount:
-            observations.append(f"Desconto direto na compra: {manual_value}{chr(37) if command.manual_discount_type == 'percentual' else ' BRL'}.")
         if command.payment_exception:
             observations.append("Excecao de pagamento ativa.")
         clean_note = command.note.strip()

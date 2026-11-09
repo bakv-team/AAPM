@@ -112,8 +112,6 @@ class VendaPayload(BaseModel):
     excecao_observacao: str | None = None
     excecao_valor: Decimal | None = None
     desconto_ids: list[int] = Field(default_factory=list)
-    desconto_manual_tipo: str = "percentual"
-    desconto_manual_valor: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=2)
     dinheiro_recebido: Decimal | None = None
 
 
@@ -860,8 +858,6 @@ def criar_venda_api(
                 payment_exception_note=payload.excecao_observacao or "",
                 payment_exception_amount=payload.excecao_valor,
                 discount_ids=tuple(payload.desconto_ids),
-                manual_discount_type=payload.desconto_manual_tipo,
-                manual_discount_value=payload.desconto_manual_valor,
                 payment_received_amount=payload.dinheiro_recebido,
             ),
             user_id=usuario.get("id"),

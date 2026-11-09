@@ -16,6 +16,14 @@
 #discountMessage:empty, #discountRules:empty { display: none; }
 .discount-dialog .discount-form { margin-top: 18px; }
 .discount-dialog .discount-form button { min-height: 48px; border: 0; border-radius: 13px; background: linear-gradient(110deg, #ff7b2e, #f7a834); color: #fff; font-weight: 700; }
+.discount-dialog .discount-rule { gap: 20px; padding: 18px 0; }
+.discount-dialog .discount-rule > div { min-width: 0; }
+.discount-dialog .discount-choice { flex: 0 0 auto; }
+.discount-dialog .discount-empty { margin: 18px 0; padding: 16px; border-radius: 12px; background: #f3f5f9; color: #596987; line-height: 1.5; }
+.discount-purchase-button { min-height: 48px; flex-wrap: nowrap; justify-content: flex-start; gap: 10px; }
+.discount-purchase-button span { flex: 1; text-align: left; }
+.discount-purchase-button small { display: grid; place-items: center; width: 24px; height: 24px; margin-left: auto; border-radius: 50%; background: #eef1f7; font-weight: 700; }
+[data-theme="dark"] .discount-dialog .discount-empty { background: #202d46; color: #d5deee; }
 
 @media (max-width: 560px) {
   .discount-dialog { width: calc(100% - 24px); max-height: 90vh; padding: 20px; }

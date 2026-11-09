@@ -1,0 +1,43 @@
+.discount-dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  width: min(720px, calc(100% - 32px));
+  max-height: min(88vh, 820px);
+  overflow: auto;
+  z-index: 10000;
+  padding: 28px;
+  border-radius: 24px;
+  animation: discount-popup-in 240ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.discount-dialog[open] { display: block; }
+.discount-dialog::backdrop { animation: discount-backdrop-in 180ms ease-out both; }
+.discount-dialog.is-closing { pointer-events: none; animation: discount-popup-out 180ms ease-in both; }
+.discount-dialog.is-closing::backdrop { animation: discount-backdrop-out 180ms ease-in both; }
+@keyframes discount-popup-in { from { opacity: 0; transform: translate(-50%,-46%) scale(.97); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+@keyframes discount-popup-out { from { opacity: 1; transform: translate(-50%,-50%) scale(1); } to { opacity: 0; transform: translate(-50%,-46%) scale(.97); } }
+@keyframes discount-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes discount-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+.discount-dialog-head .ghost-btn { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; font-size: 20px; }
+#discountMessage:empty, #discountRules:empty { display: none; }
+.discount-dialog .discount-form { margin-top: 18px; }
+.discount-dialog .discount-form button { min-height: 48px; border: 0; border-radius: 13px; background: linear-gradient(110deg, #ff7b2e, #f7a834); color: #fff; font-weight: 700; }
+.discount-dialog .discount-rule { gap: 20px; padding: 18px 0; }
+.discount-dialog .discount-rule > div { min-width: 0; }
+.discount-dialog .discount-choice { flex: 0 0 auto; }
+.discount-dialog .discount-empty { margin: 18px 0; padding: 16px; border-radius: 12px; background: #f3f5f9; color: #596987; line-height: 1.5; }
+.discount-purchase-button { min-height: 48px; flex-wrap: nowrap; justify-content: flex-start; gap: 10px; }
+.discount-purchase-button span { flex: 1; text-align: left; }
+.discount-purchase-button small { display: grid; place-items: center; width: 24px; height: 24px; margin-left: auto; border-radius: 50%; background: #eef1f7; font-weight: 700; }
+[data-theme="dark"] .discount-dialog .discount-empty { background: #202d46; color: #d5deee; }
+
+@media (max-width: 560px) {
+  .discount-dialog { width: calc(100% - 24px); max-height: 90vh; padding: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discount-dialog, .discount-dialog::backdrop,
+  .discount-dialog.is-closing, .discount-dialog.is-closing::backdrop { animation-duration: 1ms; }
+}

@@ -112,6 +112,10 @@ const searchInput = document.getElementById("searchInput");
 const btnToggleAssociado = document.getElementById("btnToggleAssociado");
 const btnFecharPedido = document.getElementById("btnFecharPedido");
 const paymentOptions = document.getElementById("paymentOptions");
+const splitPaymentToggle = document.getElementById("splitPaymentToggle");
+const splitPaymentFields = document.getElementById("splitPaymentFields");
+const secondPaymentMethod = document.getElementById("secondPaymentMethod");
+const secondPaymentMethodAmount = document.getElementById("secondPaymentMethodAmount");
 const cashChangeFields = document.getElementById("cashChangeFields");
 const cashReceivedAmount = document.getElementById("cashReceivedAmount");
 const cashChangeAmount = document.getElementById("cashChangeAmount");
@@ -280,6 +284,7 @@ function paymentLabel(payment) {
     credito: "Crédito",
     dinheiro: "Dinheiro"
   };
+  if (String(payment || "").includes(" + ")) return String(payment).split(" + ").map(method => labels[method] || method).join(" + ");
   return labels[payment] || payment || "Pix";
 }
 
@@ -703,10 +708,18 @@ function renderPagination(pages) {
   if (!pageNumbers || !prevPage || !nextPage) return;
   prevPage.disabled = page <= 1;
   nextPage.disabled = page >= pages;
-  pageNumbers.innerHTML = Array.from({ length: pages }, (_, index) => {
-    const number = index + 1;
-    return `<button class="page-number ${number === page ? "active" : ""}" data-page="${number}">${number}</button>`;
-  }).join("");
+  const visible = pages <= 7
+    ? Array.from({ length: pages }, (_, index) => index + 1)
+    : [...new Set([1, page - 1, page, page + 1, pages].filter(number => number >= 1 && number <= pages))].sort((a, b) => a - b);
+  const buttons = [];
+  let previous = 0;
+  visible.forEach(number => {
+    if (number - previous === 2) buttons.push(`<button class="page-number" data-page="${number - 1}">${number - 1}</button>`);
+    else if (number - previous > 2) buttons.push(`<span class="pagination-ellipsis" aria-hidden="true">…</span>`);
+    buttons.push(`<button class="page-number ${number === page ? "active" : ""}" data-page="${number}" aria-current="${number === page ? "page" : "false"}">${number}</button>`);
+    previous = number;
+  });
+  pageNumbers.innerHTML = buttons.join("");
   pageNumbers.querySelectorAll("[data-page]").forEach(button => {
     button.addEventListener("click", () => {
       page = Number(button.dataset.page);
@@ -862,19 +875,34 @@ function validatePaymentException({ focus = false } = {}) {
   return true;
 }
 
+function validateSplitPayment({ focus = false } = {}) {
+  if (!splitPaymentToggle?.checked) return true;
+  const amount = Number(secondPaymentMethodAmount?.value || 0);
+  const payable = getPaymentException().enabled ? Number(paymentExceptionAmount?.value || 0) : totaisCarrinho().totalLiquido;
+  if (!secondPaymentMethod?.value || secondPaymentMethod.value === pagamentoAtual || !Number.isFinite(amount) || amount <= 0 || amount >= payable || secondPaymentMethodAmount?.validity.stepMismatch) {
+    toast("Escolha um segundo método diferente e informe um valor menor que o total pago nesta etapa.", "warn");
+    if (focus) secondPaymentMethodAmount?.focus();
+    return false;
+  }
+  return true;
+}
+
 function buildSalePayload() {
   const customerName = getCustomerName();
   const exception = getPaymentException();
+  const splitPayment = Boolean(splitPaymentToggle?.checked);
   return {
     pagamento: pagamentoAtual,
+    segundo_pagamento: splitPayment ? secondPaymentMethod?.value : null,
+    valor_segundo_pagamento: splitPayment && secondPaymentMethodAmount?.value !== "" ? Number(secondPaymentMethodAmount.value) : null,
     associado: ehAssociado,
     desconto_ids: window.PurchaseDiscounts?.ids() || [],
     cliente_nome: customerName,
     customerName,
     observacao: customerName ? `Cliente: ${customerName}` : null,
-    excecao_pagamento: exception.enabled,
-    excecao_valor: exception.amount,
-    dinheiro_recebido: exception.enabled && pagamentoAtual === "dinheiro"
+    excecao_pagamento: exception.enabled && !splitPayment,
+    excecao_valor: exception.enabled && !splitPayment ? exception.amount : null,
+    dinheiro_recebido: exception.enabled && !splitPayment && pagamentoAtual === "dinheiro"
       ? Number(cashReceivedAmount?.value || 0)
       : null,
     excecao_prazo: exception.due,
@@ -899,7 +927,11 @@ function updateCashChange(total = totaisCarrinho().totalLiquido) {
   if (!cashChangeAmount) return;
   const received = Number(cashReceivedAmount?.value || 0);
   const exception = getPaymentException();
-  const amountDue = exception.enabled && exception.amount !== null ? totaisCarrinho().pagoAgora : total;
+  const paidNow = exception.enabled && exception.amount !== null ? totaisCarrinho().pagoAgora : total;
+  const secondAmount = splitPaymentToggle?.checked ? Number(secondPaymentMethodAmount?.value || 0) : 0;
+  const amountDue = splitPaymentToggle?.checked
+    ? (pagamentoAtual === "dinheiro" ? Math.max(0, paidNow - secondAmount) : secondPaymentMethod?.value === "dinheiro" ? secondAmount : 0)
+    : paidNow;
   const change = received - amountDue;
   cashChangeAmount.textContent = change >= 0 ? `Troco: ${money(change)}` : `Falta: ${money(Math.abs(change))}`;
   cashChangeAmount.classList.toggle("is-change-due", change < 0);
@@ -1132,7 +1164,9 @@ function renderCheckoutReview() {
   if (checkoutItemsCount) checkoutItemsCount.textContent = `${itemCount} ${itemCount === 1 ? "item" : "itens"}`;
   if (checkoutCustomer) checkoutCustomer.textContent = customerName;
   if (checkoutAssociate) checkoutAssociate.textContent = ehAssociado ? "Sim, desconto aplicado" : "Não";
-  if (checkoutPayment) checkoutPayment.textContent = paymentLabel(pagamentoAtual);
+  if (checkoutPayment) checkoutPayment.textContent = splitPaymentToggle?.checked
+    ? `${paymentLabel(pagamentoAtual)} + ${paymentLabel(secondPaymentMethod?.value)}`
+    : paymentLabel(pagamentoAtual);
   if (checkoutExceptionRow) checkoutExceptionRow.hidden = !exception.enabled;
   if (checkoutException) {
     checkoutException.textContent = exception.enabled
@@ -1189,6 +1223,7 @@ async function abrirCheckout() {
 
   if (!validateCustomerName({ focus: true })) return;
   if (!validatePaymentException({ focus: true })) return;
+  if (!validateSplitPayment({ focus: true })) return;
   await validarAssociado();
 
   renderCheckoutReview();
@@ -1214,6 +1249,7 @@ function fecharCheckout() {
 function abrirConfirmacaoCompra() {
   if (!validateCustomerName({ focus: true })) return;
   if (!validatePaymentException({ focus: true })) return;
+  if (!validateSplitPayment({ focus: true })) return;
 
   if (confirmPurchaseModal?._closeTimer) window.clearTimeout(confirmPurchaseModal._closeTimer);
   confirmPurchaseModal?.classList.remove("hidden", "modal-closing");
@@ -1612,7 +1648,7 @@ function atualizarSegundaEtapaPagamento() {
 
 function abrirSegundaEtapaPagamento(venda) {
   vendaNaSegundaEtapa = venda;
-  pagamentoSegundaEtapa = venda?.payment || "pix";
+  pagamentoSegundaEtapa = String(venda?.payment || "pix").split(" + ")[0];
   trocoSegundaEtapa = 0;
   acaoAposResultadoTroco = "nota";
   if (secondPaymentTitle) secondPaymentTitle.textContent = "Continuar pagamento";
@@ -1740,9 +1776,17 @@ function mostrarCompraFinalizada(venda, customerName = "Cliente balcão") {
     const paidNow = receiptData.paymentException
       ? Number(receiptData.totals?.pagoAgora || 0)
       : Number(receiptData.totals?.totalLiquido || venda?.total || 0);
-    const cashChange = receiptData.payment === "dinheiro"
-      ? Math.max(0, Number(receiptData.cashReceived || 0) - paidNow)
+    const cashChange = String(receiptData.payment || "").includes("dinheiro")
+      ? Math.max(0, Number(receiptData.cashReceived || 0) - Number(receiptData.cashDue ?? paidNow))
       : 0;
+    if (receiptData.splitPayment) {
+      if (cashChange > 0) toast(`Troco a devolver: ${money(cashChange)}.`, "success");
+      abrirEmissaoNota();
+      window.AAPMSound?.play("checkout");
+      window.AAPMSound?.suppressNextToast();
+      toast(`Nova venda registrada para ${comprador}.`, "success");
+      return;
+    }
     if (pendingBalance > 0) {
       if (cashChange > 0) {
         mostrarResultadoPagamento(venda, paidNow, cashChange, "segunda_etapa");
@@ -1777,6 +1821,7 @@ async function confirmarPedido() {
   }
 
   if (!validatePaymentException({ focus: true })) return;
+  if (!validateSplitPayment({ focus: true })) return;
 
   btnFecharPedido.disabled = true;
   btnFecharPedido.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Processando</span>`;
@@ -1793,9 +1838,13 @@ async function confirmarPedido() {
       items: carrinho.map(item => ({ ...item })),
       totals: totaisCarrinho(),
       customerName,
-      payment: pagamentoAtual,
+      payment: splitPaymentToggle?.checked ? `${pagamentoAtual} + ${secondPaymentMethod?.value}` : pagamentoAtual,
+      splitPayment: Boolean(splitPaymentToggle?.checked),
       paymentException: Boolean(salePayload.excecao_pagamento),
       cashReceived: Number(cashReceivedAmount?.value || 0),
+      cashDue: splitPaymentToggle?.checked
+        ? (pagamentoAtual === "dinheiro" ? totaisCarrinho().totalLiquido - Number(secondPaymentMethodAmount?.value || 0) : secondPaymentMethod?.value === "dinheiro" ? Number(secondPaymentMethodAmount?.value || 0) : 0)
+        : pagamentoAtual === "dinheiro" ? totaisCarrinho().totalLiquido : 0,
       isAssociate: ehAssociado,
       completedAt: new Date()
     };
@@ -1809,11 +1858,15 @@ async function confirmarPedido() {
     if (cashChangeFields) cashChangeFields.hidden = true;
     updateCashChange(0);
     pagamentoAtual = "pix";
+    if (splitPaymentToggle) splitPaymentToggle.checked = false;
+    if (splitPaymentFields) splitPaymentFields.hidden = true;
+    if (secondPaymentMethodAmount) secondPaymentMethodAmount.value = "";
     paymentOptions?.querySelectorAll("[data-payment]").forEach(item => item.classList.toggle("active", item.dataset.payment === "pix"));
     ehAssociado = false;
     associadoValidado = null;
     if (customerNameInput) customerNameInput.value = "";
     if (paymentExceptionToggle) paymentExceptionToggle.checked = false;
+    if (paymentExceptionToggle) paymentExceptionToggle.disabled = false;
     if (paymentExceptionAmount) paymentExceptionAmount.value = "";
     if (paymentExceptionDue) paymentExceptionDue.value = "";
     if (paymentExceptionNote) paymentExceptionNote.value = "";
@@ -2071,8 +2124,12 @@ function bindEventos() {
       paymentOptions.querySelectorAll("[data-payment]").forEach(item => item.classList.remove("active"));
       button.classList.add("active");
       pagamentoAtual = button.dataset.payment;
-      if (cashChangeFields) cashChangeFields.hidden = pagamentoAtual !== "dinheiro";
-      if (paymentExceptionToggle?.checked && paymentExceptionAmount) {
+      if (secondPaymentMethod?.value === pagamentoAtual) {
+        const alternative = [...secondPaymentMethod.options].find(option => option.value !== pagamentoAtual);
+        if (alternative) secondPaymentMethod.value = alternative.value;
+      }
+      if (cashChangeFields) cashChangeFields.hidden = pagamentoAtual !== "dinheiro" && !(splitPaymentToggle?.checked && secondPaymentMethod?.value === "dinheiro");
+      if (paymentExceptionToggle?.checked && paymentExceptionAmount && !splitPaymentToggle?.checked) {
         if (pagamentoAtual === "dinheiro") {
           paymentExceptionAmount.value = Math.min(totaisCarrinho().totalOriginal, Number(cashReceivedAmount?.value || 0)).toFixed(2);
         } else {
@@ -2086,8 +2143,44 @@ function bindEventos() {
     });
   });
 
+  splitPaymentToggle?.addEventListener("change", () => {
+    if (splitPaymentFields) splitPaymentFields.hidden = !splitPaymentToggle.checked;
+    if (paymentExceptionToggle) {
+      paymentExceptionToggle.disabled = splitPaymentToggle.checked;
+      if (splitPaymentToggle.checked) {
+        paymentExceptionToggle.checked = false;
+        if (paymentExceptionFields) paymentExceptionFields.hidden = true;
+        if (paymentExceptionAmount) paymentExceptionAmount.value = "";
+        updateCashExceptionCopy();
+      }
+    }
+    if (splitPaymentToggle.checked && secondPaymentMethod?.value === pagamentoAtual) {
+      const alternative = [...secondPaymentMethod.options].find(option => option.value !== pagamentoAtual);
+      if (alternative) secondPaymentMethod.value = alternative.value;
+    }
+    if (cashChangeFields) cashChangeFields.hidden = pagamentoAtual !== "dinheiro" && !(splitPaymentToggle.checked && secondPaymentMethod?.value === "dinheiro");
+    updateCashChange();
+    renderCarrinho();
+    if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
+  });
+  secondPaymentMethod?.addEventListener("change", () => {
+    if (secondPaymentMethod.value === pagamentoAtual) {
+      toast("Escolha um método diferente do primeiro.", "warn");
+      const alternative = [...secondPaymentMethod.options].find(option => option.value !== pagamentoAtual);
+      if (alternative) secondPaymentMethod.value = alternative.value;
+    }
+    if (cashChangeFields) cashChangeFields.hidden = pagamentoAtual !== "dinheiro" && !(splitPaymentToggle?.checked && secondPaymentMethod.value === "dinheiro");
+    updateCashChange();
+    if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
+  });
+  secondPaymentMethodAmount?.addEventListener("input", () => {
+    updateCashChange();
+    renderCarrinho();
+    if (!checkoutScreen?.classList.contains("hidden")) renderCheckoutReview();
+  });
+
   cashReceivedAmount?.addEventListener("input", () => {
-    if (paymentExceptionToggle?.checked && pagamentoAtual === "dinheiro" && paymentExceptionAmount) {
+    if (paymentExceptionToggle?.checked && pagamentoAtual === "dinheiro" && paymentExceptionAmount && !splitPaymentToggle?.checked) {
       paymentExceptionAmount.value = Math.min(totaisCarrinho().totalOriginal, Number(cashReceivedAmount.value || 0)).toFixed(2);
     }
     updateCashChange();
@@ -2099,7 +2192,7 @@ function bindEventos() {
   paymentExceptionToggle?.addEventListener("change", () => {
     const enabled = paymentExceptionToggle.checked;
     if (paymentExceptionFields) paymentExceptionFields.hidden = !enabled;
-    if (enabled && pagamentoAtual === "dinheiro" && paymentExceptionAmount && !paymentExceptionAmount.value) {
+    if (enabled && pagamentoAtual === "dinheiro" && paymentExceptionAmount && !paymentExceptionAmount.value && !splitPaymentToggle?.checked) {
       paymentExceptionAmount.value = Math.min(totaisCarrinho().totalOriginal, Number(cashReceivedAmount?.value || 0)).toFixed(2);
     }
     updateCashExceptionCopy();

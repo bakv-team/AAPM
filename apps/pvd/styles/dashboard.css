@@ -1688,7 +1688,21 @@ html:not([data-theme="dark"]) #productsTable .product-variation-count { border-c
 
 .pager {
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.pager-ellipsis {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  min-width: 24px;
+  height: 32px;
+  color: var(--text-mute);
+  font-weight: 700;
 }
 
 .table-pagination-foot {
@@ -8164,7 +8178,10 @@ img, svg, canvas { max-width: 100%; }
 .payment-method-modal { width:min(100%, 480px); }
 #paymentMethodModal .modal,
 #cashPaymentModal .modal {
-  width:min(100%, 480px);
+  width:480px !important;
+  max-width:calc(100vw - 32px);
+  box-sizing:border-box;
+  flex:0 0 auto;
   padding:0;
   overflow:hidden;
   border-radius:22px;
@@ -8263,7 +8280,16 @@ img, svg, canvas { max-width: 100%; }
   color:var(--text);
   font:inherit;
 }
-.cash-payment-result { margin:0; text-align:center; }
+.cash-payment-result {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:2.8em;
+  margin:0;
+  text-align:center;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
 @media (max-width:480px) {
   #paymentMethodModal .modal-head,
   #cashPaymentModal .modal-head { padding:22px 54px 16px; }

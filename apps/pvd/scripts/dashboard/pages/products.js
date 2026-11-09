@@ -121,9 +121,16 @@ window.ProductsPage = (function () {
     if (!pager) return;
     const btns = [];
     btns.push(`<button data-pg="prev"${page === 1 ? " disabled" : ""}><i class="fa-solid fa-chevron-left"></i></button>`);
-    for (let i = 1; i <= pages; i++) {
-      btns.push(`<button data-pg="${i}" class="${i === page ? "active" : ""}">${i}</button>`);
-    }
+    const visible = pages <= 7
+      ? Array.from({ length: pages }, (_, index) => index + 1)
+      : [...new Set([1, page - 1, page, page + 1, pages])].filter(number => number >= 1 && number <= pages).sort((a, b) => a - b);
+    let previous = 0;
+    visible.forEach(number => {
+      if (number - previous === 2) btns.push(`<button data-pg="${number - 1}">${number - 1}</button>`);
+      else if (number - previous > 2) btns.push(`<span class="pager-ellipsis" aria-hidden="true">…</span>`);
+      btns.push(`<button data-pg="${number}" class="${number === page ? "active" : ""}" aria-current="${number === page ? "page" : "false"}">${number}</button>`);
+      previous = number;
+    });
     btns.push(`<button data-pg="next"${page === pages ? " disabled" : ""}><i class="fa-solid fa-chevron-right"></i></button>`);
     pager.innerHTML = btns.join("");
     pager.querySelectorAll("button").forEach(b => {

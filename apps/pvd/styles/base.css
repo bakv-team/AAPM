@@ -517,6 +517,32 @@ li span {
     flex-wrap: nowrap !important;
 }
 
+.pagination #pageNumbers {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.pagination-ellipsis {
+    display: inline-flex;
+    width: 22px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-soft);
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+
+.pagination .page-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 40px;
+    padding: 0;
+}
+
 .page-nav,
 .page-num {
     width: 40px !important;
@@ -6863,6 +6889,41 @@ body.checkout-returning .app-shell {
 .payment-options {
     gap: 10px;
 }
+
+.split-payment-toggle {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:12px 0 0;
+    color:var(--text-soft);
+    font-size:.9rem;
+    font-weight:700;
+    cursor:pointer;
+}
+.split-payment-fields {
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:8px;
+    margin-top:12px;
+    padding:14px;
+    border:1px solid var(--pay-border, rgba(241,124,32,.24));
+    border-radius:14px;
+    background:var(--pay-soft, rgba(241,124,32,.08));
+}
+.split-payment-fields[hidden] { display:none !important; }
+.split-payment-fields label { font-size:.88rem; font-weight:700; }
+.split-payment-fields input,
+.split-payment-fields select {
+    width:100%;
+    min-height:42px;
+    padding:9px 12px;
+    border:1px solid var(--border-2);
+    border-radius:10px;
+    background:var(--glass);
+    color:var(--text);
+    font:inherit;
+}
+.split-payment-fields small { color:var(--text-soft); line-height:1.4; }
 
 .payment-option {
     --pay-accent: #f17c20;

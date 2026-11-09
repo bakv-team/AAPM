@@ -42,6 +42,21 @@ window.UI = (function () {
   }
 
   const paginationState = new Map();
+  function compactPageNumbers(current, totalPages) {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+    const visible = [...new Set([1, current - 1, current, current + 1, totalPages])]
+      .filter(page => page >= 1 && page <= totalPages)
+      .sort((a, b) => a - b);
+    const result = [];
+    let previous = 0;
+    visible.forEach(page => {
+      if (page - previous === 2) result.push(page - 1);
+      else if (page - previous > 2) result.push("ellipsis");
+      result.push(page);
+      previous = page;
+    });
+    return result;
+  }
   function paginationFoot(anchor, key) {
     const tableWrap = anchor?.classList?.contains("table-wrap") ? anchor : anchor?.closest(".table-wrap");
     if (!tableWrap) return null;
@@ -85,7 +100,10 @@ window.UI = (function () {
     pager.id = pagerId;
     pager.className = "pager table-pagination";
     pager.setAttribute("aria-label", "Paginação da tabela");
-    pager.innerHTML = `<button type="button" data-page="${current - 1}" ${current === 1 ? "disabled" : ""} aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>${Array.from({ length: totalPages }, (_, index) => `<button type="button" data-page="${index + 1}" class="${index + 1 === current ? "active" : ""}">${index + 1}</button>`).join("")}<button type="button" data-page="${current + 1}" ${current === totalPages ? "disabled" : ""} aria-label="Próxima página"><i class="fa-solid fa-chevron-right"></i></button>`;
+    const pageButtons = compactPageNumbers(current, totalPages).map(page => page === "ellipsis"
+      ? `<span class="pager-ellipsis" aria-hidden="true">…</span>`
+      : `<button type="button" data-page="${page}" class="${page === current ? "active" : ""}" aria-current="${page === current ? "page" : "false"}">${page}</button>`).join("");
+    pager.innerHTML = `<button type="button" data-page="${current - 1}" ${current === 1 ? "disabled" : ""} aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>${pageButtons}<button type="button" data-page="${current + 1}" ${current === totalPages ? "disabled" : ""} aria-label="Próxima página"><i class="fa-solid fa-chevron-right"></i></button>`;
     pager.querySelectorAll("button[data-page]").forEach(button => button.addEventListener("click", () => {
       paginationState.set(key, Number(button.dataset.page));
       paginateTable(body, key, perPage);
@@ -105,7 +123,10 @@ window.UI = (function () {
     const pager = document.createElement("div");
     pager.id = pagerId;
     pager.className = "pager table-pagination";
-    pager.innerHTML = `<button type="button" data-page="${page - 1}" ${page === 1 ? "disabled" : ""} aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>${Array.from({ length: pages }, (_, index) => `<button type="button" data-page="${index + 1}" class="${index + 1 === page ? "active" : ""}">${index + 1}</button>`).join("")}<button type="button" data-page="${page + 1}" ${page === pages ? "disabled" : ""} aria-label="Próxima página"><i class="fa-solid fa-chevron-right"></i></button>`;
+    const pageButtons = compactPageNumbers(page, pages).map(number => number === "ellipsis"
+      ? `<span class="pager-ellipsis" aria-hidden="true">…</span>`
+      : `<button type="button" data-page="${number}" class="${number === page ? "active" : ""}" aria-current="${number === page ? "page" : "false"}">${number}</button>`).join("");
+    pager.innerHTML = `<button type="button" data-page="${page - 1}" ${page === 1 ? "disabled" : ""} aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>${pageButtons}<button type="button" data-page="${page + 1}" ${page === pages ? "disabled" : ""} aria-label="Próxima página"><i class="fa-solid fa-chevron-right"></i></button>`;
     pager.querySelectorAll("button[data-page]").forEach(button => button.addEventListener("click", () => onPage(Number(button.dataset.page))));
     foot?.append(pager);
   }

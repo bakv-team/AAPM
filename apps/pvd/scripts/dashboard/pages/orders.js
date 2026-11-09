@@ -3,8 +3,10 @@
 window.OrdersPage = (function () {
   let filters = { q: "", status: "" };
   let page = 1;
+  let exceptionsPage = 1;
   const perPage = 10;
   let total = 0;
+  let exceptionsTotal = 0;
 
   function statusPill(s) {
     if (s === "concluido") return `<span class="pill green">Concluído</span>`;
@@ -184,9 +186,14 @@ window.OrdersPage = (function () {
 
   async function refreshFromApi() {
     try {
-      const result = await window.API.getOrders({ ...filters, offset: (page - 1) * perPage, limit: perPage });
-      window.DB.orders = result.items || [];
-      total = Number(result.total) || 0;
+      const [regularResult, exceptionResult] = await Promise.all([
+        window.API.getOrders({ ...filters, tipo: "comum", offset: (page - 1) * perPage, limit: perPage }),
+        window.API.getOrders({ ...filters, tipo: "excecao", offset: (exceptionsPage - 1) * perPage, limit: perPage })
+      ]);
+      window.DB.orders = regularResult.items || [];
+      window.DB.paymentExceptionOrders = exceptionResult.items || [];
+      total = Number(regularResult.total) || 0;
+      exceptionsTotal = Number(exceptionResult.total) || 0;
     } catch (err) {
       console.error("Falha ao carregar pedidos:", err);
       UI.toast("Não foi possível carregar os pedidos.", "warn");
@@ -199,9 +206,8 @@ window.OrdersPage = (function () {
     if (!body) return;
 
     await refreshFromApi();
-    const rows = window.DB.orders;
-    const regularRows = rows.filter(o => !paymentExceptionMeta(o).enabled);
-    const exceptionRows = rows.filter(o => paymentExceptionMeta(o).enabled);
+    const regularRows = window.DB.orders;
+    const exceptionRows = window.DB.paymentExceptionOrders || [];
 
     if (!regularRows.length) {
       body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;color:var(--text-mute)">Nenhum pedido encontrado.</td></tr>`;
@@ -253,6 +259,7 @@ window.OrdersPage = (function () {
       button.addEventListener("click", () => openPaymentMethodModal(button.dataset.openPayment));
     });
     UI.renderServerPager(body.closest(".table-wrap"), "orders", page, total, perPage, nextPage => { page = nextPage; render(); });
+    UI.renderServerPager(exceptionsBody?.closest(".table-wrap"), "payment-exceptions", exceptionsPage, exceptionsTotal, perPage, nextPage => { exceptionsPage = nextPage; render(); });
   }
 
   function init() {
@@ -266,8 +273,8 @@ window.OrdersPage = (function () {
     paymentMethodModal?.addEventListener("click", event => {
       if (event.target === paymentMethodModal) paymentMethodModal.classList.add("hidden");
     });
-    document.getElementById("orderSearch").addEventListener("input", e => { filters.q = e.target.value; page = 1; render(); });
-    document.getElementById("orderStatusFilter").addEventListener("change", e => { filters.status = e.target.value; page = 1; render(); });
+    document.getElementById("orderSearch").addEventListener("input", e => { filters.q = e.target.value; page = 1; exceptionsPage = 1; render(); });
+    document.getElementById("orderStatusFilter").addEventListener("change", e => { filters.status = e.target.value; page = 1; exceptionsPage = 1; render(); });
     document.querySelectorAll("[data-close-modal='orderItemsModal']").forEach(button => {
       button.addEventListener("click", () => UI.closeModal("orderItemsModal"));
     });

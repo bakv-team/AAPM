@@ -37,6 +37,8 @@ class RegisterSaleInput:
     payment_exception: bool
     payment_due_at: datetime | None
     payment_exception_note: str
+    secondary_payment: str | None = None
+    secondary_payment_amount: Decimal | None = None
     payment_exception_amount: Decimal | None = None
     discount_ids: tuple[int, ...] = ()
     payment_received_amount: Decimal | None = None
@@ -167,7 +169,25 @@ def register_sale(
             except InvalidOperation as exc:
                 raise ValidationError("Valor da excecao de pagamento invalido.") from exc
 
+        secondary_payment = (command.secondary_payment or "").strip().lower()
+        secondary_amount = command.secondary_payment_amount
+        if secondary_payment:
+            if secondary_payment not in VALID_PAYMENT_METHODS or secondary_payment == payment or secondary_amount is None:
+                raise ValidationError("Informe um segundo método de pagamento diferente e seu valor.")
+            try:
+                secondary_amount = Decimal(str(secondary_amount))
+                payable_now = (payment_amount if payment_amount is not None else Decimal("0.00")) if command.payment_exception else net_total
+                if not secondary_amount.is_finite() or secondary_amount <= 0 or secondary_amount >= payable_now or secondary_amount != money(secondary_amount):
+                    raise ValidationError("O valor do segundo método deve ser maior que zero e menor que o valor pago nesta etapa.")
+            except InvalidOperation as exc:
+                raise ValidationError("Valor do segundo método inválido.") from exc
+        elif secondary_amount is not None:
+            raise ValidationError("Selecione um segundo método de pagamento.")
+
         observations = [f"Pagamento: {payment}.", f"Cliente: {customer_name}."]
+        if secondary_payment:
+            first_amount = (payment_amount if payment_amount is not None else net_total) - secondary_amount
+            observations.append(f"Divisao do pagamento: {payment} {first_amount:.2f}; {secondary_payment} {secondary_amount:.2f}.")
         if discounts:
             observations.append("Descontos: " + "; ".join(f"{d.nome} ({d.valor}{chr(37) if d.tipo == 'percentual' else ' BRL'})" for d in discounts) + ".")
         if command.payment_exception:
@@ -177,19 +197,19 @@ def register_sale(
             observations.append(clean_note)
 
         initial_paid_amount = payment_amount or Decimal("0.00")
-        if command.payment_exception and payment == "dinheiro" and command.payment_received_amount is not None:
+        if command.payment_exception and (payment == "dinheiro" or secondary_payment == "dinheiro") and command.payment_received_amount is not None:
             received = Decimal(str(command.payment_received_amount))
             if not received.is_finite() or received < 0 or received != money(received):
                 raise ValidationError("Valor recebido invalido.")
             if payment_amount is None:
                 initial_paid_amount = min(received, net_total)
-            elif received < payment_amount:
+            elif received < (payment_amount - secondary_amount if payment == "dinheiro" and secondary_payment else secondary_amount if secondary_payment == "dinheiro" else payment_amount):
                 raise ValidationError("O valor recebido deve cobrir o pagamento desta etapa.")
 
         sale = Venda(
             cliente_id=customer.id if customer else None,
             usuario_id=user_id,
-            metodo_pagamento=payment,
+            metodo_pagamento=f"{payment} + {secondary_payment}" if secondary_payment else payment,
             desconto=gross_total - net_total,
             valor_total=gross_total,
             valor_final=net_total,

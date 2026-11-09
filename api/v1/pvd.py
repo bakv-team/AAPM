@@ -105,6 +105,8 @@ class ItemVendaPayload(BaseModel):
 class VendaPayload(BaseModel):
     itens: list[ItemVendaPayload]
     pagamento: str
+    segundo_pagamento: str | None = None
+    valor_segundo_pagamento: Decimal | None = None
     associado: bool = False
     cliente_nome: str | None = None
     customerName: str | None = None
@@ -853,6 +855,8 @@ def criar_venda_api(
                     for item in payload.itens
                 ],
                 payment=payload.pagamento,
+                secondary_payment=payload.segundo_pagamento,
+                secondary_payment_amount=payload.valor_segundo_pagamento,
                 customer_name=payload.cliente_nome or payload.customerName or "",
                 note=payload.observacao or "",
                 payment_exception=excecao_ativa,
@@ -1004,6 +1008,7 @@ def remover_cliente_api(
 def listar_pedidos_api(
     q: str = Query("", max_length=100),
     status_filtro: str = Query("", alias="status"),
+    tipo: str = Query("", max_length=20),
     offset: int | None = Query(default=None, ge=0),
     limit: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -1022,6 +1027,10 @@ def listar_pedidos_api(
             row for row in rows
             if termo in f"{row['number']} {row['customerName']} {row['payment']}".lower()
         ]
+    if tipo == "comum":
+        rows = [row for row in rows if not row["paymentException"]["enabled"]]
+    elif tipo == "excecao":
+        rows = [row for row in rows if row["paymentException"]["enabled"]]
     if (offset is None) != (limit is None):
         raise HTTPException(status_code=400, detail="Offset e limit devem ser informados juntos.")
     if offset is not None:

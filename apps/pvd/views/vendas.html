@@ -12,7 +12,7 @@
             }
         } catch (error) {}
     </script>
-    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-exception-amount-20260929-1">
+    <link rel="stylesheet" href="/apps/pvd/styles/base.css?v=pdv-second-payment-20261109-3">
     <link rel="icon" type="image/png" href="/apps/pvd/assets/icones/logosemtexto.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -288,6 +288,55 @@
         </div>
     </section>
 
+    <section class="checkout-screen hidden" id="secondPaymentScreen" aria-live="polite">
+        <div class="checkout-shell">
+            <header class="checkout-header">
+                <div>
+                    <span class="checkout-eyebrow">Segunda etapa</span>
+                    <h1 id="secondPaymentTitle">Continuar pagamento</h1>
+                    <p id="secondPaymentOrderLabel">Registre outro valor pago ou deixe o saldo pendente para depois.</p>
+                </div>
+            </header>
+            <div class="checkout-grid second-payment-grid">
+                <aside class="checkout-card checkout-summary-card second-payment-card">
+                    <div id="secondPaymentForm">
+                    <h2>Resumo do pagamento</h2>
+                    <div class="checkout-totals">
+                        <div><span>Total do pedido</span><strong id="secondPaymentTotal">R$ 0,00</strong></div>
+                        <div><span>Pago até agora</span><strong id="secondPaymentPaid">R$ 0,00</strong></div>
+                        <div class="checkout-total"><span>Saldo restante</span><strong id="secondPaymentBalance">R$ 0,00</strong></div>
+                    </div>
+                    <label class="second-payment-amount-label" for="secondPaymentAmount">Valor que o cliente vai pagar agora (R$)
+                        <input type="number" id="secondPaymentAmount" min="0.01" step="0.01" inputmode="decimal" placeholder="Informe o valor do pagamento" />
+                    </label>
+                    <p class="second-payment-hint" id="secondPaymentHint" aria-live="polite">Informe um valor até o saldo restante.</p>
+                    <div class="payment-options second-payment-options" id="secondPaymentOptions">
+                        <button type="button" class="payment-option" data-second-payment="pix"><i class="fa-brands fa-pix"></i> Pix</button>
+                        <button type="button" class="payment-option" data-second-payment="debito"><i class="fa-solid fa-credit-card"></i> Débito</button>
+                        <button type="button" class="payment-option" data-second-payment="credito"><i class="fa-regular fa-credit-card"></i> Crédito</button>
+                        <button type="button" class="payment-option" data-second-payment="dinheiro"><i class="fa-solid fa-money-bill-wave"></i> Dinheiro</button>
+                    </div>
+                    <div class="checkout-actions">
+                        <button type="button" class="checkout-secondary" id="secondPaymentLaterBtn">Deixar para depois</button>
+                        <button type="button" class="checkout-primary" id="secondPaymentConfirmBtn" disabled>Registrar pagamento</button>
+                    </div>
+                    </div>
+                    <div id="secondPaymentResult" hidden aria-live="polite">
+                        <h2 id="secondPaymentResultTitle">Pagamento confirmado</h2>
+                        <p id="secondPaymentResultText">O pagamento foi registrado.</p>
+                        <div class="checkout-totals">
+                            <div><span>Valor usado para quitar</span><strong id="secondPaymentResultPaid">R$ 0,00</strong></div>
+                            <div id="secondPaymentChangeRow" hidden><span>Troco a devolver ao cliente</span><strong id="secondPaymentChange">R$ 0,00</strong></div>
+                        </div>
+                        <div class="checkout-actions">
+                            <button type="button" class="checkout-primary second-payment-done" id="secondPaymentDoneBtn">Continuar</button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </section>
+
     <div class="product-purchase-modal hidden" id="productPurchaseModal" role="dialog" aria-modal="true" aria-labelledby="productPurchaseTitle">
         <div class="product-purchase-panel">
             <button type="button" class="product-purchase-close" id="productPurchaseClose" aria-label="Fechar detalhes do produto"><i class="fa-solid fa-xmark"></i></button>
@@ -367,7 +416,7 @@
     <div class="background-image"></div>
 
     <script src="/apps/pvd/scripts/sounds.js?v=aapm-sounds-20260615-1"></script>
-    <script src="/apps/pvd/scripts/base.js?v=pdv-discounts-cash-20261027-2"></script>
+    <script src="/apps/pvd/scripts/base.js?v=pdv-second-payment-20261109-4"></script>
 <script src="/apps/pvd/scripts/discounts.js?v=discount-popup-fix-20261109-1"></script>
 </body>
 

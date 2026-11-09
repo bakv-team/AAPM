@@ -145,6 +145,24 @@ const productPurchaseModal = document.getElementById("productPurchaseModal");
 const productPurchaseClose = document.getElementById("productPurchaseClose");
 const productPurchaseConfirm = document.getElementById("productPurchaseConfirm");
 const checkoutScreen = document.getElementById("checkoutScreen");
+const secondPaymentScreen = document.getElementById("secondPaymentScreen");
+const secondPaymentOrderLabel = document.getElementById("secondPaymentOrderLabel");
+const secondPaymentTitle = document.getElementById("secondPaymentTitle");
+const secondPaymentTotal = document.getElementById("secondPaymentTotal");
+const secondPaymentPaid = document.getElementById("secondPaymentPaid");
+const secondPaymentBalance = document.getElementById("secondPaymentBalance");
+const secondPaymentAmount = document.getElementById("secondPaymentAmount");
+const secondPaymentHint = document.getElementById("secondPaymentHint");
+const secondPaymentOptions = document.getElementById("secondPaymentOptions");
+const secondPaymentConfirmBtn = document.getElementById("secondPaymentConfirmBtn");
+const secondPaymentLaterBtn = document.getElementById("secondPaymentLaterBtn");
+const secondPaymentForm = document.getElementById("secondPaymentForm");
+const secondPaymentResult = document.getElementById("secondPaymentResult");
+const secondPaymentResultText = document.getElementById("secondPaymentResultText");
+const secondPaymentResultPaid = document.getElementById("secondPaymentResultPaid");
+const secondPaymentChangeRow = document.getElementById("secondPaymentChangeRow");
+const secondPaymentChange = document.getElementById("secondPaymentChange");
+const secondPaymentDoneBtn = document.getElementById("secondPaymentDoneBtn");
 const checkoutBackBtn = document.getElementById("checkoutBackBtn");
 const checkoutCancelBtn = document.getElementById("checkoutCancelBtn");
 const checkoutConfirmBtn = document.getElementById("checkoutConfirmBtn");
@@ -185,6 +203,10 @@ let associateSearchRequest = 0;
 let topProductIds = new Set();
 let pagamentoAtual = "pix";
 let ultimaVendaFinalizada = null;
+let vendaNaSegundaEtapa = null;
+let pagamentoSegundaEtapa = "pix";
+let trocoSegundaEtapa = 0;
+let acaoAposResultadoTroco = "nota";
 let page = 1;
 const perPage = 8;
 const PDV_NOTIF_READ_STORAGE_KEY = "aapm_read_notifications";
@@ -346,6 +368,24 @@ async function apiPost(path, body) {
     const data = await response.json().catch(() => ({}));
     const detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || {});
     throw new Error(detail && detail !== "{}" ? detail : `POST ${path} -> ${response.status}`);
+  }
+  return response.json();
+}
+
+async function apiPut(path, body) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken()
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || {});
+    throw new Error(detail && detail !== "{}" ? detail : `PUT ${path} -> ${response.status}`);
   }
   return response.json();
 }
@@ -1547,6 +1587,143 @@ function posicionarPopoverNoAcionador(popover, trigger) {
   popover.style.setProperty("right", "auto", "important");
 }
 
+function atualizarSegundaEtapaPagamento() {
+  if (!vendaNaSegundaEtapa) return;
+  const exception = vendaNaSegundaEtapa.paymentException || {};
+  const balance = Number(exception.pending || 0);
+  const amount = Number(secondPaymentAmount?.value || 0);
+  const cashPayment = pagamentoSegundaEtapa === "dinheiro";
+  const valid = Number.isFinite(amount) && amount > 0 && (cashPayment || amount <= balance) && secondPaymentAmount?.validity.valid;
+  if (secondPaymentTotal) secondPaymentTotal.textContent = money(vendaNaSegundaEtapa.total || 0);
+  if (secondPaymentPaid) secondPaymentPaid.textContent = money(exception.paid || 0);
+  if (secondPaymentBalance) secondPaymentBalance.textContent = money(balance);
+  if (secondPaymentOrderLabel) secondPaymentOrderLabel.textContent = `Pedido ${vendaNaSegundaEtapa.number} · escolha quanto o cliente pagará agora.`;
+  if (secondPaymentHint) {
+    const appliedAmount = Math.min(amount, balance);
+    const remaining = Math.max(0, balance - appliedAmount);
+    secondPaymentHint.textContent = !valid
+      ? `Informe um valor maior que zero${cashPayment ? "." : ` e até ${money(balance)}.`}`
+      : cashPayment && amount > balance
+        ? `Troco a devolver: ${money(amount - balance)}. Saldo depois deste pagamento: ${money(remaining)}.`
+        : `Depois deste pagamento, ficará faltando ${money(remaining)}.`;
+  }
+  if (secondPaymentConfirmBtn) secondPaymentConfirmBtn.disabled = !valid;
+}
+
+function abrirSegundaEtapaPagamento(venda) {
+  vendaNaSegundaEtapa = venda;
+  pagamentoSegundaEtapa = venda?.payment || "pix";
+  trocoSegundaEtapa = 0;
+  acaoAposResultadoTroco = "nota";
+  if (secondPaymentTitle) secondPaymentTitle.textContent = "Continuar pagamento";
+  if (secondPaymentDoneBtn) secondPaymentDoneBtn.textContent = "Continuar";
+  if (secondPaymentForm) secondPaymentForm.hidden = false;
+  if (secondPaymentResult) secondPaymentResult.hidden = true;
+  if (secondPaymentAmount) secondPaymentAmount.value = "";
+  secondPaymentOptions?.querySelectorAll("[data-second-payment]").forEach(button => {
+    button.classList.toggle("active", button.dataset.secondPayment === pagamentoSegundaEtapa);
+  });
+  atualizarSegundaEtapaPagamento();
+  secondPaymentScreen?.classList.remove("hidden");
+  document.body.classList.add("checkout-open");
+}
+
+function fecharSegundaEtapaPagamento() {
+  secondPaymentScreen?.classList.add("hidden");
+  document.body.classList.remove("checkout-open");
+}
+
+function encerrarComSaldoPendente() {
+  const balance = Number(vendaNaSegundaEtapa?.paymentException?.pending || 0);
+  const number = vendaNaSegundaEtapa?.number || "";
+  fecharSegundaEtapaPagamento();
+  toast(`Pedido ${number} salvo. Saldo pendente: ${money(balance)}.`, "success");
+  abrirEmissaoNota();
+}
+
+function concluirPagamentoSegundaEtapa() {
+  const number = vendaNaSegundaEtapa?.number || "";
+  fecharSegundaEtapaPagamento();
+  if (acaoAposResultadoTroco === "segunda_etapa") {
+    if (trocoSegundaEtapa > 0) toast(`Devolver ${money(trocoSegundaEtapa)} de troco ao cliente do pedido ${number}.`, "success");
+    abrirSegundaEtapaPagamento(vendaNaSegundaEtapa);
+    return;
+  }
+  if (trocoSegundaEtapa > 0) toast(`Devolver ${money(trocoSegundaEtapa)} de troco ao cliente do pedido ${number}.`, "success");
+  abrirEmissaoNota();
+}
+
+function mostrarResultadoPagamento(venda, amount, change, nextAction = "nota") {
+  vendaNaSegundaEtapa = venda;
+  trocoSegundaEtapa = change;
+  acaoAposResultadoTroco = nextAction;
+  if (secondPaymentTitle) secondPaymentTitle.textContent = change > 0 ? "Troco do pagamento" : "Pagamento confirmado";
+  if (secondPaymentOrderLabel) {
+    secondPaymentOrderLabel.textContent = change > 0
+      ? `Pedido ${venda.number}: devolva o troco indicado abaixo ao cliente.`
+      : `Pedido ${venda.number} foi quitado com sucesso.`;
+  }
+  if (secondPaymentResultPaid) secondPaymentResultPaid.textContent = money(amount);
+  if (secondPaymentChange) secondPaymentChange.textContent = money(change);
+  if (secondPaymentChangeRow) secondPaymentChangeRow.hidden = change <= 0;
+  if (secondPaymentResultText) {
+    secondPaymentResultText.textContent = change > 0
+      ? "Pagamento confirmado. Confira o troco antes de continuar."
+      : "Pagamento confirmado.";
+  }
+  if (secondPaymentForm) secondPaymentForm.hidden = true;
+  if (secondPaymentResult) secondPaymentResult.hidden = false;
+  if (secondPaymentDoneBtn) {
+    secondPaymentDoneBtn.textContent = nextAction === "segunda_etapa" ? "Continuar para o saldo" : "Continuar";
+  }
+  secondPaymentScreen?.classList.remove("hidden");
+  document.body.classList.add("checkout-open");
+  secondPaymentDoneBtn?.focus();
+}
+
+async function confirmarPagamentoSegundaEtapa() {
+  if (!vendaNaSegundaEtapa) return;
+  const amount = Number(secondPaymentAmount?.value || 0);
+  const pending = Number(vendaNaSegundaEtapa.paymentException?.pending || 0);
+  const cashPayment = pagamentoSegundaEtapa === "dinheiro";
+  if (!Number.isFinite(amount) || amount <= 0 || (!cashPayment && amount > pending)) {
+    atualizarSegundaEtapaPagamento();
+    secondPaymentAmount?.focus();
+    return;
+  }
+
+  if (secondPaymentConfirmBtn) {
+    secondPaymentConfirmBtn.disabled = true;
+    secondPaymentConfirmBtn.textContent = "Salvando pagamento...";
+  }
+  try {
+    vendaNaSegundaEtapa = await apiPut(`/api/v1/pdv/orders/${vendaNaSegundaEtapa.id}/payment-exception`, {
+      pago: true,
+      pagamento: pagamentoSegundaEtapa,
+      valor_pago: Math.min(amount, pending),
+      valor_recebido: cashPayment ? amount : null
+    });
+    const balance = Number(vendaNaSegundaEtapa.paymentException?.pending || 0);
+    if (balance <= 0) {
+      const sale = vendaNaSegundaEtapa;
+      window.AAPMSound?.play("checkout");
+      trocoSegundaEtapa = cashPayment ? Math.max(0, amount - pending) : 0;
+      mostrarResultadoPagamento(sale, Math.min(amount, pending), trocoSegundaEtapa);
+      return;
+    }
+    if (secondPaymentAmount) secondPaymentAmount.value = "";
+    atualizarSegundaEtapaPagamento();
+    toast(`Pagamento salvo. Ainda faltam ${money(balance)}.`, "success");
+  } catch (error) {
+    toast(error.message || "N\u00e3o foi poss\u00edvel registrar o pagamento.", "error");
+  } finally {
+    if (secondPaymentConfirmBtn) {
+      secondPaymentConfirmBtn.textContent = "Registrar pagamento";
+      atualizarSegundaEtapaPagamento();
+    }
+  }
+}
+
 function mostrarCompraFinalizada(venda, customerName = "Cliente balcão") {
   const comprador = venda?.customerName || customerName || "Cliente balcão";
   confirmPurchaseModal?.classList.add("hidden");
@@ -1559,8 +1736,24 @@ function mostrarCompraFinalizada(venda, customerName = "Cliente balcão") {
     checkoutScreen?.classList.remove("checkout-complete-closing");
     document.body.classList.remove("checkout-open", "checkout-returning");
     const pendingBalance = Number(venda?.paymentException?.pending || 0);
+    const receiptData = ultimaVendaFinalizada || {};
+    const paidNow = receiptData.paymentException
+      ? Number(receiptData.totals?.pagoAgora || 0)
+      : Number(receiptData.totals?.totalLiquido || venda?.total || 0);
+    const cashChange = receiptData.payment === "dinheiro"
+      ? Math.max(0, Number(receiptData.cashReceived || 0) - paidNow)
+      : 0;
     if (pendingBalance > 0) {
-      window.location.assign("/dashboard#pedidos");
+      if (cashChange > 0) {
+        mostrarResultadoPagamento(venda, paidNow, cashChange, "segunda_etapa");
+        return;
+      }
+      abrirSegundaEtapaPagamento(venda);
+      toast(`Primeiro pagamento salvo. Saldo restante: ${money(pendingBalance)}.`, "success");
+      return;
+    }
+    if (cashChange > 0) {
+      mostrarResultadoPagamento(venda, paidNow, cashChange);
       return;
     }
     abrirEmissaoNota();
@@ -1601,6 +1794,8 @@ async function confirmarPedido() {
       totals: totaisCarrinho(),
       customerName,
       payment: pagamentoAtual,
+      paymentException: Boolean(salePayload.excecao_pagamento),
+      cashReceived: Number(cashReceivedAmount?.value || 0),
       isAssociate: ehAssociado,
       completedAt: new Date()
     };
@@ -1931,6 +2126,19 @@ function bindEventos() {
   btnEsvaziarCarrinho?.addEventListener("click", esvaziarCarrinho);
   checkoutBackBtn?.addEventListener("click", fecharCheckout);
   checkoutCancelBtn?.addEventListener("click", fecharCheckout);
+  secondPaymentOptions?.querySelectorAll("[data-second-payment]").forEach(button => {
+    button.addEventListener("click", () => {
+      pagamentoSegundaEtapa = button.dataset.secondPayment;
+      secondPaymentOptions.querySelectorAll("[data-second-payment]").forEach(option => {
+        option.classList.toggle("active", option === button);
+      });
+      atualizarSegundaEtapaPagamento();
+    });
+  });
+  secondPaymentAmount?.addEventListener("input", atualizarSegundaEtapaPagamento);
+  secondPaymentConfirmBtn?.addEventListener("click", confirmarPagamentoSegundaEtapa);
+  secondPaymentLaterBtn?.addEventListener("click", encerrarComSaldoPendente);
+  secondPaymentDoneBtn?.addEventListener("click", concluirPagamentoSegundaEtapa);
   issueNoteCancel?.addEventListener("click", () => {
     window.location.assign("/pdv");
   });
@@ -1969,6 +2177,11 @@ function bindEventos() {
 
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape") return;
+    if (!secondPaymentScreen?.classList.contains("hidden")) {
+      if (secondPaymentResult && !secondPaymentResult.hidden) concluirPagamentoSegundaEtapa();
+      else encerrarComSaldoPendente();
+      return;
+    }
     if (!productPurchaseModal?.classList.contains("hidden")) {
       fecharDetalhesProduto();
       return;

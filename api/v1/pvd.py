@@ -22,7 +22,7 @@ from integrations.ai_client import RUNTIME_STATUS as _AI_RUNTIME_STATUS
 from integrations.ai_client import call_external_ai as external_ai_answer
 from integrations.ai_client import config_status as _ai_config_status
 from integrations.smtp_client import configuracao_smtp, enviar_mensagem
-from database.auth import get_usuario_logado, hash_senha, require_permission, verificar_senha
+from database.auth import get_usuario_logado, hash_senha, require_permission, usuario_tem_permissao, verificar_senha
 from database.controllers.produto_controller import _remover_imagem, _salvar_imagem
 from database.database import get_db
 from database.models.categoria import Categoria
@@ -1033,13 +1033,15 @@ def atualizar_excecao_pagamento_api(
     venda_id: int,
     payload: ExcecaoPagamentoPayload,
     db: Session = Depends(get_db),
-    admin=Depends(require_permission("orders")),
+    usuario=Depends(get_usuario_logado),
 ):
     venda = db.query(Venda).filter(Venda.id == venda_id).first()
     if not venda:
         raise HTTPException(status_code=404, detail="Pedido nao encontrado.")
     if not getattr(venda, "excecao_pagamento", False):
         raise HTTPException(status_code=400, detail="Este pedido nao possui excecao de pagamento.")
+    if usuario.get("role") != "admin" and not usuario_tem_permissao(usuario, "orders") and usuario.get("id") != venda.usuario_id:
+        raise HTTPException(status_code=403, detail="Voce nao pode registrar pagamento para este pedido.")
 
     if payload.pago:
         if payload.pagamento:

@@ -184,8 +184,8 @@ window.API = (function () {
   async function createOrder(payload) {
     return apiPost("/api/v1/pdv/sales", payload);
   }
-  async function markPaymentExceptionPaid(id, payment, amount) {
-    return apiPut(`/api/v1/pdv/orders/${id}/payment-exception`, { pago: true, pagamento: payment, valor_pago: amount });
+  async function markPaymentExceptionPaid(id, payment, amount, received = null) {
+    return apiPut(`/api/v1/pdv/orders/${id}/payment-exception`, { pago: true, pagamento: payment, valor_pago: amount, valor_recebido: received });
   }
 
   // ----- Dashboard / Métricas -----

@@ -33,20 +33,23 @@ class SaleExceptionTests(unittest.TestCase):
             payment_exception_note="", payment_exception_amount=amount,
         ), user_id=1, created_at=datetime(2026, 9, 29))
 
-    def test_reduced_amount_is_persisted_and_stock_reserved(self):
+    def test_partial_payment_preserves_sale_total_and_stock_is_reserved(self):
         sale = self.sell(Decimal("45.50"))
         self.assertEqual(sale.total_bruto, Decimal("100.00"))
-        self.assertEqual(sale.total_liquido, Decimal("45.50"))
-        self.assertEqual(sale.valor_final, Decimal("45.50"))
-        self.assertEqual(sale.desconto, Decimal("54.50"))
-        self.assertEqual(self.product.estoque_atual, 9)
+        self.assertEqual(sale.total_liquido, Decimal("100.00"))
+        self.assertEqual(sale.valor_final, Decimal("100.00"))
+        self.assertEqual(sale.desconto, Decimal("0.00"))
+        self.assertEqual(sale.excecao_valor_pago, Decimal("45.50"))
         self.assertEqual(sale.excecao_status, "pendente")
+        self.assertEqual(self.product.estoque_atual, 9)
 
     def test_empty_amount_preserves_total(self):
         self.assertEqual(self.sell().total_liquido, Decimal("100.00"))
 
     def test_zero_is_supported(self):
-        self.assertEqual(self.sell(Decimal("0")).total_liquido, Decimal("0.00"))
+        sale = self.sell(Decimal("0"))
+        self.assertEqual(sale.total_liquido, Decimal("100.00"))
+        self.assertEqual(sale.excecao_valor_pago, Decimal("0.00"))
 
     def test_invalid_amounts_do_not_create_sales_or_move_stock(self):
         for amount in ("-1", "101", "1.001", "NaN", "Infinity"):
@@ -64,7 +67,9 @@ class SaleExceptionTests(unittest.TestCase):
         self.db.commit()
         with self.assertRaises(ValidationError):
             self.sell(Decimal("95"))
-        self.assertEqual(self.sell(Decimal("80")).total_liquido, Decimal("80.00"))
+        sale = self.sell(Decimal("80"))
+        self.assertEqual(sale.total_liquido, Decimal("90.00"))
+        self.assertEqual(sale.excecao_valor_pago, Decimal("80.00"))
 
 
 class ConditionalDiscountTests(SaleExceptionTests):

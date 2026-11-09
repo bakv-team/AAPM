@@ -118,6 +118,7 @@ class VendaPayload(BaseModel):
 class ExcecaoPagamentoPayload(BaseModel):
     pago: bool = True
     pagamento: str | None = None
+    valor_pago: Decimal | None = None
     valor_recebido: Decimal | None = None
 
 
@@ -1046,14 +1047,18 @@ def atualizar_excecao_pagamento_api(
             if payload.pagamento not in metodos_pagamento:
                 raise HTTPException(status_code=400, detail="Forma de pagamento invalida.")
             venda.metodo_pagamento = payload.pagamento
+        pending = max(Decimal("0.00"), _money(venda.total_liquido) - _money(getattr(venda, "excecao_valor_pago", 0) or 0))
+        amount = payload.valor_pago if payload.valor_pago is not None else pending
+        if not amount.is_finite() or amount <= 0 or amount > pending or amount != _money(amount):
+            raise HTTPException(status_code=400, detail="O valor pago deve ser maior que zero e nao pode superar o saldo pendente.")
         if payload.pagamento == "dinheiro":
-            pending = max(Decimal("0.00"), _money(venda.total_liquido) - _money(getattr(venda, "excecao_valor_pago", 0) or 0))
             received = payload.valor_recebido
-            if received is None or not received.is_finite() or received < pending or received != _money(received):
-                raise HTTPException(status_code=400, detail="O valor recebido deve cobrir o saldo pendente.")
-        venda.excecao_valor_pago = _money(venda.total_liquido)
-        venda.excecao_status = "pago"
-        venda.excecao_pago_em = _agora_local()
+            if received is not None and (not received.is_finite() or received < amount or received != _money(received)):
+                raise HTTPException(status_code=400, detail="O valor recebido deve cobrir o pagamento informado.")
+        venda.excecao_valor_pago = _money(getattr(venda, "excecao_valor_pago", 0) or 0) + _money(amount)
+        quitado = venda.excecao_valor_pago >= _money(venda.total_liquido)
+        venda.excecao_status = "pago" if quitado else "pendente"
+        venda.excecao_pago_em = _agora_local() if quitado else None
     else:
         venda.excecao_status = "pendente"
         venda.excecao_pago_em = None

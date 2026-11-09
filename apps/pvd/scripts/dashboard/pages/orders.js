@@ -46,26 +46,28 @@ window.OrdersPage = (function () {
     return `<span class="pill yellow">Pendente</span>`;
   }
 
-  async function markPaymentExceptionPaid(orderId, payment, received = null) {
+  async function markPaymentExceptionPaid(orderId, payment, amount) {
     const order = window.DB.orders.find(item => String(item.id) === String(orderId));
     if (!order) return;
     const paymentLabels = { pix: "Pix", debito: "D\u00e9bito", credito: "Cr\u00e9dito", dinheiro: "Dinheiro" };
     const pending = Number(paymentExceptionMeta(order).pending ?? order.total) || 0;
-    const receivedSummary = payment === "dinheiro" && received !== null
-      ? `Recebimento de ${UI.money(received)}; saldo pendente ${UI.money(pending)}; troco ${UI.money(Math.max(0, received - pending))}.`
-      : `Confirmar ${UI.money(pending)} recebidos via ${paymentLabels[payment]}.`;
+    const remaining = Math.max(0, Math.round((pending - amount) * 100) / 100);
+    const receivedSummary = `Registrar ${UI.money(amount)} via ${paymentLabels[payment]}; saldo restante ${UI.money(remaining)}.`;
     const ok = await UI.confirmDialog({
-      title: "Confirmar pagamento",
+      title: "Registrar pagamento",
       text: `${receivedSummary} Pedido ${order.number}.`,
-      okLabel: "Confirmar pagamento"
+      okLabel: "Salvar pagamento"
     });
     if (!ok) return;
 
     try {
-      const updated = await window.API.markPaymentExceptionPaid(orderId, payment, received);
+      const updated = await window.API.markPaymentExceptionPaid(orderId, payment, amount);
       const index = window.DB.orders.findIndex(item => String(item.id) === String(updated.id));
       if (index >= 0) window.DB.orders[index] = updated;
-      UI.toast(`Pedido ${updated.number} marcado como pago via ${paymentLabels[payment]}.`, "success");
+      const balanceLeft = Number(updated.paymentException?.pending || 0);
+      UI.toast(balanceLeft > 0
+        ? `Pagamento salvo. Ainda faltam ${UI.money(balanceLeft)} no pedido ${updated.number}.`
+        : `Pedido ${updated.number} quitado via ${paymentLabels[payment]}.`, "success");
       await render();
     } catch (err) {
       console.error("Falha ao marcar excecao como paga:", err);
@@ -73,29 +75,32 @@ window.OrdersPage = (function () {
     }
   }
 
-  function openCashPaymentModal(orderId) {
+  function openPaymentAmountModal(orderId, payment) {
     const order = window.DB.orders.find(item => String(item.id) === String(orderId));
     if (!order) return;
     const pending = Number(paymentExceptionMeta(order).pending ?? order.total) || 0;
     const modal = document.getElementById("cashPaymentModal");
-    const amount = document.getElementById("cashPaymentReceived");
+    const amount = document.getElementById("cashPaymentAmount");
     const result = document.getElementById("cashPaymentResult");
     const confirm = document.getElementById("cashPaymentConfirm");
+    const paymentLabels = { pix: "Pix", debito: "débito", credito: "crédito", dinheiro: "dinheiro" };
+    document.getElementById("cashPaymentModalTitle").textContent = `Pagamento em ${paymentLabels[payment]}`;
     document.getElementById("cashPaymentPendingLabel").textContent = `Saldo pendente: ${UI.money(pending)}`;
     amount.value = "";
     confirm.disabled = true;
-    result.textContent = "Informe o valor recebido.";
+    result.textContent = "Informe o valor pago nesta etapa.";
     result.classList.remove("is-short");
     modal.classList.remove("hidden");
 
     const update = () => {
-      const received = Number(amount.value || 0);
-      const difference = Math.round((received - pending) * 100) / 100;
-      confirm.disabled = !Number.isFinite(received) || received < pending;
-      result.classList.toggle("is-short", difference < 0);
-      result.textContent = difference < 0
-        ? `Falta: ${UI.money(Math.abs(difference))}`
-        : `Troco: ${UI.money(difference)}`;
+      const paymentAmount = Number(amount.value || 0);
+      const invalidPayment = !Number.isFinite(paymentAmount) || paymentAmount <= 0 || paymentAmount > pending;
+      const balance = Math.max(0, Math.round((pending - paymentAmount) * 100) / 100);
+      confirm.disabled = invalidPayment;
+      result.classList.toggle("is-short", invalidPayment);
+      result.textContent = invalidPayment
+        ? `Informe um valor entre R$ 0,01 e ${UI.money(pending)}.`
+        : `Saldo depois deste pagamento: ${UI.money(balance)}.`;
     };
     const close = () => {
       modal.classList.add("hidden");
@@ -105,9 +110,9 @@ window.OrdersPage = (function () {
       document.getElementById("cashPaymentCancel").removeEventListener("click", close);
     };
     const submit = () => {
-      const received = Number(amount.value || 0);
+      const paymentAmount = Number(amount.value || 0);
       close();
-      markPaymentExceptionPaid(orderId, "dinheiro", received);
+      markPaymentExceptionPaid(orderId, payment, paymentAmount);
     };
     amount.addEventListener("input", update);
     update();
@@ -127,8 +132,7 @@ window.OrdersPage = (function () {
 
   function selectExceptionPayment(orderId, payment) {
     document.getElementById("paymentMethodModal")?.classList.add("hidden");
-    if (payment === "dinheiro") openCashPaymentModal(orderId);
-    else markPaymentExceptionPaid(orderId, payment);
+    openPaymentAmountModal(orderId, payment);
   }
 
   function renderOrderItemsList(order) {

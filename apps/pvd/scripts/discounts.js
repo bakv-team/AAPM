@@ -11,7 +11,14 @@ window.PurchaseDiscounts = (() => {
   async function request(method='GET', data=null, suffix='') {
     const cookie = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
     const response = await fetch('/api/v1/pdv/discounts'+suffix, {method, credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':cookie ? decodeURIComponent(cookie.split('=').slice(1).join('=')) : ''}, ...(data ? {body:JSON.stringify(data)} : {})});
-    if (!response.ok) { const error = await response.json().catch(()=>({})); throw new Error(typeof error.detail === 'string' ? error.detail : 'Confira os valores informados.'); }
+    if (!response.ok) {
+      const error = await response.json().catch(()=>({}));
+      const detail = error.detail;
+      const message = typeof detail === 'string' ? detail
+        : Array.isArray(detail) ? detail.map(item=>item.msg || item.message || JSON.stringify(item)).join(' ')
+        : typeof error.message === 'string' ? error.message : `Não foi possível salvar o desconto (HTTP ${response.status}).`;
+      throw new Error(message);
+    }
     return response.json();
   }
   function notify(message) { const el = document.getElementById('discountMessage'); if(el) el.textContent = message; }
@@ -71,7 +78,10 @@ window.PurchaseDiscounts = (() => {
         const success=`Desconto "${created.nome}" criado e disponível para adicionar no PDV.`;
         notify(success);
         window.UI?.toast?.(success,'success');
-      } catch(error) { notify(error.message); }
+      } catch(error) {
+        notify(`Falha ao criar o desconto: ${error.message}`);
+        window.UI?.toast?.(`Desconto não criado: ${error.message}`,'error');
+      }
       finally { submit.disabled=false; }
     });
     if(!admin) request().then(data=>{rules=data; refresh();}).catch(()=>{button.title='Não foi possível carregar os descontos. Clique para tentar novamente.';});

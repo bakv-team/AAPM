@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
+import logging
 import csv
 import io
 import json
@@ -48,6 +49,7 @@ router = APIRouter(
     tags=["API PDV"],
     dependencies=[Depends(require_api_csrf)],
 )
+logger = logging.getLogger(__name__)
 
 PRODUCT_IMAGE_DIR = Path("database/static/uploads")
 PRODUCT_IMAGE_PREFIX = "uploads"
@@ -1560,8 +1562,14 @@ def _discount_json(d):
     return {"id": d.id, "nome": d.nome, "tipo": d.tipo, "valor": float(d.valor), "minimo": float(d.minimo), "quantidade": d.quantidade, "pagamento": d.pagamento}
 
 
+def _ensure_discount_table(db: Session) -> None:
+    # Older production databases may not have run the discounts migration yet.
+    Desconto.__table__.create(bind=db.get_bind(), checkfirst=True)
+
+
 @router.get("/discounts")
 def listar_descontos(db: Session = Depends(get_db), usuario=Depends(get_usuario_logado)):
+    _ensure_discount_table(db)
     return [_discount_json(d) for d in db.query(Desconto).filter(Desconto.ativo == True).order_by(Desconto.id).all()]
 
 
@@ -1571,10 +1579,16 @@ def criar_desconto(payload: DescontoPayload, db: Session = Depends(get_db), usua
         raise HTTPException(400, "Informe percentual de até 100% ou valor fixo.")
     if not payload.nome.strip() or payload.pagamento not in {"", "pix", "debito", "credito", "dinheiro"}:
         raise HTTPException(400, "Nome ou pagamento inválido.")
-    d = Desconto(nome=payload.nome.strip(), tipo=payload.tipo, valor=payload.valor, minimo=payload.minimo, quantidade=payload.quantidade, pagamento=payload.pagamento, ativo=True)
-    db.add(d)
-    db.commit()
-    db.refresh(d)
+    try:
+        _ensure_discount_table(db)
+        d = Desconto(nome=payload.nome.strip(), tipo=payload.tipo, valor=payload.valor, minimo=payload.minimo, quantidade=payload.quantidade, pagamento=payload.pagamento, ativo=True)
+        db.add(d)
+        db.commit()
+        db.refresh(d)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Falha ao gravar desconto no banco de dados")
+        raise HTTPException(500, "Falha ao gravar desconto no banco. Confira os logs do servidor.") from exc
     return _discount_json(d)
 
 

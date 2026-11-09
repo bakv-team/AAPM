@@ -1,3 +1,4 @@
+
 <div align="center">
 
 <img src="apps/pvd/assets/icones/banner_aapm.png" alt="AAPM — SENAI Francisco Matarazzo" width="720">
@@ -15,8 +16,11 @@ Sistema desenvolvido para a **Associação de Alunos, Ex-Alunos, Pais e Mestres*
 do SENAI Francisco Matarazzo · São Paulo/SP
 
 </div>
+<img width="1903" height="1079" alt="Captura de tela 2026-11-09 111219" src="https://github.com/user-attachments/assets/ef836c3c-f997-4402-8db6-1be3ceac05ec" />
 
 ---
+
+ Deploy Render: https://aapm-kjv5.onrender.com/
 
 ## Uma operação simples, do balcão à gestão
 

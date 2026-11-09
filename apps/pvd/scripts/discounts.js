@@ -24,6 +24,7 @@ window.PurchaseDiscounts = (() => {
   async function open() {
     const dialog = document.getElementById('discountDialog');
     if (!dialog) return;
+    dialog.classList.remove('is-closing');
     if (!dialog.open) dialog.showModal();
     notify('Carregando descontos...');
     try { rules = await request(); notify(''); refresh(); } catch(e) {notify(e.message);}
@@ -36,7 +37,16 @@ window.PurchaseDiscounts = (() => {
     button.addEventListener('click',open);
     document.body.insertAdjacentHTML('beforeend', `<dialog id="discountDialog" class="discount-dialog"><div class="discount-dialog-head"><h3><i class="fa-solid fa-tags"></i> ${admin ? 'Gerenciar descontos' : 'Descontos da compra'}</h3><button type="button" class="ghost-btn" id="closeDiscountDialog" aria-label="Fechar">×</button></div><p class="muted">${admin ? 'Cadastre um percentual ou valor em dinheiro e suas condições.' : 'Descontos válidos são somados ao benefício de associado. O valor fixo é aplicado uma vez por compra.'}</p><p role="status" id="discountMessage"></p><div id="discountRules"></div>${admin ? `<form id="discountForm" class="discount-form"><label>Nome<input name="nome" required maxlength="80" placeholder="Ex.: Volta às aulas"></label><label>Tipo<select name="tipo"><option value="percentual">Porcentagem (%)</option><option value="fixo">Dinheiro (R$)</option></select></label><label>Valor<input name="valor" type="number" min="0.01" max="100" step="0.01" required></label><label>Compra mínima (R$)<input name="minimo" type="number" min="0" step="0.01" value="0" required></label><label>Quantidade mínima<input name="quantidade" type="number" min="1" step="1" value="1" required></label><label>Forma de pagamento<select name="pagamento"><option value="">Qualquer forma</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="credito">Crédito</option><option value="dinheiro">Dinheiro</option></select></label><button class="primary-btn" type="submit">Cadastrar desconto</button></form>` : '<p class="muted">As condições consideram o subtotal sem descontos e a quantidade total. Se a compra mudar, os descontos serão reavaliados.</p>'}</dialog>`);
     if (!admin) document.querySelector('#discountDialog .discount-dialog-head + .muted').textContent = 'Selecione um desconto cadastrado em Produtos. As condições são verificadas com os itens, a quantidade e o pagamento desta venda.';
-    document.getElementById('closeDiscountDialog').onclick=()=>document.getElementById('discountDialog').close();
+    const dialog=document.getElementById('discountDialog');
+    let closeTimer;
+    const closeAnimated=()=>{
+      if(!dialog.open || dialog.classList.contains('is-closing')) return;
+      dialog.classList.add('is-closing');
+      closeTimer=setTimeout(()=>{dialog.close();dialog.classList.remove('is-closing');},180);
+    };
+    document.getElementById('closeDiscountDialog').onclick=closeAnimated;
+    dialog.addEventListener('cancel',event=>{event.preventDefault();closeAnimated();});
+    dialog.addEventListener('click',event=>{if(event.target===dialog)closeAnimated();});
     document.getElementById('discountRules').addEventListener('change',e=> { if(e.target.dataset.selectDiscount) {const id=Number(e.target.dataset.selectDiscount); e.target.checked ? selected.add(id) : selected.delete(id); refresh();} });
     document.getElementById('discountRules').addEventListener('click',async e=> {const b=e.target.closest('[data-remove-discount]'); if(!b) return; b.disabled=true; try {await request('DELETE',null,'/'+b.dataset.removeDiscount); rules=await request(); render();} catch(error){notify(error.message); b.disabled=false;} });
     const form=document.getElementById('discountForm');
@@ -54,10 +64,13 @@ window.PurchaseDiscounts = (() => {
         data.valor = Number(data.valor);
         data.minimo = Number(data.minimo);
         data.quantidade = Number(data.quantidade);
-        await request('POST',data);
-        rules=await request();
+        const created=await request('POST',data);
+        rules=[created,...rules.filter(rule=>rule.id!==created.id)];
         form.reset(); form.elements.valor.max='100'; form.elements.valor.placeholder='';
-        render(); notify('Desconto cadastrado.');
+        render();
+        const success=`Desconto "${created.nome}" criado e disponível para adicionar no PDV.`;
+        notify(success);
+        window.UI?.toast?.(success,'success');
       } catch(error) { notify(error.message); }
       finally { submit.disabled=false; }
     });
